@@ -1,34 +1,28 @@
 import { useState } from 'react'
 
-const LOGIN_URL = 'https://jsqfdwapzwfhoxkosncv.supabase.co/functions/v1/login'
-
 export default function Login({ onLogin }) {
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
 
-  async function handleSubmit(e) {
+  function handleSubmit(e) {
     e.preventDefault()
     setLoading(true)
     setError('')
-    try {
-      const res = await fetch(LOGIN_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, password }),
-      })
-      const data = await res.json()
-      if (data.success) {
-        localStorage.setItem('studio_token', data.token)
+
+    const validUser = import.meta.env.VITE_GATE_USER
+    const validPass = import.meta.env.VITE_GATE_PASSWORD
+
+    setTimeout(() => {
+      if (username === validUser && password === validPass) {
+        localStorage.setItem('studio_token', btoa(`${username}:${Date.now()}`))
         onLogin()
       } else {
         setError('Invalid username or password')
       }
-    } catch (err) {
-      setError('Something went wrong, try again')
-    }
-    setLoading(false)
+      setLoading(false)
+    }, 400)
   }
 
   return (
@@ -36,7 +30,7 @@ export default function Login({ onLogin }) {
       <div className="login-box">
         <div className="login-header">
           <span className="logo-mark">◆</span>
-          <h1>Studio Log</h1>
+          <h1>Habit Tracking</h1>
         </div>
         <p className="login-sub">Sign in to continue</p>
         <form className="login-form" onSubmit={handleSubmit}>
