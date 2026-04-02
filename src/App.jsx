@@ -1,0 +1,353 @@
+import { useState, useEffect, useRef } from 'react'
+import { supabase } from './supabase'
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts'
+import { DndContext, closestCenter, PointerSensor, useSensor, useSensors, DragOverlay } from '@dnd-kit/core'
+import { SortableContext, verticalListSortingStrategy, useSortable, arrayMove } from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
+import Planner from './planner/Planner.jsx'
+import './App.css'
+
+const PRESET_COLORS = ['#f4845f','#f7c948','#4ade80','#60a5fa','#a78bfa','#f472b6','#fb7185','#34d399','#38bdf8','#e879f9']
+const PERIODS = ['Day', 'Week', 'Month', 'Year']
+const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
+
+function getPeriodLabel(period) {
+  const now = new Date()
+  if (period === 'Day') return `Today, ${MONTHS[now.getMonth()]} ${now.getDate()}`
+  if (period === 'Week') return `This Week`
+  if (period === 'Month') return `${MONTHS[now.getMonth()]} ${now.getFullYear()}`
+  return `${now.getFullYear()}`
+}
+
+function getPeriodRange(period) {
+  const now = new Date()
+  const start = new Date()
+  if (period === 'Day') { start.setHours(0,0,0,0) }
+  else if (period === 'Week') { start.setDate(now.getDate() - now.getDay()); start.setHours(0,0,0,0) }
+  else if (period === 'Month') { start.setDate(1); start.setHours(0,0,0,0) }
+  else { start.setMonth(0,1); start.setHours(0,0,0,0) }
+  return { start: start.toISOString(), end: now.toISOString() }
+}
+
+function SortableHabitRow({ habit, count, bumping, editingId, habitCategoryIds, categories, onIncrement, onDecrement, onEdit, onDelete }) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: habit.id })
+  const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.3 : 1 }
+  const catIds = habitCategoryIds[habit.id] || []
+  const catNames = categories.filter(c => catIds.includes(c.id)).map(c => c.name)
+  return (
+    <li ref={setNodeRef} style={style} className={`habit-row ${editingId === habit.id ? 'editing' : ''} ${isDragging ? 'dragging' : ''}`}>
+      <div className="drag-handle" {...attributes} {...listeners}><span className="drag-dots">⠿</span></div>
+      <div className="habit-info">
+        <span className="habit-dot" style={{ background: habit.color || '#60a5fa' }} />
+        <div>
+          <p className="habit-name">{habit.name}</p>
+          {catNames.length > 0 && <div className="habit-cats">{catNames.map(n => <span key={n} className="habit-cat-tag">{n}</span>)}</div>}
+        </div>
+      </div>
+      <div className="habit-controls">
+        <button className="ctrl-btn minus" onClick={() => onDecrement(habit)}>−</button>
+        <span className={`habit-count ${bumping === habit.id ? 'bump' : ''}`}>{count}</span>
+        <button className="ctrl-btn plus" onClick={() => onIncrement(habit)}>+</button>
+        <button className="icon-btn" onClick={() => onEdit(habit)}>✏️</button>
+        <button className="icon-btn" onClick={() => onDelete(habit.id)}>🗑</button>
+      </div>
+    </li>
+  )
+}
+
+export default function App({ onLogout }) {
+  const [activeTab, setActiveTab] = useState('planner')
+  const [habits, setHabits] = useState([])
+  const [logs, setLogs] = useState([])
+  const [categories, setCategories] = useState([])
+  const [habitCategoryIds, setHabitCategoryIds] = useState({})
+  const [selectedCategoryId, setSelectedCategoryId] = useState('all')
+  const [loading, setLoading] = useState(true)
+  const [period, setPeriod] = useState('Month')
+  const [adding, setAdding] = useState(false)
+  const [editingId, setEditingId] = useState(null)
+  const [newName, setNewName] = useState('')
+  const [newCategoryIds, setNewCategoryIds] = useState([])
+  const [newColor, setNewColor] = useState('#60a5fa')
+  const [showColorPicker, setShowColorPicker] = useState(false)
+  const [showCatManager, setShowCatManager] = useState(false)
+  const [newCatName, setNewCatName] = useState('')
+  const [editingCatId, setEditingCatId] = useState(null)
+  const [editingCatName, setEditingCatName] = useState('')
+  const [bumping, setBumping] = useState(null)
+  const [activeId, setActiveId] = useState(null)
+  const colorRef = useRef(null)
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }))
+
+  useEffect(() => { fetchAll() }, [period])
+  useEffect(() => {
+    const handler = (e) => { if (colorRef.current && !colorRef.current.contains(e.target)) setShowColorPicker(false) }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [])
+
+  async function fetchAll() {
+    setLoading(true)
+    const { start, end } = getPeriodRange(period)
+    const [{ data: habitsData }, { data: logsData }, { data: catsData }, { data: hcData }] = await Promise.all([
+      supabase.from('habits').select('*').order('sort_order', { ascending: true }),
+      supabase.from('habit_logs').select('id, habit_id').gte('logged_at', start).lte('logged_at', end),
+      supabase.from('categories').select('*').order('name', { ascending: true }),
+      supabase.from('habit_categories').select('habit_id, category_id')
+    ])
+    if (habitsData) setHabits(habitsData)
+    if (logsData) setLogs(logsData)
+    if (catsData) setCategories(catsData)
+    if (hcData) {
+      const map = {}
+      hcData.forEach(({ habit_id, category_id }) => { if (!map[habit_id]) map[habit_id] = []; map[habit_id].push(category_id) })
+      setHabitCategoryIds(map)
+    }
+    setLoading(false)
+  }
+
+  function getCount(habitId) { return logs.filter(l => l.habit_id === habitId).length }
+  function toggleNewCategory(catId) { setNewCategoryIds(prev => prev.includes(catId) ? prev.filter(id => id !== catId) : [...prev, catId]) }
+
+  const filteredHabits = selectedCategoryId === 'all' ? habits : habits.filter(h => (habitCategoryIds[h.id] || []).includes(selectedCategoryId))
+
+  async function increment(habit) {
+    setBumping(habit.id)
+    const { data, error } = await supabase.from('habit_logs').insert({ habit_id: habit.id }).select().single()
+    if (!error) setLogs(prev => [...prev, data])
+    await supabase.from('habits').update({ count: habit.count + 1 }).eq('id', habit.id)
+    setHabits(prev => prev.map(h => h.id === habit.id ? { ...h, count: h.count + 1 } : h))
+    setTimeout(() => setBumping(null), 300)
+  }
+
+  async function decrement(habit) {
+    if (getCount(habit.id) <= 0) return
+    const { start, end } = getPeriodRange(period)
+    const { data: recentLog } = await supabase.from('habit_logs').select('id').eq('habit_id', habit.id).gte('logged_at', start).lte('logged_at', end).order('logged_at', { ascending: false }).limit(1).single()
+    if (recentLog) {
+      await supabase.from('habit_logs').delete().eq('id', recentLog.id)
+      setLogs(prev => prev.filter(l => l.id !== recentLog.id))
+      await supabase.from('habits').update({ count: Math.max(0, habit.count - 1) }).eq('id', habit.id)
+      setHabits(prev => prev.map(h => h.id === habit.id ? { ...h, count: Math.max(0, h.count - 1) } : h))
+    }
+  }
+
+  async function saveHabit() {
+    if (!newName.trim() || newCategoryIds.length === 0) return
+    if (editingId) {
+      const { data, error } = await supabase.from('habits').update({ name: newName.trim(), color: newColor }).eq('id', editingId).select().single()
+      if (!error) {
+        await supabase.from('habit_categories').delete().eq('habit_id', editingId)
+        await supabase.from('habit_categories').insert(newCategoryIds.map(cid => ({ habit_id: editingId, category_id: cid })))
+        setHabits(prev => prev.map(h => h.id === editingId ? data : h))
+        setHabitCategoryIds(prev => ({ ...prev, [editingId]: newCategoryIds }))
+      }
+      setEditingId(null)
+    } else {
+      const maxOrder = habits.reduce((m, h) => Math.max(m, h.sort_order || 0), 0)
+      const { data, error } = await supabase.from('habits').insert({ name: newName.trim(), color: newColor, count: 0, sort_order: maxOrder + 1 }).select().single()
+      if (!error) {
+        await supabase.from('habit_categories').insert(newCategoryIds.map(cid => ({ habit_id: data.id, category_id: cid })))
+        setHabits(prev => [...prev, data])
+        setHabitCategoryIds(prev => ({ ...prev, [data.id]: newCategoryIds }))
+      }
+      setAdding(false)
+    }
+    setNewName(''); setNewCategoryIds([]); setNewColor('#60a5fa')
+  }
+
+  function startEdit(habit) { setEditingId(habit.id); setNewName(habit.name); setNewCategoryIds(habitCategoryIds[habit.id] || []); setNewColor(habit.color || '#60a5fa'); setAdding(false) }
+  function cancelForm() { setAdding(false); setEditingId(null); setNewName(''); setNewCategoryIds([]); setNewColor('#60a5fa') }
+
+  async function deleteHabit(id) {
+    await supabase.from('habits').delete().eq('id', id)
+    setHabits(prev => prev.filter(h => h.id !== id))
+    setLogs(prev => prev.filter(l => l.habit_id !== id))
+    setHabitCategoryIds(prev => { const n = {...prev}; delete n[id]; return n })
+  }
+
+  async function handleDragEnd(event) {
+    const { active, over } = event
+    setActiveId(null)
+    if (!over || active.id === over.id) return
+    const oldIndex = filteredHabits.findIndex(h => h.id === active.id)
+    const newIndex = filteredHabits.findIndex(h => h.id === over.id)
+    const reordered = arrayMove(filteredHabits, oldIndex, newIndex)
+    const otherHabits = habits.filter(h => !filteredHabits.find(f => f.id === h.id))
+    setHabits([...reordered, ...otherHabits])
+    await Promise.all(reordered.map((h, i) => supabase.from('habits').update({ sort_order: i + 1 }).eq('id', h.id)))
+  }
+
+  async function addCategory() {
+    if (!newCatName.trim()) return
+    const { data, error } = await supabase.from('categories').insert({ name: newCatName.trim() }).select().single()
+    if (!error) { setCategories(prev => [...prev, data].sort((a,b) => a.name.localeCompare(b.name))); setNewCatName('') }
+  }
+
+  async function saveCategory() {
+    if (!editingCatName.trim()) return
+    const { data, error } = await supabase.from('categories').update({ name: editingCatName.trim() }).eq('id', editingCatId).select().single()
+    if (!error) setCategories(prev => prev.map(c => c.id === editingCatId ? data : c).sort((a,b) => a.name.localeCompare(b.name)))
+    setEditingCatId(null); setEditingCatName('')
+  }
+
+  async function deleteCategory(id) {
+    await supabase.from('categories').delete().eq('id', id)
+    setCategories(prev => prev.filter(c => c.id !== id))
+    setHabitCategoryIds(prev => { const n = {}; Object.keys(prev).forEach(hid => { n[hid] = prev[hid].filter(cid => cid !== id) }); return n })
+    if (selectedCategoryId === id) setSelectedCategoryId('all')
+  }
+
+  const chartData = filteredHabits.map(h => ({ name: h.name, count: getCount(h.id), color: h.color || '#60a5fa' }))
+  const activeHabit = activeId ? filteredHabits.find(h => h.id === activeId) : null
+  const isFormOpen = adding || !!editingId
+  const selectedCatLabel = selectedCategoryId === 'all' ? 'All Categories' : (categories.find(c => c.id === selectedCategoryId)?.name || 'All Categories')
+
+  return (
+    <div className={`app ${activeTab === "planner" ? "app-wide" : ""}`}>
+      {/* Top-level tab switcher */}
+      <div className="app-tabs">
+        <button className={`app-tab ${activeTab === 'planner' ? 'active' : ''}`} onClick={() => setActiveTab('planner')}>Planner</button>
+        <button className={`app-tab ${activeTab === 'tracker' ? 'active' : ''}`} onClick={() => setActiveTab('tracker')}>Habits</button>
+        <button className="logout-btn" onClick={onLogout}>Sign out</button>
+      </div>
+
+      {activeTab === 'planner' && <Planner habits={habits} />}
+
+      {activeTab === 'tracker' && (
+        <div className="tracker-wrap">
+          <header className="header">
+            <div className="header-inner">
+              <span className="logo-mark">◆</span>
+              <div><h1>Habit Tracking</h1><p className="subtitle">{getPeriodLabel(period)}</p></div>
+            </div>
+            <div className="period-tabs">
+              {PERIODS.map(p => (<button key={p} className={`period-tab ${period === p ? 'active' : ''}`} onClick={() => setPeriod(p)}>{p}</button>))}
+            </div>
+          </header>
+
+          <main className="main">
+            <div className="cat-bar">
+              <div className="cat-dropdown-wrap">
+                <select className="cat-dropdown" value={selectedCategoryId} onChange={e => setSelectedCategoryId(e.target.value)}>
+                  <option value="all">All Categories</option>
+                  {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                </select>
+                <span className="cat-dropdown-arrow">▾</span>
+              </div>
+              <button className="manage-cats-btn" onClick={() => setShowCatManager(v => !v)}>⚙️</button>
+            </div>
+
+            {showCatManager && (
+              <div className="cat-manager">
+                <p className="section-label" style={{marginBottom:12}}>Manage Categories</p>
+                <ul className="cat-list">
+                  {categories.map(c => (
+                    <li key={c.id} className="cat-row">
+                      {editingCatId === c.id ? (
+                        <><input className="input cat-input" value={editingCatName} onChange={e => setEditingCatName(e.target.value)} onKeyDown={e => e.key === 'Enter' && saveCategory()} autoFocus /><button className="cat-action-btn save" onClick={saveCategory}>✓</button><button className="cat-action-btn cancel" onClick={() => { setEditingCatId(null); setEditingCatName('') }}>✕</button></>
+                      ) : (
+                        <><span className="cat-name">{c.name}</span><button className="cat-action-btn" onClick={() => { setEditingCatId(c.id); setEditingCatName(c.name) }}>✏️</button><button className="cat-action-btn" onClick={() => deleteCategory(c.id)}>🗑</button></>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+                <div className="cat-add-row">
+                  <input className="input cat-input" placeholder="New category name" value={newCatName} onChange={e => setNewCatName(e.target.value)} onKeyDown={e => e.key === 'Enter' && addCategory()} />
+                  <button className="confirm-btn" style={{padding:'8px 14px', whiteSpace:'nowrap'}} onClick={addCategory}>+ Add</button>
+                </div>
+              </div>
+            )}
+
+            <section className="chart-section">
+              <h2 className="section-label">Overview — {selectedCatLabel}</h2>
+              {!loading && filteredHabits.length > 0 ? (
+                <ResponsiveContainer width="100%" height={280}>
+                  <BarChart data={chartData} margin={{ top: 8, right: 8, left: -20, bottom: 70 }}>
+                    <XAxis dataKey="name" tick={{ fill: '#a0a0b0', fontSize: 11 }} axisLine={false} tickLine={false} angle={-45} textAnchor="end" height={80} interval={0} />
+                    <YAxis tick={{ fill: '#a0a0b0', fontSize: 11 }} axisLine={false} tickLine={false} allowDecimals={false} />
+                    <Tooltip contentStyle={{ background: '#1a1a2e', border: '1px solid #2a2a3e', borderRadius: 8, color: '#fff' }} cursor={{ fill: 'rgba(255,255,255,0.04)' }} />
+                    <Bar dataKey="count" radius={[4, 4, 0, 0]}>{chartData.map((entry, i) => <Cell key={i} fill={entry.color} />)}</Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              ) : !loading ? (
+                <div className="empty-chart">No habits{selectedCategoryId !== 'all' ? ' in this category' : ''}</div>
+              ) : <div className="empty-chart">Loading…</div>}
+            </section>
+
+            <section className="habits-section">
+              <div className="section-header">
+                <h2 className="section-label">Habits</h2>
+                <button className="add-btn" onClick={() => { setAdding(v => !v); setEditingId(null); setNewName(''); setNewCategoryIds([]); setNewColor('#60a5fa') }}>{adding ? '✕' : '+ Add'}</button>
+              </div>
+
+              {isFormOpen && (
+                <div className="add-form">
+                  <input className="input" placeholder="Habit name" value={newName} onChange={e => setNewName(e.target.value)} onKeyDown={e => e.key === 'Enter' && saveHabit()} autoFocus />
+                  <div className="field-wrap">
+                    <p className="color-label" style={{marginBottom:8}}>Categories <span className="required-star">*</span></p>
+                    {categories.length === 0 ? <p className="field-hint">No categories yet — create one using ⚙️ above</p> : (
+                      <div className="cat-checkboxes">
+                        {categories.map(c => (
+                          <button key={c.id} type="button" className={`cat-checkbox-btn ${newCategoryIds.includes(c.id) ? 'selected' : ''}`} onClick={() => toggleNewCategory(c.id)}>
+                            {newCategoryIds.includes(c.id) && <span className="check-icon">✓</span>}{c.name}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                    {categories.length > 0 && newCategoryIds.length === 0 && <p className="field-hint">Select at least one category</p>}
+                  </div>
+                  <div className="color-row">
+                    <span className="color-label">Color</span>
+                    <div className="color-picker-wrap" ref={colorRef}>
+                      <button className="color-swatch-btn" style={{ background: newColor }} onClick={() => setShowColorPicker(v => !v)} />
+                      {showColorPicker && (
+                        <div className="color-popover">
+                          <div className="color-presets">{PRESET_COLORS.map(c => <button key={c} className={`preset-swatch ${newColor === c ? 'selected' : ''}`} style={{ background: c }} onClick={() => { setNewColor(c); setShowColorPicker(false) }} />)}</div>
+                          <input type="color" className="color-input-native" value={newColor} onChange={e => setNewColor(e.target.value)} />
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  <div className="form-actions">
+                    <button className="confirm-btn" onClick={saveHabit} disabled={!newName.trim() || newCategoryIds.length === 0}>{editingId ? 'Save Changes' : 'Add Habit'}</button>
+                    <button className="cancel-btn" onClick={cancelForm}>Cancel</button>
+                  </div>
+                </div>
+              )}
+
+              {loading ? <div className="loading">Loading…</div> : (
+                <DndContext sensors={sensors} collisionDetection={closestCenter} onDragStart={({ active }) => setActiveId(active.id)} onDragEnd={handleDragEnd}>
+                  <SortableContext items={filteredHabits.map(h => h.id)} strategy={verticalListSortingStrategy}>
+                    <ul className="habit-list">
+                      {filteredHabits.map(habit => (
+                        <SortableHabitRow key={habit.id} habit={habit} count={getCount(habit.id)} bumping={bumping} editingId={editingId} habitCategoryIds={habitCategoryIds} categories={categories}
+                          onIncrement={increment} onDecrement={decrement}
+                          onEdit={(h) => editingId === h.id ? cancelForm() : startEdit(h)}
+                          onDelete={deleteHabit}
+                        />
+                      ))}
+                    </ul>
+                  </SortableContext>
+                  <DragOverlay>
+                    {activeHabit && (
+                      <div className="habit-row drag-overlay-row">
+                        <div className="drag-handle"><span className="drag-dots">⠿</span></div>
+                        <div className="habit-info"><span className="habit-dot" style={{ background: activeHabit.color || '#60a5fa' }} /><p className="habit-name">{activeHabit.name}</p></div>
+                        <div className="habit-controls">
+                          <button className="ctrl-btn minus">−</button>
+                          <span className="habit-count">{getCount(activeHabit.id)}</span>
+                          <button className="ctrl-btn plus">+</button>
+                        </div>
+                      </div>
+                    )}
+                  </DragOverlay>
+                </DndContext>
+              )}
+            </section>
+          </main>
+        </div>
+      )}
+    </div>
+  )
+}
