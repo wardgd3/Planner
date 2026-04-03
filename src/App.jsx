@@ -337,49 +337,55 @@ function AppInner({ onLogout }) {
 
       {activeTab === 'tracker' && (
         <div className="tracker-wrap">
-          <header className="header">
-            <div className="header-inner">
-              <span className="logo-mark">◆</span>
-              <div><h1>Habit Tracking</h1><p className="subtitle">{getPeriodLabel(period)}</p></div>
-            </div>
-            <div className="period-tabs">
-              {PERIODS.map(p => (<button key={p} className={`period-tab ${period === p ? 'active' : ''}`} onClick={() => setPeriod(p)}>{p}</button>))}
-            </div>
-          </header>
-
-          <main className="main">
-            <div className="cat-bar">
-              <div className="cat-dropdown-wrap">
-                <select className="cat-dropdown" value={selectedCategoryId} onChange={e => setSelectedCategoryId(e.target.value)} aria-label="Filter by category">
-                  <option value="all">All Categories</option>
-                  {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                </select>
-                <span className="cat-dropdown-arrow">▾</span>
+          <div className="bento-grid">
+            {/* Header tile */}
+            <div className="bento-tile bento-header">
+              <div className="header-inner">
+                <span className="logo-mark">◆</span>
+                <div><h1>Habit Tracking</h1><p className="subtitle">{getPeriodLabel(period)}</p></div>
               </div>
-              <button className="manage-cats-btn" onClick={() => setShowCatManager(v => !v)} aria-label="Manage categories">⚙️</button>
+              <div className="period-tabs">
+                {PERIODS.map(p => (<button key={p} className={`period-tab ${period === p ? 'active' : ''}`} onClick={() => setPeriod(p)}>{p}</button>))}
+              </div>
             </div>
 
-            {showCatManager && (
-              <CategoryManager categories={categories} onAdd={addCategory} onSave={saveCategory} onDelete={deleteCategory} />
-            )}
-
-            <section className="chart-section">
+            {/* Chart tile */}
+            <div className="bento-tile bento-chart">
               <h2 className="section-label">Overview — {selectedCatLabel}</h2>
               {!loading && filteredHabits.length > 0 ? (
-                <ResponsiveContainer width="100%" height={280}>
+                <ResponsiveContainer width="100%" height={260}>
                   <BarChart data={chartData} margin={{ top: 8, right: 8, left: -20, bottom: 70 }}>
-                    <XAxis dataKey="name" tick={{ fill: '#a0a0b0', fontSize: 11 }} axisLine={false} tickLine={false} angle={-45} textAnchor="end" height={80} interval={0} />
-                    <YAxis tick={{ fill: '#a0a0b0', fontSize: 11 }} axisLine={false} tickLine={false} allowDecimals={false} />
-                    <Tooltip contentStyle={{ background: '#1a1a2e', border: '1px solid #2a2a3e', borderRadius: 8, color: '#fff' }} cursor={{ fill: 'rgba(255,255,255,0.04)' }} />
-                    <Bar dataKey="count" radius={[4, 4, 0, 0]}>{chartData.map((entry, i) => <Cell key={i} fill={entry.color} />)}</Bar>
+                    <XAxis dataKey="name" tick={{ fill: '#8a8578', fontSize: 11, fontFamily: 'Outfit' }} axisLine={false} tickLine={false} angle={-45} textAnchor="end" height={80} interval={0} />
+                    <YAxis tick={{ fill: '#8a8578', fontSize: 11, fontFamily: 'DM Mono' }} axisLine={false} tickLine={false} allowDecimals={false} />
+                    <Tooltip contentStyle={{ background: '#1c1b19', border: '1px solid #2e2c28', borderRadius: 10, color: '#f5f0e8', fontFamily: 'Outfit' }} cursor={{ fill: 'rgba(212,175,55,0.06)' }} />
+                    <Bar dataKey="count" radius={[6, 6, 0, 0]}>{chartData.map((entry, i) => <Cell key={i} fill={entry.color} />)}</Bar>
                   </BarChart>
                 </ResponsiveContainer>
               ) : !loading ? (
                 <div className="empty-chart">No habits{selectedCategoryId !== 'all' ? ' in this category' : ''}</div>
               ) : <div className="empty-chart">Loading…</div>}
-            </section>
+            </div>
 
-            <section className="habits-section">
+            {/* Category filter tile */}
+            <div className="bento-tile bento-filter">
+              <h2 className="section-label">Categories</h2>
+              <div className="cat-bar">
+                <div className="cat-dropdown-wrap">
+                  <select className="cat-dropdown" value={selectedCategoryId} onChange={e => setSelectedCategoryId(e.target.value)} aria-label="Filter by category">
+                    <option value="all">All Categories</option>
+                    {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                  </select>
+                  <span className="cat-dropdown-arrow">▾</span>
+                </div>
+                <button className="manage-cats-btn" onClick={() => setShowCatManager(v => !v)} aria-label="Manage categories">⚙️</button>
+              </div>
+              {showCatManager && (
+                <CategoryManager categories={categories} onAdd={addCategory} onSave={saveCategory} onDelete={deleteCategory} />
+              )}
+            </div>
+
+            {/* Habits tile */}
+            <div className="bento-tile bento-habits">
               <div className="section-header">
                 <h2 className="section-label">Habits</h2>
                 <button className="add-btn" onClick={() => { setAdding(v => !v); setEditingId(null); setNewName(''); setNewCategoryIds([]); setNewColor('#60a5fa') }}>{adding ? '✕' : '+ Add'}</button>
@@ -424,8 +430,8 @@ function AppInner({ onLogout }) {
                   </DragOverlay>
                 </DndContext>
               )}
-            </section>
-          </main>
+            </div>
+          </div>
         </div>
       )}
     </div>
