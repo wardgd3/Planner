@@ -469,7 +469,7 @@ h1 {
 .dash-card:hover { border-color: var(--surface3); }
 .dash-card-title {
   font-family: var(--font-display);
-  font-size: 20px; font-weight: 600;
+  font-size: 24px; font-weight: 600;
   color: var(--text);
   margin-bottom: 2px;
 }
