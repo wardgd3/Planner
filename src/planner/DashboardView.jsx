@@ -1,7 +1,8 @@
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useMemo, useEffect, useCallback } from 'react'
 import { supabase } from '../supabase'
-import { DAY_SHORT, MONTHS, MONTHS_FULL, DAY_NAMES, HOURS } from '../constants'
-import { todayStr, toDateStr, fmt12, timeToMinutes, priorityColor } from '../utils'
+import { MONTHS_FULL, DAY_NAMES } from '../constants'
+import { todayStr, toDateStr, priorityColor } from '../utils'
+import { useToast } from '../Toast'
 import BlockForm from './BlockForm'
 import TaskForm from './TaskForm'
 
@@ -22,38 +23,33 @@ function getWeekDays() {
 function getMonthGrid(year, month) {
   const first = new Date(year, month, 1)
   const lastDay = new Date(year, month + 1, 0).getDate()
-  // Monday = 0, Sunday = 6
   let startDow = (first.getDay() + 6) % 7
   const cells = []
-  // leading blanks
   for (let i = 0; i < startDow; i++) cells.push(null)
   for (let d = 1; d <= lastDay; d++) cells.push(d)
   return cells
 }
 
-// Tiny SVG sparkline component
+// Tiny SVG sparkline
 function Sparkline({ data, color }) {
   const max = Math.max(...data, 1)
-  const w = 120
-  const h = 24
+  const w = 120, h = 24
   const step = w / (data.length - 1 || 1)
   const points = data.map((v, i) => `${i * step},${h - (v / max) * (h - 4) - 2}`).join(' ')
   return (
     <svg width={w} height={h} className="sparkline-svg" viewBox={`0 0 ${w} ${h}`}>
-      <polyline
-        points={points}
-        fill="none"
-        stroke={color}
-        strokeWidth="1.5"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        opacity="0.7"
-      />
+      <polyline points={points} fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" opacity="0.7" />
       {data[data.length - 1] > 0 && (
         <circle cx={(data.length - 1) * step} cy={h - (data[data.length - 1] / max) * (h - 4) - 2} r="2.5" fill={color} />
       )}
     </svg>
   )
+}
+
+// Format a date string to a readable label
+function dayLabel(dateStr) {
+  const d = new Date(dateStr + 'T00:00:00')
+  return `${DAY_NAMES[d.getDay()]}, ${MONTHS_FULL[d.getMonth()]} ${d.getDate()}`
 }
 
 export default function DashboardView({
@@ -62,6 +58,7 @@ export default function DashboardView({
   onAddBlock, onEditBlock, onDeleteBlock,
   onAddTask, onEditTask, onDeleteTask, onCompleteTask,
 }) {
+  const toast = useToast()
   const today = todayStr()
   const now = new Date()
   const [blockForm, setBlockForm] = useState(null)
@@ -70,8 +67,15 @@ export default function DashboardView({
   const [calMonth, setCalMonth] = useState(now.getMonth())
   const [calYear, setCalYear] = useState(now.getFullYear())
   const [habitLogs, setHabitLogs] = useState([])
+  const [selectedDay, setSelectedDay] = useState(today)
 
-  // Fetch habit logs for sparkline (last 30 days)
+  // Notes state
+  const [notes, setNotes] = useState([])
+  const [noteInput, setNoteInput] = useState('')
+  const [editingNote, setEditingNote] = useState(null)
+  const [editingText, setEditingText] = useState('')
+
+  // Fetch habit logs
   useEffect(() => {
     async function fetchLogs() {
       const since = new Date()
@@ -84,6 +88,54 @@ export default function DashboardView({
     }
     fetchLogs()
   }, [])
+
+  // Fetch notes
+  useEffect(() => {
+    async function fetchNotes() {
+      const { data } = await supabase
+        .from('planner_notes')
+        .select('*')
+        .order('created_at', { ascending: false })
+      if (data) setNotes(data)
+    }
+    fetchNotes()
+  }, [])
+
+  // Notes CRUD
+  const addNote = useCallback(async () => {
+    if (!noteInput.trim()) return
+    try {
+      const { data, error } = await supabase
+        .from('planner_notes')
+        .insert({ content: noteInput.trim() })
+        .select().single()
+      if (error) { toast.error('Failed to add note'); return }
+      setNotes(prev => [data, ...prev])
+      setNoteInput('')
+    } catch { toast.error('Network error') }
+  }, [noteInput, toast])
+
+  const updateNote = useCallback(async (id) => {
+    if (!editingText.trim()) return
+    try {
+      const { data, error } = await supabase
+        .from('planner_notes')
+        .update({ content: editingText.trim(), updated_at: new Date().toISOString() })
+        .eq('id', id).select().single()
+      if (error) { toast.error('Failed to update note'); return }
+      setNotes(prev => prev.map(n => n.id === id ? data : n))
+      setEditingNote(null)
+      setEditingText('')
+    } catch { toast.error('Network error') }
+  }, [editingText, toast])
+
+  const deleteNote = useCallback(async (id) => {
+    try {
+      const { error } = await supabase.from('planner_notes').delete().eq('id', id)
+      if (error) { toast.error('Failed to delete note'); return }
+      setNotes(prev => prev.filter(n => n.id !== id))
+    } catch { toast.error('Network error') }
+  }, [toast])
 
   // ── Today's data ──
   const todayBlocks = useMemo(
@@ -102,6 +154,21 @@ export default function DashboardView({
 
   // ── Week data ──
   const weekDays = useMemo(() => getWeekDays(), [])
+
+  // ── Selected day data (for week detail panel) ──
+  const selectedBlocks = useMemo(
+    () => blocks.filter(b => b.date === selectedDay).sort((a, b) => a.start_time.localeCompare(b.start_time)),
+    [blocks, selectedDay]
+  )
+  const selectedTasks = useMemo(
+    () => tasks.filter(t => t.due_date === selectedDay && t.status !== 'done')
+      .sort((a, b) => { const o = { high: 0, medium: 1, low: 2 }; return o[a.priority] - o[b.priority] }),
+    [tasks, selectedDay]
+  )
+  const selectedDone = useMemo(
+    () => tasks.filter(t => t.due_date === selectedDay && t.status === 'done'),
+    [tasks, selectedDay]
+  )
 
   // ── Calendar data ──
   const calCells = useMemo(() => getMonthGrid(calYear, calMonth), [calYear, calMonth])
@@ -137,7 +204,7 @@ export default function DashboardView({
     return result
   }, [habits, habitLogs])
 
-  // ── Quick add handler ──
+  // ── Handlers ──
   async function handleQuickAdd(e) {
     if (e.key === 'Enter' && quickAdd.trim()) {
       await onAddTask({ title: quickAdd.trim(), due_date: today, priority: 'medium', status: 'todo' })
@@ -145,7 +212,6 @@ export default function DashboardView({
     }
   }
 
-  // ── Calendar nav ──
   function prevMonth() {
     if (calMonth === 0) { setCalMonth(11); setCalYear(y => y - 1) }
     else setCalMonth(m => m - 1)
@@ -174,7 +240,6 @@ export default function DashboardView({
         </div>
 
         <div className="dash-today-body">
-          {/* Mini timeline */}
           <div className="dash-timeline">
             <p className="dash-sublabel">Schedule</p>
             {todayBlocks.length === 0 ? (
@@ -196,7 +261,6 @@ export default function DashboardView({
             )}
           </div>
 
-          {/* Tasks checklist */}
           <div className="dash-tasks">
             <p className="dash-sublabel">
               Tasks {todayTasks.length > 0 && <span className="count-badge">{todayTasks.length}</span>}
@@ -224,7 +288,6 @@ export default function DashboardView({
           </div>
         </div>
 
-        {/* Quick add */}
         <div className="dash-quick-add">
           <input
             className="input"
@@ -236,7 +299,7 @@ export default function DashboardView({
         </div>
       </div>
 
-      {/* ══ Row 2 — Week + Habits ══ */}
+      {/* ══ Row 2 — Interactive Week ══ */}
       <div className="dash-card dash-week">
         <h2 className="dash-card-title">This Week</h2>
         <div className="dash-week-grid">
@@ -244,17 +307,18 @@ export default function DashboardView({
             const ds = toDateStr(day)
             const dayBlocks = blocks.filter(b => b.date === ds)
             const isToday = ds === today
+            const isSelected = ds === selectedDay
             return (
               <div
                 key={ds}
-                className={`dash-week-day ${isToday ? 'dash-week-today' : ''}`}
-                onClick={() => setBlockForm({ date: ds })}
+                className={`dash-week-day ${isToday ? 'dash-week-today' : ''} ${isSelected ? 'dash-week-selected' : ''}`}
+                onClick={() => setSelectedDay(ds)}
               >
                 <span className="dash-week-name">{WEEK_HEADERS[i]}</span>
                 <span className={`dash-week-num ${isToday ? 'accent' : ''}`}>{day.getDate()}</span>
                 <div className="dash-week-chips">
                   {dayBlocks.slice(0, 3).map(b => (
-                    <div key={b.id} className="dash-week-chip" style={{ background: b.color }} onClick={e => { e.stopPropagation(); setBlockForm({ block: b, date: ds }) }} />
+                    <div key={b.id} className="dash-week-chip" style={{ background: b.color }} />
                   ))}
                   {dayBlocks.length > 3 && <span className="dash-week-more">+{dayBlocks.length - 3}</span>}
                 </div>
@@ -262,8 +326,61 @@ export default function DashboardView({
             )
           })}
         </div>
+
+        {/* Day detail panel */}
+        <div className="dash-day-detail">
+          <div className="dash-day-detail-header">
+            <p className="dash-day-detail-label">{dayLabel(selectedDay)}</p>
+            <div className="dash-day-detail-actions">
+              <button className="add-btn" onClick={() => setBlockForm({ date: selectedDay })} title="Add block">+ Block</button>
+              <button className="add-btn" onClick={() => setTaskForm({ prefillDate: selectedDay })} title="Add task">+ Task</button>
+            </div>
+          </div>
+
+          {selectedBlocks.length === 0 && selectedTasks.length === 0 && selectedDone.length === 0 ? (
+            <p className="empty-msg" style={{ padding: '16px 0' }}>Nothing scheduled</p>
+          ) : (
+            <div className="dash-day-detail-body">
+              {selectedBlocks.length > 0 && (
+                <div className="dash-day-blocks">
+                  {selectedBlocks.map(block => (
+                    <div
+                      key={block.id}
+                      className="dash-tl-block"
+                      style={{ borderLeftColor: block.color, background: block.color + '18' }}
+                      onClick={() => setBlockForm({ block, date: selectedDay })}
+                    >
+                      <span className="dash-tl-time">{block.start_time.slice(0, 5)} – {block.end_time.slice(0, 5)}</span>
+                      <span className="dash-tl-title">{block.title}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {(selectedTasks.length > 0 || selectedDone.length > 0) && (
+                <ul className="task-list" style={{ marginTop: selectedBlocks.length > 0 ? 8 : 0 }}>
+                  {selectedTasks.map(task => (
+                    <li key={task.id} className="task-row compact">
+                      <button className="task-check small" onClick={() => onCompleteTask(task)} aria-label="Complete task" />
+                      <div className="task-info">
+                        <p className="task-title">{task.title}</p>
+                      </div>
+                      <span className="priority-dot" style={{ background: priorityColor(task.priority) }} />
+                    </li>
+                  ))}
+                  {selectedDone.map(task => (
+                    <li key={task.id} className="task-row compact done">
+                      <span className="task-check small done">✓</span>
+                      <p className="task-title done-title">{task.title}</p>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          )}
+        </div>
       </div>
 
+      {/* ══ Row 2 — Habit Streaks ══ */}
       <div className="dash-card dash-habits">
         <h2 className="dash-card-title">Habit Streaks</h2>
         {habits.length === 0 ? (
@@ -285,7 +402,7 @@ export default function DashboardView({
         )}
       </div>
 
-      {/* ══ Row 3 — Monthly Calendar ══ */}
+      {/* ══ Row 3 — Calendar + Notes ══ */}
       <div className="dash-card dash-calendar">
         <div className="dash-cal-header">
           <h2 className="dash-card-title">{MONTHS_FULL[calMonth]} {calYear}</h2>
@@ -329,6 +446,62 @@ export default function DashboardView({
         </div>
       </div>
 
+      <div className="dash-card dash-notes">
+        <h2 className="dash-card-title">Notes</h2>
+        <div className="dash-notes-add">
+          <input
+            className="input"
+            placeholder="Add a note…"
+            value={noteInput}
+            onChange={e => setNoteInput(e.target.value)}
+            onKeyDown={e => { if (e.key === 'Enter') addNote() }}
+            maxLength={1000}
+          />
+          <button className="add-btn" onClick={addNote} disabled={!noteInput.trim()}>+</button>
+        </div>
+        <div className="dash-notes-list">
+          {notes.length === 0 && (
+            <p className="empty-msg" style={{ padding: '12px 0' }}>No notes yet</p>
+          )}
+          {notes.map(note => (
+            <div key={note.id} className="dash-note-item">
+              {editingNote === note.id ? (
+                <div className="dash-note-edit">
+                  <textarea
+                    className="input textarea"
+                    value={editingText}
+                    onChange={e => setEditingText(e.target.value)}
+                    rows={2}
+                    maxLength={1000}
+                    autoFocus
+                  />
+                  <div className="dash-note-edit-actions">
+                    <button className="add-btn" onClick={() => updateNote(note.id)}>Save</button>
+                    <button className="add-btn dash-note-cancel" onClick={() => { setEditingNote(null); setEditingText('') }}>Cancel</button>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <p className="dash-note-text">{note.content}</p>
+                  <div className="dash-note-actions">
+                    <button
+                      className="icon-btn"
+                      onClick={() => { setEditingNote(note.id); setEditingText(note.content) }}
+                      aria-label="Edit note"
+                    >✏️</button>
+                    <button
+                      className="icon-btn"
+                      onClick={() => deleteNote(note.id)}
+                      aria-label="Delete note"
+                    >🗑</button>
+                  </div>
+                </>
+              )}
+            </div>
+          ))}
+        </div>
+      </div>
+
       {/* ── Forms ── */}
       {blockForm !== null && (
         <BlockForm
@@ -348,7 +521,11 @@ export default function DashboardView({
           task={taskForm.task}
           projects={projects}
           habits={habits}
-          onSave={async (data) => { taskForm.task ? await onEditTask(taskForm.task.id, data) : await onAddTask({ ...data, due_date: data.due_date || today }); setTaskForm(null) }}
+          onSave={async (data) => {
+            const saveData = { ...data, due_date: data.due_date || taskForm.prefillDate || today }
+            taskForm.task ? await onEditTask(taskForm.task.id, saveData) : await onAddTask(saveData)
+            setTaskForm(null)
+          }}
           onCancel={() => setTaskForm(null)}
         />
       )}
