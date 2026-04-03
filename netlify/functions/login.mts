@@ -8,8 +8,8 @@ export default async (req: Request, context: Context) => {
 
   const { username, password } = await req.json();
 
-  const validUser = Netlify.env.get("GATE_USER");
-  const validPass = Netlify.env.get("GATE_PASSWORD");
+  const validUser = Netlify.env.get("GATE_USER") || Netlify.env.get("VITE_GATE_USER");
+  const validPass = Netlify.env.get("GATE_PASSWORD") || Netlify.env.get("VITE_GATE_PASSWORD");
   const secret = Netlify.env.get("TOKEN_SECRET") || validPass || "fallback-secret";
 
   if (username === validUser && password === validPass) {
