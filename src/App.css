@@ -307,7 +307,7 @@ h1 {
 .login-error { font-size: 12px; color: var(--danger); text-align: center; }
 
 /* ══ Planner shell ══ */
-.planner { width: 100%; padding: 0 0 80px; max-width: 1440px; margin: 0 auto; }
+.planner { width: 100%; padding: 0 0 80px; max-width: 1440px; margin: 0 auto; overflow-x: hidden; }
 .planner-tabs { display: flex; gap: 0; border-bottom: 1px solid var(--border); padding: 0 32px; }
 .planner-tab {
   background: none; border: none;
@@ -459,16 +459,16 @@ h1 {
 
 .weekly-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 10px; margin-bottom: 32px; }
 
-.week-col { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.week-col { display: flex; flex-direction: column; gap: 6px; min-width: 0; overflow: hidden; }
 .week-col-header {
-  text-align: center; padding: 12px 4px 10px;
+  text-align: center; padding: 10px 4px 8px;
   border-radius: var(--radius-sm);
   background: var(--surface); border: 1px solid var(--border);
 }
 .today-col .week-col-header { background: var(--surface2); border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent-dim); }
 .week-day-name {
   display: block; font-size: 10px; color: var(--muted);
-  text-transform: uppercase; letter-spacing: 1px; margin-bottom: 4px;
+  text-transform: uppercase; letter-spacing: 1px; margin-bottom: 2px;
   font-weight: 500;
 }
 .week-day-num { display: block; font-family: var(--font-display); font-size: 22px; font-weight: 700; }
@@ -485,25 +485,138 @@ h1 {
 .week-task-chip:hover { background: var(--surface3); }
 
 .week-blocks-area {
-  flex: 1; min-height: 120px;
+  flex: 1; min-height: 80px;
   border: 1px dashed var(--border); border-radius: var(--radius-sm);
-  padding: 6px; display: flex; flex-direction: column; gap: 4px;
+  padding: 4px; display: flex; flex-direction: column; gap: 4px;
   cursor: pointer; transition: border-color 0.2s;
+  overflow: hidden;
 }
 .week-blocks-area:hover { border-color: var(--accent); border-style: solid; }
 .week-block {
-  border-radius: var(--radius-sm); padding: 8px 10px;
+  border-radius: var(--radius-sm); padding: 6px 8px;
   cursor: pointer; transition: opacity 0.15s;
+  overflow: hidden;
 }
 .week-block:hover { opacity: 0.85; }
 .week-block-title { font-size: 12px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.week-block-time { font-size: 10px; color: rgba(245,240,232,0.55); margin-top: 3px; font-family: var(--font-mono); }
+.week-block-time { font-size: 10px; color: rgba(245,240,232,0.55); margin-top: 2px; font-family: var(--font-mono); }
 .week-block-proj { font-size: 10px; color: rgba(245,240,232,0.4); margin-top: 1px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.week-empty-slot { font-size: 11px; color: var(--border); text-align: center; padding: 16px 0; font-weight: 300; }
+.week-empty-slot { font-size: 11px; color: var(--border); text-align: center; padding: 12px 0; font-weight: 300; }
 
 .unscheduled-section { border-top: 1px solid var(--border); padding-top: 24px; margin-top: 4px; }
 .unscheduled-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
 .unscheduled-list { max-width: 640px; }
+
+/* ══ Mobile: Weekly view ══ */
+@media (max-width: 600px) {
+  .weekly-view { padding-top: 16px; }
+  .weekly-nav { gap: 8px; margin-bottom: 16px; }
+  .weekly-label { font-size: 15px; }
+
+  .weekly-grid {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+  .week-col {
+    display: grid;
+    grid-template-columns: 56px 1fr;
+    grid-template-rows: auto;
+    gap: 0 10px;
+    align-items: start;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    background: var(--surface);
+    padding: 12px;
+  }
+  .today-col {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 1px var(--accent-dim);
+  }
+  .week-col-header {
+    grid-column: 1; grid-row: 1 / -1;
+    border: none; background: none;
+    padding: 0;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+  }
+  .today-col .week-col-header {
+    background: none; border: none; box-shadow: none;
+  }
+  .week-day-name { font-size: 10px; margin-bottom: 2px; }
+  .week-day-num { font-size: 20px; }
+
+  .week-blocks-area {
+    grid-column: 2; grid-row: 1;
+    min-height: unset;
+    border: none;
+    padding: 0;
+    gap: 6px;
+  }
+  .week-blocks-area:hover { border-color: transparent; border-style: none; }
+  .week-task-chips {
+    grid-column: 2;
+    grid-row: 2;
+    margin-top: 6px;
+  }
+  .week-block {
+    padding: 8px 10px;
+  }
+  .week-block-title { font-size: 13px; }
+  .week-block-time { font-size: 11px; }
+  .week-empty-slot { text-align: left; padding: 4px 0; font-size: 12px; }
+
+  .unscheduled-section { padding-top: 16px; }
+}
+
+/* ══ Mobile: Today view ══ */
+@media (max-width: 600px) {
+  .today-view { padding-top: 16px; }
+  .today-date-header { flex-wrap: wrap; gap: 10px; margin-bottom: 16px; }
+  .today-date-label { font-size: 20px; width: 100%; }
+  .today-actions { width: 100%; }
+  .today-actions .add-btn { flex: 1; text-align: center; }
+
+  .timeline-hour { width: 44px; font-size: 9px; padding: 6px 4px; }
+  .timeline-blocks { left: 44px; }
+}
+
+/* ══ Mobile: General ══ */
+@media (max-width: 600px) {
+  .app-tabs { padding: 0 12px; gap: 0; }
+  .app-tab { padding: 14px 12px; font-size: 12px; }
+  .logout-btn { padding: 5px 10px; font-size: 10px; }
+  .tracker-wrap { padding: 16px 12px 0; }
+
+  .drawer { border-radius: 16px 16px 0 0; max-height: 85vh; }
+  .drawer-header { padding: 18px 18px 12px; }
+  .drawer-title { font-size: 19px; }
+  .drawer-body { padding: 16px 18px; gap: 12px; }
+  .drawer-footer { padding: 14px 18px; }
+  .two-col { grid-template-columns: 1fr 1fr; gap: 8px; }
+
+  .task-row { padding: 10px 6px; gap: 8px; }
+  .task-actions { gap: 0; }
+  .task-actions .icon-btn { font-size: 14px; padding: 4px; }
+
+  .block-header { gap: 2px; }
+  .block-delete-btn { font-size: 9px; padding: 2px; }
+
+  .toast-container { left: 12px; right: 12px; top: 10px; max-width: none; }
+  .toast { padding: 10px 14px; font-size: 12px; }
+
+  .glossary-view { padding-top: 16px; }
+  .glossary-row { flex-wrap: wrap; gap: 8px; }
+  .glossary-actions { flex-shrink: 0; }
+
+  .section-label { font-size: 12px; }
+  .add-btn { font-size: 12px; padding: 7px 14px; }
+
+  .planner-tabs { padding: 0 12px; }
+  .planner-tab { padding: 12px 10px; font-size: 12px; }
+  .planner-content { padding: 0 14px; }
+
+  .projects-view { padding-top: 16px; }
+}
 
 /* ══ Projects view ══ */
 .projects-view { padding-top: 28px; }
