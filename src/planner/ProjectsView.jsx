@@ -1,14 +1,7 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import ProjectForm from './ProjectForm'
 import TaskForm from './TaskForm'
-
-function statusColor(s) {
-  return s === 'active' ? '#60a5fa' : s === 'paused' ? '#f7c948' : '#a0a0b0'
-}
-
-function priorityColor(p) {
-  return p === 'high' ? '#fb7185' : p === 'medium' ? '#f7c948' : '#4ade80'
-}
+import { statusColor, priorityColor } from '../utils'
 
 export default function ProjectsView({ projects, tasks, habits, onAddProject, onEditProject, onDeleteProject, onAddTask, onEditTask, onDeleteTask, onCompleteTask }) {
   const [projectForm, setProjectForm] = useState(null)
@@ -16,8 +9,8 @@ export default function ProjectsView({ projects, tasks, habits, onAddProject, on
   const [expandedId, setExpandedId] = useState(null)
   const [showCompleted, setShowCompleted] = useState(false)
 
-  const activeProjects = projects.filter(p => p.status !== 'completed')
-  const completedProjects = projects.filter(p => p.status === 'completed')
+  const activeProjects = useMemo(() => projects.filter(p => p.status !== 'completed'), [projects])
+  const completedProjects = useMemo(() => projects.filter(p => p.status === 'completed'), [projects])
 
   function getProgress(projectId) {
     const pts = tasks.filter(t => t.project_id === projectId)
@@ -35,7 +28,7 @@ export default function ProjectsView({ projects, tasks, habits, onAddProject, on
     const counts = getTaskCounts(project.id)
     const isExpanded = expandedId === project.id
     const projectTasks = tasks.filter(t => t.project_id === project.id && t.status !== 'done')
-      .sort((a,b) => { const o = {high:0,medium:1,low:2}; return o[a.priority]-o[b.priority] })
+      .sort((a, b) => { const o = { high: 0, medium: 1, low: 2 }; return o[a.priority] - o[b.priority] })
     const doneTasks = tasks.filter(t => t.project_id === project.id && t.status === 'done')
 
     return (
@@ -52,13 +45,12 @@ export default function ProjectsView({ projects, tasks, habits, onAddProject, on
             <span className="status-badge" style={{ color: statusColor(project.status) }}>● {project.status}</span>
             {project.due_date && <span className="project-due">Due {project.due_date}</span>}
             <div className="project-card-actions">
-              <button className="icon-btn" onClick={e => { e.stopPropagation(); setProjectForm({ project }) }}>✏️</button>
-              <button className="icon-btn" onClick={e => { e.stopPropagation(); onDeleteProject(project.id) }}>🗑</button>
+              <button className="icon-btn" onClick={e => { e.stopPropagation(); setProjectForm({ project }) }} aria-label="Edit project">✏️</button>
+              <button className="icon-btn" onClick={e => { e.stopPropagation(); onDeleteProject(project.id) }} aria-label="Delete project">🗑</button>
             </div>
           </div>
         </div>
 
-        {/* Progress bar */}
         <div className="progress-bar-wrap">
           <div className="progress-bar">
             <div className="progress-fill" style={{ width: progress + '%', background: project.color }} />
@@ -66,18 +58,17 @@ export default function ProjectsView({ projects, tasks, habits, onAddProject, on
           <span className="progress-label">{progress}% · {counts.done}/{counts.total} tasks</span>
         </div>
 
-        {/* Expanded task list */}
         {isExpanded && (
           <div className="project-tasks">
             <div className="project-tasks-header">
-              <p className="section-label" style={{marginBottom:0}}>Tasks</p>
-              <button className="add-btn" style={{fontSize:11, padding:'4px 10px'}} onClick={() => setTaskForm({ projectId: project.id })}>+ Task</button>
+              <p className="section-label" style={{ marginBottom: 0 }}>Tasks</p>
+              <button className="add-btn" style={{ fontSize: 11, padding: '4px 10px' }} onClick={() => setTaskForm({ projectId: project.id })}>+ Task</button>
             </div>
             {projectTasks.length === 0 && counts.done === 0 && <p className="empty-msg">No tasks yet</p>}
             <ul className="task-list">
               {projectTasks.map(task => (
                 <li key={task.id} className="task-row">
-                  <button className="task-check" onClick={() => onCompleteTask(task)} />
+                  <button className="task-check" onClick={() => onCompleteTask(task)} aria-label="Complete task" />
                   <div className="task-info">
                     <p className="task-title">{task.title}</p>
                     <div className="task-meta">
@@ -86,8 +77,8 @@ export default function ProjectsView({ projects, tasks, habits, onAddProject, on
                     </div>
                   </div>
                   <div className="task-actions">
-                    <button className="icon-btn" onClick={() => setTaskForm({ task })}>✏️</button>
-                    <button className="icon-btn" onClick={() => onDeleteTask(task.id)}>🗑</button>
+                    <button className="icon-btn" onClick={() => setTaskForm({ task })} aria-label="Edit task">✏️</button>
+                    <button className="icon-btn" onClick={() => onDeleteTask(task.id)} aria-label="Delete task">🗑</button>
                   </div>
                 </li>
               ))}
@@ -128,7 +119,7 @@ export default function ProjectsView({ projects, tasks, habits, onAddProject, on
           <summary className="done-summary" onClick={() => setShowCompleted(v => !v)}>
             Completed Projects ({completedProjects.length})
           </summary>
-          <div className="projects-list" style={{marginTop:8}}>
+          <div className="projects-list" style={{ marginTop: 8 }}>
             {completedProjects.map(renderProjectCard)}
           </div>
         </details>

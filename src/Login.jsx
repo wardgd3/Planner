@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { AUTH_TOKEN_KEY } from './constants'
 
 export default function Login({ onLogin }) {
   const [username, setUsername] = useState('')
@@ -6,23 +7,30 @@ export default function Login({ onLogin }) {
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
 
-  function handleSubmit(e) {
+  async function handleSubmit(e) {
     e.preventDefault()
     setLoading(true)
     setError('')
 
-    const validUser = import.meta.env.VITE_GATE_USER
-    const validPass = import.meta.env.VITE_GATE_PASSWORD
+    try {
+      const res = await fetch('/api/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password }),
+      })
+      const data = await res.json()
 
-    setTimeout(() => {
-      if (username === validUser && password === validPass) {
-        localStorage.setItem('studio_token', btoa(`${username}:${Date.now()}`))
+      if (res.ok && data.success) {
+        localStorage.setItem(AUTH_TOKEN_KEY, data.token)
         onLogin()
       } else {
-        setError('Invalid username or password')
+        setError(data.error || 'Invalid username or password')
       }
+    } catch {
+      setError('Network error — please try again')
+    } finally {
       setLoading(false)
-    }, 400)
+    }
   }
 
   return (

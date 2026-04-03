@@ -1,34 +1,27 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import BlockForm from './BlockForm'
 import TaskForm from './TaskForm'
-
-const HOURS = Array.from({ length: 17 }, (_, i) => i + 6) // 6am to 10pm
-
-function fmt12(h) {
-  if (h === 0) return '12 AM'
-  if (h < 12) return `${h} AM`
-  if (h === 12) return '12 PM'
-  return `${h - 12} PM`
-}
-
-function timeToMinutes(t) {
-  const [h, m] = t.split(':').map(Number)
-  return h * 60 + m
-}
-
-function priorityColor(p) {
-  return p === 'high' ? '#fb7185' : p === 'medium' ? '#f7c948' : '#4ade80'
-}
+import { HOURS, DAY_NAMES, MONTHS_FULL } from '../constants'
+import { fmt12, timeToMinutes, priorityColor } from '../utils'
 
 export default function TodayView({ tasks, blocks, projects, habits, glossaryItems = [], onAddBlock, onEditBlock, onDeleteBlock, onAddTask, onEditTask, onDeleteTask, onCompleteTask, todayStr }) {
-  const [blockForm, setBlockForm] = useState(null) // null | { block?, startTime? }
+  const [blockForm, setBlockForm] = useState(null)
   const [taskForm, setTaskForm] = useState(null)
   const [quickAdd, setQuickAdd] = useState('')
 
-  const todayBlocks = blocks.filter(b => b.date === todayStr).sort((a, b) => a.start_time.localeCompare(b.start_time))
-  const todayTasks = tasks.filter(t => t.due_date === todayStr && t.status !== 'done')
-    .sort((a, b) => { const order = { high: 0, medium: 1, low: 2 }; return order[a.priority] - order[b.priority] })
-  const doneTasks = tasks.filter(t => t.due_date === todayStr && t.status === 'done')
+  const todayBlocks = useMemo(
+    () => blocks.filter(b => b.date === todayStr).sort((a, b) => a.start_time.localeCompare(b.start_time)),
+    [blocks, todayStr]
+  )
+  const todayTasks = useMemo(
+    () => tasks.filter(t => t.due_date === todayStr && t.status !== 'done')
+      .sort((a, b) => { const order = { high: 0, medium: 1, low: 2 }; return order[a.priority] - order[b.priority] }),
+    [tasks, todayStr]
+  )
+  const doneTasks = useMemo(
+    () => tasks.filter(t => t.due_date === todayStr && t.status === 'done'),
+    [tasks, todayStr]
+  )
 
   function getBlockStyle(block) {
     const start = timeToMinutes(block.start_time.slice(0, 5))
@@ -46,9 +39,7 @@ export default function TodayView({ tasks, blocks, projects, habits, glossaryIte
   }
 
   const now = new Date()
-  const dayNames = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday']
-  const monthNames = ['January','February','March','April','May','June','July','August','September','October','November','December']
-  const dateLabel = `${dayNames[now.getDay()]}, ${monthNames[now.getMonth()]} ${now.getDate()}`
+  const dateLabel = `${DAY_NAMES[now.getDay()]}, ${MONTHS_FULL[now.getMonth()]} ${now.getDate()}`
 
   return (
     <div className="today-view">
@@ -64,12 +55,11 @@ export default function TodayView({ tasks, blocks, projects, habits, glossaryIte
       <div className="timeline-wrap">
         <div className="timeline">
           {HOURS.map(h => (
-            <div key={h} className="timeline-row" onClick={() => setBlockForm({ startTime: `${String(h).padStart(2,'0')}:00` })}>
+            <div key={h} className="timeline-row" onClick={() => setBlockForm({ startTime: `${String(h).padStart(2, '0')}:00` })}>
               <span className="timeline-hour">{fmt12(h)}</span>
               <div className="timeline-slot" />
             </div>
           ))}
-          {/* Positioned blocks */}
           <div className="timeline-blocks">
             {todayBlocks.map(block => {
               const { top, height } = getBlockStyle(block)
@@ -78,9 +68,9 @@ export default function TodayView({ tasks, blocks, projects, habits, glossaryIte
                 <div key={block.id} className="timeline-block" style={{ top, height, background: block.color + 'cc', borderLeft: `3px solid ${block.color}` }}>
                   <div className="block-header">
                     <p className="block-title" onClick={e => { e.stopPropagation(); setBlockForm({ block }) }}>{block.title}</p>
-                    <button className="block-delete-btn" onClick={e => { e.stopPropagation(); onDeleteBlock(block.id) }}>✕</button>
+                    <button className="block-delete-btn" onClick={e => { e.stopPropagation(); onDeleteBlock(block.id) }} aria-label="Delete block">✕</button>
                   </div>
-                  <p className="block-meta" onClick={e => { e.stopPropagation(); setBlockForm({ block }) }}>{block.start_time.slice(0,5)} – {block.end_time.slice(0,5)}{proj ? ` · ${proj.name}` : ''}</p>
+                  <p className="block-meta" onClick={e => { e.stopPropagation(); setBlockForm({ block }) }}>{block.start_time.slice(0, 5)} – {block.end_time.slice(0, 5)}{proj ? ` · ${proj.name}` : ''}</p>
                 </div>
               )
             })}
@@ -91,24 +81,24 @@ export default function TodayView({ tasks, blocks, projects, habits, glossaryIte
       {/* Tasks */}
       <div className="today-tasks">
         <p className="section-label" style={{ marginBottom: 12 }}>Tasks Due Today {todayTasks.length > 0 && <span className="count-badge">{todayTasks.length}</span>}</p>
-        {todayTasks.length === 0 && <p className="empty-msg">No tasks due today 🎉</p>}
+        {todayTasks.length === 0 && <p className="empty-msg">No tasks due today</p>}
         <ul className="task-list">
           {todayTasks.map(task => {
             const proj = projects.find(p => p.id === task.project_id)
             return (
               <li key={task.id} className="task-row">
-                <button className="task-check" onClick={() => onCompleteTask(task)} />
+                <button className="task-check" onClick={() => onCompleteTask(task)} aria-label="Complete task" />
                 <div className="task-info">
                   <p className="task-title">{task.title}</p>
                   <div className="task-meta">
                     <span className="priority-badge" style={{ color: priorityColor(task.priority) }}>● {task.priority}</span>
                     {proj && <span className="task-proj-tag">{proj.name}</span>}
-                    {task.due_time && <span className="task-time">{task.due_time.slice(0,5)}</span>}
+                    {task.due_time && <span className="task-time">{task.due_time.slice(0, 5)}</span>}
                   </div>
                 </div>
                 <div className="task-actions">
-                  <button className="icon-btn" onClick={() => setTaskForm({ task })}>✏️</button>
-                  <button className="icon-btn" onClick={() => onDeleteTask(task.id)}>🗑</button>
+                  <button className="icon-btn" onClick={() => setTaskForm({ task })} aria-label="Edit task">✏️</button>
+                  <button className="icon-btn" onClick={() => onDeleteTask(task.id)} aria-label="Delete task">🗑</button>
                 </div>
               </li>
             )
@@ -144,6 +134,7 @@ export default function TodayView({ tasks, blocks, projects, habits, glossaryIte
           tasks={tasks}
           habits={habits}
           glossaryItems={glossaryItems}
+          existingBlocks={todayBlocks}
           onSave={async (data) => { blockForm.block ? await onEditBlock(blockForm.block.id, data) : await onAddBlock(data); setBlockForm(null) }}
           onCancel={() => setBlockForm(null)}
         />

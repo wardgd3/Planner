@@ -1,5 +1,7 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '../supabase'
+import { useToast } from '../Toast'
+import { todayStr } from '../utils'
 import TodayView from './TodayView'
 import WeeklyView from './WeeklyView'
 import ProjectsView from './ProjectsView'
@@ -7,11 +9,8 @@ import GlossaryView from './GlossaryView'
 
 const PLANNER_TABS = ['Today', 'Week', 'Projects', 'Glossary']
 
-function todayStr() {
-  return new Date().toISOString().split('T')[0]
-}
-
 export default function Planner({ habits }) {
+  const toast = useToast()
   const [tab, setTab] = useState('Today')
   const [projects, setProjects] = useState([])
   const [tasks, setTasks] = useState([])
@@ -23,100 +22,146 @@ export default function Planner({ habits }) {
 
   async function fetchAll() {
     setLoading(true)
-    const [{ data: proj }, { data: tsk }, { data: blk }, { data: gloss }] = await Promise.all([
-      supabase.from('planner_projects').select('*').order('sort_order'),
-      supabase.from('planner_tasks').select('*').order('sort_order'),
-      supabase.from('planner_blocks').select('*').order('date').order('start_time'),
-      supabase.from('glossary_items').select('*').order('name')
-    ])
-    if (proj) setProjects(proj)
-    if (tsk) setTasks(tsk)
-    if (blk) setBlocks(blk)
-    if (gloss) setGlossaryItems(gloss)
+    try {
+      const [{ data: proj, error: e1 }, { data: tsk, error: e2 }, { data: blk, error: e3 }, { data: gloss, error: e4 }] = await Promise.all([
+        supabase.from('planner_projects').select('*').order('sort_order'),
+        supabase.from('planner_tasks').select('*').order('sort_order'),
+        supabase.from('planner_blocks').select('*').order('date').order('start_time'),
+        supabase.from('glossary_items').select('*').order('name')
+      ])
+      if (e1 || e2 || e3 || e4) toast.error('Failed to load some planner data')
+      if (proj) setProjects(proj)
+      if (tsk) setTasks(tsk)
+      if (blk) setBlocks(blk)
+      if (gloss) setGlossaryItems(gloss)
+    } catch {
+      toast.error('Network error loading planner')
+    }
     setLoading(false)
   }
 
   // ---- Tasks ----
-  async function addTask(data) {
-    const maxOrder = tasks.reduce((m, t) => Math.max(m, t.sort_order || 0), 0)
-    const { data: t, error } = await supabase.from('planner_tasks').insert({ ...data, sort_order: maxOrder + 1, status: 'todo' }).select().single()
-    if (!error) setTasks(prev => [...prev, t])
-  }
+  const addTask = useCallback(async (data) => {
+    try {
+      const maxOrder = tasks.reduce((m, t) => Math.max(m, t.sort_order || 0), 0)
+      const { data: t, error } = await supabase.from('planner_tasks').insert({ ...data, sort_order: maxOrder + 1, status: 'todo' }).select().single()
+      if (error) { toast.error('Failed to add task'); return }
+      setTasks(prev => [...prev, t])
+    } catch { toast.error('Network error') }
+  }, [tasks, toast])
 
-  async function editTask(id, data) {
-    const { data: t, error } = await supabase.from('planner_tasks').update(data).eq('id', id).select().single()
-    if (!error) setTasks(prev => prev.map(x => x.id === id ? t : x))
-  }
+  const editTask = useCallback(async (id, data) => {
+    try {
+      const { data: t, error } = await supabase.from('planner_tasks').update(data).eq('id', id).select().single()
+      if (error) { toast.error('Failed to update task'); return }
+      setTasks(prev => prev.map(x => x.id === id ? t : x))
+    } catch { toast.error('Network error') }
+  }, [toast])
 
-  async function deleteTask(id) {
-    await supabase.from('planner_tasks').delete().eq('id', id)
-    setTasks(prev => prev.filter(t => t.id !== id))
-  }
+  const deleteTask = useCallback(async (id) => {
+    try {
+      const { error } = await supabase.from('planner_tasks').delete().eq('id', id)
+      if (error) { toast.error('Failed to delete task'); return }
+      setTasks(prev => prev.filter(t => t.id !== id))
+    } catch { toast.error('Network error') }
+  }, [toast])
 
-  async function completeTask(task) {
-    const now = new Date().toISOString()
-    const { data: t, error } = await supabase.from('planner_tasks')
-      .update({ status: 'done', completed_at: now }).eq('id', task.id).select().single()
-    if (!error) {
+  const completeTask = useCallback(async (task) => {
+    try {
+      const now = new Date().toISOString()
+      const { data: t, error } = await supabase.from('planner_tasks')
+        .update({ status: 'done', completed_at: now }).eq('id', task.id).select().single()
+      if (error) { toast.error('Failed to complete task'); return }
       setTasks(prev => prev.map(x => x.id === task.id ? t : x))
       if (task.habit_id) {
-        await supabase.from('habit_logs').insert({ habit_id: task.habit_id })
+        const { error: e2 } = await supabase.from('habit_logs').insert({ habit_id: task.habit_id })
+        if (e2) toast.error('Failed to log linked habit')
       }
-    }
-  }
+      toast.success('Task completed')
+    } catch { toast.error('Network error') }
+  }, [toast])
 
   // ---- Blocks ----
-  async function addBlock(data) {
-    const { data: b, error } = await supabase.from('planner_blocks').insert(data).select().single()
-    if (!error) setBlocks(prev => [...prev, b])
-  }
+  const addBlock = useCallback(async (data) => {
+    try {
+      const { data: b, error } = await supabase.from('planner_blocks').insert(data).select().single()
+      if (error) { toast.error('Failed to add block'); return }
+      setBlocks(prev => [...prev, b])
+    } catch { toast.error('Network error') }
+  }, [toast])
 
-  async function editBlock(id, data) {
-    const { data: b, error } = await supabase.from('planner_blocks').update(data).eq('id', id).select().single()
-    if (!error) setBlocks(prev => prev.map(x => x.id === id ? b : x))
-  }
+  const editBlock = useCallback(async (id, data) => {
+    try {
+      const { data: b, error } = await supabase.from('planner_blocks').update(data).eq('id', id).select().single()
+      if (error) { toast.error('Failed to update block'); return }
+      setBlocks(prev => prev.map(x => x.id === id ? b : x))
+    } catch { toast.error('Network error') }
+  }, [toast])
 
-  async function deleteBlock(id) {
-    await supabase.from('planner_blocks').delete().eq('id', id)
-    setBlocks(prev => prev.filter(b => b.id !== id))
-  }
+  const deleteBlock = useCallback(async (id) => {
+    try {
+      const { error } = await supabase.from('planner_blocks').delete().eq('id', id)
+      if (error) { toast.error('Failed to delete block'); return }
+      setBlocks(prev => prev.filter(b => b.id !== id))
+    } catch { toast.error('Network error') }
+  }, [toast])
 
   // ---- Projects ----
-  async function addProject(data) {
-    const maxOrder = projects.reduce((m, p) => Math.max(m, p.sort_order || 0), 0)
-    const { data: p, error } = await supabase.from('planner_projects').insert({ ...data, sort_order: maxOrder + 1 }).select().single()
-    if (!error) setProjects(prev => [...prev, p])
-  }
+  const addProject = useCallback(async (data) => {
+    try {
+      const maxOrder = projects.reduce((m, p) => Math.max(m, p.sort_order || 0), 0)
+      const { data: p, error } = await supabase.from('planner_projects').insert({ ...data, sort_order: maxOrder + 1 }).select().single()
+      if (error) { toast.error('Failed to create project'); return }
+      setProjects(prev => [...prev, p])
+      toast.success('Project created')
+    } catch { toast.error('Network error') }
+  }, [projects, toast])
 
-  async function editProject(id, data) {
-    const { data: p, error } = await supabase.from('planner_projects').update(data).eq('id', id).select().single()
-    if (!error) setProjects(prev => prev.map(x => x.id === id ? p : x))
-  }
+  const editProject = useCallback(async (id, data) => {
+    try {
+      const { data: p, error } = await supabase.from('planner_projects').update(data).eq('id', id).select().single()
+      if (error) { toast.error('Failed to update project'); return }
+      setProjects(prev => prev.map(x => x.id === id ? p : x))
+    } catch { toast.error('Network error') }
+  }, [toast])
 
-  async function deleteProject(id) {
-    await supabase.from('planner_projects').delete().eq('id', id)
-    setProjects(prev => prev.filter(p => p.id !== id))
-    setTasks(prev => prev.map(t => t.project_id === id ? { ...t, project_id: null } : t))
-  }
+  const deleteProject = useCallback(async (id) => {
+    try {
+      const { error } = await supabase.from('planner_projects').delete().eq('id', id)
+      if (error) { toast.error('Failed to delete project'); return }
+      setProjects(prev => prev.filter(p => p.id !== id))
+      setTasks(prev => prev.map(t => t.project_id === id ? { ...t, project_id: null } : t))
+      toast.success('Project deleted')
+    } catch { toast.error('Network error') }
+  }, [toast])
 
   // ---- Glossary ----
-  async function addGlossaryItem(data) {
-    const { data: g, error } = await supabase.from('glossary_items').insert(data).select().single()
-    if (!error) setGlossaryItems(prev => [...prev, g].sort((a,b) => a.name.localeCompare(b.name)))
-  }
+  const addGlossaryItem = useCallback(async (data) => {
+    try {
+      const { data: g, error } = await supabase.from('glossary_items').insert(data).select().single()
+      if (error) { toast.error('Failed to add glossary item'); return }
+      setGlossaryItems(prev => [...prev, g].sort((a, b) => a.name.localeCompare(b.name)))
+    } catch { toast.error('Network error') }
+  }, [toast])
 
-  async function editGlossaryItem(id, data) {
-    const { data: g, error } = await supabase.from('glossary_items').update(data).eq('id', id).select().single()
-    if (!error) setGlossaryItems(prev => prev.map(x => x.id === id ? g : x))
-  }
+  const editGlossaryItem = useCallback(async (id, data) => {
+    try {
+      const { data: g, error } = await supabase.from('glossary_items').update(data).eq('id', id).select().single()
+      if (error) { toast.error('Failed to update glossary item'); return }
+      setGlossaryItems(prev => prev.map(x => x.id === id ? g : x))
+    } catch { toast.error('Network error') }
+  }, [toast])
 
-  async function deleteGlossaryItem(id) {
-    await supabase.from('glossary_items').delete().eq('id', id)
-    setGlossaryItems(prev => prev.filter(g => g.id !== id))
-  }
+  const deleteGlossaryItem = useCallback(async (id) => {
+    try {
+      const { error } = await supabase.from('glossary_items').delete().eq('id', id)
+      if (error) { toast.error('Failed to delete glossary item'); return }
+      setGlossaryItems(prev => prev.filter(g => g.id !== id))
+    } catch { toast.error('Network error') }
+  }, [toast])
 
   // Schedule a glossary item as a planner block
-  async function scheduleGlossaryItem(item, { date, start_time, end_time }) {
+  const scheduleGlossaryItem = useCallback(async (item, { date, start_time, end_time }) => {
     const habitId = item.source === 'habit' ? item.habit_id : null
     const color = item.source === 'habit'
       ? (habits.find(h => h.id === item.habit_id)?.color || '#60a5fa')
@@ -130,11 +175,15 @@ export default function Planner({ habits }) {
       habit_id: habitId,
       notes: item.description || null,
     })
-    // Switch to Today or Week so user sees the result
     setTab(date === todayStr() ? 'Today' : 'Week')
-  }
+  }, [habits, addBlock])
 
   const today = todayStr()
+
+  const habitGlossaryEntries = habits.map(h => ({
+    id: `habit-${h.id}`, name: h.name, source: 'habit', habit_id: h.id,
+    color: h.color, default_duration_minutes: null, default_time: null
+  }))
 
   return (
     <div className="planner">
@@ -151,7 +200,7 @@ export default function Planner({ habits }) {
           {tab === 'Today' && (
             <TodayView
               tasks={tasks} blocks={blocks} projects={projects} habits={habits}
-              glossaryItems={[...glossaryItems, ...habits.map(h => ({ id: `habit-${h.id}`, name: h.name, source: 'habit', habit_id: h.id, color: h.color, default_duration_minutes: null, default_time: null }))]}
+              glossaryItems={[...glossaryItems, ...habitGlossaryEntries]}
               todayStr={today}
               onAddBlock={addBlock} onEditBlock={editBlock} onDeleteBlock={deleteBlock}
               onAddTask={addTask} onEditTask={editTask} onDeleteTask={deleteTask} onCompleteTask={completeTask}
@@ -160,7 +209,7 @@ export default function Planner({ habits }) {
           {tab === 'Week' && (
             <WeeklyView
               tasks={tasks} blocks={blocks} projects={projects} habits={habits}
-              glossaryItems={[...glossaryItems, ...habits.map(h => ({ id: `habit-${h.id}`, name: h.name, source: 'habit', habit_id: h.id, color: h.color, default_duration_minutes: null, default_time: null }))]}
+              glossaryItems={[...glossaryItems, ...habitGlossaryEntries]}
               onAddBlock={addBlock} onEditBlock={editBlock} onDeleteBlock={deleteBlock}
               onAddTask={addTask} onEditTask={editTask} onDeleteTask={deleteTask} onCompleteTask={completeTask}
             />

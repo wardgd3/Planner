@@ -7,11 +7,17 @@ export default function TaskForm({ task, projects, habits, onSave, onCancel }) {
   const [habitId, setHabitId] = useState(task?.habit_id || '')
   const [priority, setPriority] = useState(task?.priority || 'medium')
   const [dueDate, setDueDate] = useState(task?.due_date || '')
-  const [dueTime, setDueTime] = useState(task?.due_time?.slice(0,5) || '')
+  const [dueTime, setDueTime] = useState(task?.due_time?.slice(0, 5) || '')
+  const [saving, setSaving] = useState(false)
 
-  function handleSave() {
-    if (!title.trim()) return
-    onSave({ title: title.trim(), notes, project_id: projectId || null, habit_id: habitId || null, priority, due_date: dueDate || null, due_time: dueTime || null })
+  async function handleSave() {
+    if (!title.trim() || saving) return
+    setSaving(true)
+    try {
+      await onSave({ title: title.trim(), notes, project_id: projectId || null, habit_id: habitId || null, priority, due_date: dueDate || null, due_time: dueTime || null })
+    } finally {
+      setSaving(false)
+    }
   }
 
   return (
@@ -19,16 +25,16 @@ export default function TaskForm({ task, projects, habits, onSave, onCancel }) {
       <div className="drawer">
         <div className="drawer-header">
           <h2 className="drawer-title">{task ? 'Edit Task' : 'New Task'}</h2>
-          <button className="icon-btn" onClick={onCancel}>✕</button>
+          <button className="icon-btn" onClick={onCancel} aria-label="Close">✕</button>
         </div>
         <div className="drawer-body">
-          <input className="input" placeholder="Task title (required)" value={title} onChange={e => setTitle(e.target.value)} autoFocus />
-          <textarea className="input textarea" placeholder="Notes (optional)" value={notes} onChange={e => setNotes(e.target.value)} rows={3} />
+          <input className="input" placeholder="Task title (required)" value={title} onChange={e => setTitle(e.target.value)} autoFocus maxLength={200} />
+          <textarea className="input textarea" placeholder="Notes (optional)" value={notes} onChange={e => setNotes(e.target.value)} rows={3} maxLength={2000} />
 
           <label className="field-label">Priority</label>
           <div className="seg-btns">
-            {['low','medium','high'].map(p => (
-              <button key={p} className={`seg-btn ${priority === p ? 'active priority-'+p : ''}`} onClick={() => setPriority(p)}>
+            {['low', 'medium', 'high'].map(p => (
+              <button key={p} className={`seg-btn ${priority === p ? 'active priority-' + p : ''}`} onClick={() => setPriority(p)}>
                 {p.charAt(0).toUpperCase() + p.slice(1)}
               </button>
             ))}
@@ -58,8 +64,8 @@ export default function TaskForm({ task, projects, habits, onSave, onCancel }) {
           </div>
         </div>
         <div className="drawer-footer">
-          <button className="confirm-btn" onClick={handleSave} disabled={!title.trim()}>
-            {task ? 'Save Changes' : 'Add Task'}
+          <button className={`confirm-btn ${saving ? 'loading' : ''}`} onClick={handleSave} disabled={!title.trim() || saving}>
+            {saving ? 'Saving…' : task ? 'Save Changes' : 'Add Task'}
           </button>
           <button className="cancel-btn" onClick={onCancel}>Cancel</button>
         </div>

@@ -329,3 +329,17 @@ h1 { font-family: 'Syne', sans-serif; font-size: 24px; font-weight: 800; letter-
 .glossary-dropdown-item:hover { background: var(--surface2); }
 .gdi-name { flex: 1; }
 .gdi-meta { font-size: 11px; color: var(--muted); }
+
+/* ── Toast notifications ── */
+.toast-container { position: fixed; top: 16px; right: 16px; z-index: 9999; display: flex; flex-direction: column; gap: 8px; max-width: 380px; }
+.toast { display: flex; align-items: center; gap: 10px; padding: 12px 16px; border-radius: 8px; font-family: 'DM Mono', monospace; font-size: 13px; color: #fff; box-shadow: 0 4px 20px rgba(0,0,0,0.4); animation: toast-in 0.3s ease; }
+.toast-error { background: #dc2626; }
+.toast-success { background: #16a34a; }
+.toast-info { background: #2563eb; }
+.toast-icon { font-size: 14px; font-weight: 700; flex-shrink: 0; width: 20px; height: 20px; display: flex; align-items: center; justify-content: center; border-radius: 50%; background: rgba(255,255,255,0.2); }
+.toast-msg { flex: 1; line-height: 1.4; }
+@keyframes toast-in { from { opacity: 0; transform: translateX(40px); } to { opacity: 1; transform: translateX(0); } }
+
+/* ── Disabled/loading button state ── */
+.confirm-btn.loading, .add-btn.loading { opacity: 0.6; cursor: wait; pointer-events: none; }
+.ctrl-btn:disabled { opacity: 0.3; cursor: not-allowed; pointer-events: none; }

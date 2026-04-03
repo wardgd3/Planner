@@ -1,12 +1,12 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useMemo } from 'react'
+import { PRESET_COLORS } from '../constants'
+import { timeToMinutes, computeEndTime, timeRangesOverlap } from '../utils'
 
-const PRESET_COLORS = ['#f4845f','#f7c948','#4ade80','#60a5fa','#a78bfa','#f472b6','#fb7185','#34d399','#38bdf8','#e879f9']
-
-export default function BlockForm({ block, date, startTime, projects, tasks, habits, glossaryItems = [], onSave, onCancel }) {
+export default function BlockForm({ block, date, startTime, projects, tasks, habits, glossaryItems = [], existingBlocks = [], onSave, onCancel }) {
   const [title, setTitle] = useState(block?.title || '')
   const [blockDate, setBlockDate] = useState(block?.date || date || '')
-  const [start, setStart] = useState(block?.start_time?.slice(0,5) || startTime || '09:00')
-  const [end, setEnd] = useState(block?.end_time?.slice(0,5) || '')
+  const [start, setStart] = useState(block?.start_time?.slice(0, 5) || startTime || '09:00')
+  const [end, setEnd] = useState(block?.end_time?.slice(0, 5) || '')
   const [projectId, setProjectId] = useState(block?.project_id || '')
   const [taskId, setTaskId] = useState(block?.task_id || '')
   const [habitId, setHabitId] = useState(block?.habit_id || '')
@@ -15,21 +15,34 @@ export default function BlockForm({ block, date, startTime, projects, tasks, hab
   const [showPicker, setShowPicker] = useState(false)
   const [glossarySearch, setGlossarySearch] = useState('')
   const [showGlossary, setShowGlossary] = useState(false)
+  const [saving, setSaving] = useState(false)
   const colorRef = useRef(null)
 
   const filteredTasks = projectId ? tasks.filter(t => t.project_id === projectId) : tasks
 
-  const glossaryResults = glossarySearch.length > 0
-    ? glossaryItems.filter(g => g.name.toLowerCase().includes(glossarySearch.toLowerCase())).slice(0, 6)
-    : []
+  const glossaryResults = useMemo(
+    () => glossarySearch.length > 0
+      ? glossaryItems.filter(g => g.name.toLowerCase().includes(glossarySearch.toLowerCase())).slice(0, 6)
+      : [],
+    [glossarySearch, glossaryItems]
+  )
+
+  // Validation
+  const timeError = useMemo(() => {
+    if (!start || !end) return null
+    if (timeToMinutes(end) <= timeToMinutes(start)) return 'End time must be after start time'
+    // Check for conflicts with existing blocks (exclude current block if editing)
+    const otherBlocks = existingBlocks.filter(b => !block || b.id !== block.id)
+    const conflict = otherBlocks.find(b => timeRangesOverlap(start, end, b.start_time.slice(0, 5), b.end_time.slice(0, 5)))
+    if (conflict) return `Overlaps with "${conflict.title}" (${conflict.start_time.slice(0, 5)}–${conflict.end_time.slice(0, 5)})`
+    return null
+  }, [start, end, existingBlocks, block])
 
   function applyGlossaryItem(item) {
     setTitle(item.name)
-    if (item.default_time) setStart(item.default_time.slice(0,5))
+    if (item.default_time) setStart(item.default_time.slice(0, 5))
     if (item.default_duration_minutes && item.default_time) {
-      const [h,m] = item.default_time.slice(0,5).split(':').map(Number)
-      const t = h*60+m+item.default_duration_minutes
-      setEnd(`${String(Math.floor(t/60)).padStart(2,'0')}:${String(t%60).padStart(2,'0')}`)
+      setEnd(computeEndTime(item.default_time.slice(0, 5), item.default_duration_minutes))
     }
     if (item.source === 'habit' && item.habit_id) setHabitId(item.habit_id)
     if (item.color) setColor(item.color)
@@ -38,21 +51,27 @@ export default function BlockForm({ block, date, startTime, projects, tasks, hab
     setShowGlossary(false)
   }
 
-  function handleSave() {
-    if (!title.trim() || !blockDate || !start || !end) return
-    onSave({ title: title.trim(), date: blockDate, start_time: start, end_time: end, project_id: projectId || null, task_id: taskId || null, habit_id: habitId || null, color, notes })
+  async function handleSave() {
+    if (!title.trim() || !blockDate || !start || !end || timeError || saving) return
+    setSaving(true)
+    try {
+      await onSave({ title: title.trim(), date: blockDate, start_time: start, end_time: end, project_id: projectId || null, task_id: taskId || null, habit_id: habitId || null, color, notes })
+    } finally {
+      setSaving(false)
+    }
   }
+
+  const canSave = title.trim() && start && end && !timeError && !saving
 
   return (
     <div className="drawer-overlay" onClick={e => e.target === e.currentTarget && onCancel()}>
       <div className="drawer">
         <div className="drawer-header">
           <h2 className="drawer-title">{block ? 'Edit Block' : 'New Time Block'}</h2>
-          <button className="icon-btn" onClick={onCancel}>✕</button>
+          <button className="icon-btn" onClick={onCancel} aria-label="Close">✕</button>
         </div>
         <div className="drawer-body">
 
-          {/* Glossary search */}
           {!block && (
             <div className="glossary-search-wrap" style={{ position: 'relative' }}>
               <span className="search-icon">🔍</span>
@@ -78,7 +97,7 @@ export default function BlockForm({ block, date, startTime, projects, tasks, hab
             </div>
           )}
 
-          <input className="input" placeholder="Block title (required)" value={title} onChange={e => setTitle(e.target.value)} autoFocus={!!block} />
+          <input className="input" placeholder="Block title (required)" value={title} onChange={e => setTitle(e.target.value)} autoFocus={!!block} maxLength={200} />
 
           <label className="field-label">Date</label>
           <input className="input" type="date" value={blockDate} onChange={e => setBlockDate(e.target.value)} />
@@ -93,6 +112,7 @@ export default function BlockForm({ block, date, startTime, projects, tasks, hab
               <input className="input" type="time" value={end} onChange={e => setEnd(e.target.value)} />
             </div>
           </div>
+          {timeError && <p className="field-hint" style={{ color: '#fb7185' }}>{timeError}</p>}
 
           <label className="field-label">Color</label>
           <div className="color-picker-wrap" ref={colorRef}>
@@ -128,11 +148,11 @@ export default function BlockForm({ block, date, startTime, projects, tasks, hab
           </select>
 
           <label className="field-label">Notes</label>
-          <textarea className="input textarea" placeholder="Optional notes" value={notes} onChange={e => setNotes(e.target.value)} rows={2} />
+          <textarea className="input textarea" placeholder="Optional notes" value={notes} onChange={e => setNotes(e.target.value)} rows={2} maxLength={2000} />
         </div>
         <div className="drawer-footer">
-          <button className="confirm-btn" onClick={handleSave} disabled={!title.trim() || !start || !end}>
-            {block ? 'Save Changes' : 'Add Block'}
+          <button className={`confirm-btn ${saving ? 'loading' : ''}`} onClick={handleSave} disabled={!canSave}>
+            {saving ? 'Saving…' : block ? 'Save Changes' : 'Add Block'}
           </button>
           <button className="cancel-btn" onClick={onCancel}>Cancel</button>
         </div>

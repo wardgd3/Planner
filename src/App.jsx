@@ -1,42 +1,25 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useMemo, useCallback, memo } from 'react'
 import { supabase } from './supabase'
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts'
 import { DndContext, closestCenter, PointerSensor, useSensor, useSensors, DragOverlay } from '@dnd-kit/core'
 import { SortableContext, verticalListSortingStrategy, useSortable, arrayMove } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import Planner from './planner/Planner.jsx'
+import { ToastProvider, useToast } from './Toast.jsx'
+import { PRESET_COLORS, PERIODS } from './constants'
+import { getPeriodLabel, getPeriodRange } from './utils'
 import './App.css'
 
-const PRESET_COLORS = ['#f4845f','#f7c948','#4ade80','#60a5fa','#a78bfa','#f472b6','#fb7185','#34d399','#38bdf8','#e879f9']
-const PERIODS = ['Day', 'Week', 'Month', 'Year']
-const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
-
-function getPeriodLabel(period) {
-  const now = new Date()
-  if (period === 'Day') return `Today, ${MONTHS[now.getMonth()]} ${now.getDate()}`
-  if (period === 'Week') return `This Week`
-  if (period === 'Month') return `${MONTHS[now.getMonth()]} ${now.getFullYear()}`
-  return `${now.getFullYear()}`
-}
-
-function getPeriodRange(period) {
-  const now = new Date()
-  const start = new Date()
-  if (period === 'Day') { start.setHours(0,0,0,0) }
-  else if (period === 'Week') { start.setDate(now.getDate() - now.getDay()); start.setHours(0,0,0,0) }
-  else if (period === 'Month') { start.setDate(1); start.setHours(0,0,0,0) }
-  else { start.setMonth(0,1); start.setHours(0,0,0,0) }
-  return { start: start.toISOString(), end: now.toISOString() }
-}
-
-function SortableHabitRow({ habit, count, bumping, editingId, habitCategoryIds, categories, onIncrement, onDecrement, onEdit, onDelete }) {
+// ── Sortable Habit Row ──
+const SortableHabitRow = memo(function SortableHabitRow({ habit, count, bumping, editingId, habitCategoryIds, categories, onIncrement, onDecrement, onEdit, onDelete, mutating }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: habit.id })
   const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.3 : 1 }
   const catIds = habitCategoryIds[habit.id] || []
   const catNames = categories.filter(c => catIds.includes(c.id)).map(c => c.name)
+  const isMutating = mutating === habit.id
   return (
     <li ref={setNodeRef} style={style} className={`habit-row ${editingId === habit.id ? 'editing' : ''} ${isDragging ? 'dragging' : ''}`}>
-      <div className="drag-handle" {...attributes} {...listeners}><span className="drag-dots">⠿</span></div>
+      <div className="drag-handle" {...attributes} {...listeners} aria-label="Drag to reorder"><span className="drag-dots">⠿</span></div>
       <div className="habit-info">
         <span className="habit-dot" style={{ background: habit.color || '#60a5fa' }} />
         <div>
@@ -45,17 +28,93 @@ function SortableHabitRow({ habit, count, bumping, editingId, habitCategoryIds, 
         </div>
       </div>
       <div className="habit-controls">
-        <button className="ctrl-btn minus" onClick={() => onDecrement(habit)}>−</button>
+        <button className="ctrl-btn minus" onClick={() => onDecrement(habit)} disabled={isMutating || count <= 0} aria-label="Decrement">−</button>
         <span className={`habit-count ${bumping === habit.id ? 'bump' : ''}`}>{count}</span>
-        <button className="ctrl-btn plus" onClick={() => onIncrement(habit)}>+</button>
-        <button className="icon-btn" onClick={() => onEdit(habit)}>✏️</button>
-        <button className="icon-btn" onClick={() => onDelete(habit.id)}>🗑</button>
+        <button className="ctrl-btn plus" onClick={() => onIncrement(habit)} disabled={isMutating} aria-label="Increment">+</button>
+        <button className="icon-btn" onClick={() => onEdit(habit)} aria-label="Edit habit">✏️</button>
+        <button className="icon-btn" onClick={() => onDelete(habit.id)} aria-label="Delete habit">🗑</button>
       </div>
     </li>
   )
+})
+
+// ── Category Manager ──
+function CategoryManager({ categories, onAdd, onSave, onDelete }) {
+  const [newCatName, setNewCatName] = useState('')
+  const [editingCatId, setEditingCatId] = useState(null)
+  const [editingCatName, setEditingCatName] = useState('')
+
+  return (
+    <div className="cat-manager">
+      <p className="section-label" style={{ marginBottom: 12 }}>Manage Categories</p>
+      <ul className="cat-list">
+        {categories.map(c => (
+          <li key={c.id} className="cat-row">
+            {editingCatId === c.id ? (
+              <>
+                <input className="input cat-input" value={editingCatName} onChange={e => setEditingCatName(e.target.value)} onKeyDown={e => e.key === 'Enter' && onSave(editingCatId, editingCatName).then(() => { setEditingCatId(null); setEditingCatName('') })} autoFocus />
+                <button className="cat-action-btn save" onClick={() => onSave(editingCatId, editingCatName).then(() => { setEditingCatId(null); setEditingCatName('') })}>✓</button>
+                <button className="cat-action-btn cancel" onClick={() => { setEditingCatId(null); setEditingCatName('') }}>✕</button>
+              </>
+            ) : (
+              <>
+                <span className="cat-name">{c.name}</span>
+                <button className="cat-action-btn" onClick={() => { setEditingCatId(c.id); setEditingCatName(c.name) }} aria-label="Edit category">✏️</button>
+                <button className="cat-action-btn" onClick={() => onDelete(c.id)} aria-label="Delete category">🗑</button>
+              </>
+            )}
+          </li>
+        ))}
+      </ul>
+      <div className="cat-add-row">
+        <input className="input cat-input" placeholder="New category name" value={newCatName} onChange={e => setNewCatName(e.target.value)} onKeyDown={e => e.key === 'Enter' && onAdd(newCatName).then(() => setNewCatName(''))} />
+        <button className="confirm-btn" style={{ padding: '8px 14px', whiteSpace: 'nowrap' }} onClick={() => onAdd(newCatName).then(() => setNewCatName(''))}>+ Add</button>
+      </div>
+    </div>
+  )
 }
 
-export default function App({ onLogout }) {
+// ── Habit Form ──
+function HabitForm({ editingId, newName, setNewName, newCategoryIds, categories, toggleNewCategory, newColor, setNewColor, showColorPicker, setShowColorPicker, colorRef, onSave, onCancel, saving }) {
+  return (
+    <div className="add-form">
+      <input className="input" placeholder="Habit name" value={newName} onChange={e => setNewName(e.target.value)} onKeyDown={e => e.key === 'Enter' && onSave()} autoFocus />
+      <div className="field-wrap">
+        <p className="color-label" style={{ marginBottom: 8 }}>Categories <span className="required-star">*</span></p>
+        {categories.length === 0 ? <p className="field-hint">No categories yet — create one using ⚙️ above</p> : (
+          <div className="cat-checkboxes">
+            {categories.map(c => (
+              <button key={c.id} type="button" className={`cat-checkbox-btn ${newCategoryIds.includes(c.id) ? 'selected' : ''}`} onClick={() => toggleNewCategory(c.id)}>
+                {newCategoryIds.includes(c.id) && <span className="check-icon">✓</span>}{c.name}
+              </button>
+            ))}
+          </div>
+        )}
+        {categories.length > 0 && newCategoryIds.length === 0 && <p className="field-hint">Select at least one category</p>}
+      </div>
+      <div className="color-row">
+        <span className="color-label">Color</span>
+        <div className="color-picker-wrap" ref={colorRef}>
+          <button className="color-swatch-btn" style={{ background: newColor }} onClick={() => setShowColorPicker(v => !v)} />
+          {showColorPicker && (
+            <div className="color-popover">
+              <div className="color-presets">{PRESET_COLORS.map(c => <button key={c} className={`preset-swatch ${newColor === c ? 'selected' : ''}`} style={{ background: c }} onClick={() => { setNewColor(c); setShowColorPicker(false) }} />)}</div>
+              <input type="color" className="color-input-native" value={newColor} onChange={e => setNewColor(e.target.value)} />
+            </div>
+          )}
+        </div>
+      </div>
+      <div className="form-actions">
+        <button className={`confirm-btn ${saving ? 'loading' : ''}`} onClick={onSave} disabled={!newName.trim() || newCategoryIds.length === 0 || saving}>{saving ? 'Saving…' : editingId ? 'Save Changes' : 'Add Habit'}</button>
+        <button className="cancel-btn" onClick={onCancel}>Cancel</button>
+      </div>
+    </div>
+  )
+}
+
+// ── Main App ──
+function AppInner({ onLogout }) {
+  const toast = useToast()
   const [activeTab, setActiveTab] = useState('planner')
   const [habits, setHabits] = useState([])
   const [logs, setLogs] = useState([])
@@ -71,11 +130,10 @@ export default function App({ onLogout }) {
   const [newColor, setNewColor] = useState('#60a5fa')
   const [showColorPicker, setShowColorPicker] = useState(false)
   const [showCatManager, setShowCatManager] = useState(false)
-  const [newCatName, setNewCatName] = useState('')
-  const [editingCatId, setEditingCatId] = useState(null)
-  const [editingCatName, setEditingCatName] = useState('')
   const [bumping, setBumping] = useState(null)
   const [activeId, setActiveId] = useState(null)
+  const [mutating, setMutating] = useState(null)
+  const [saving, setSaving] = useState(false)
   const colorRef = useRef(null)
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }))
 
@@ -88,85 +146,131 @@ export default function App({ onLogout }) {
 
   async function fetchAll() {
     setLoading(true)
-    const { start, end } = getPeriodRange(period)
-    const [{ data: habitsData }, { data: logsData }, { data: catsData }, { data: hcData }] = await Promise.all([
-      supabase.from('habits').select('*').order('sort_order', { ascending: true }),
-      supabase.from('habit_logs').select('id, habit_id').gte('logged_at', start).lte('logged_at', end),
-      supabase.from('categories').select('*').order('name', { ascending: true }),
-      supabase.from('habit_categories').select('habit_id, category_id')
-    ])
-    if (habitsData) setHabits(habitsData)
-    if (logsData) setLogs(logsData)
-    if (catsData) setCategories(catsData)
-    if (hcData) {
-      const map = {}
-      hcData.forEach(({ habit_id, category_id }) => { if (!map[habit_id]) map[habit_id] = []; map[habit_id].push(category_id) })
-      setHabitCategoryIds(map)
+    try {
+      const { start, end } = getPeriodRange(period)
+      const [{ data: habitsData, error: e1 }, { data: logsData, error: e2 }, { data: catsData, error: e3 }, { data: hcData, error: e4 }] = await Promise.all([
+        supabase.from('habits').select('*').order('sort_order', { ascending: true }),
+        supabase.from('habit_logs').select('id, habit_id').gte('logged_at', start).lte('logged_at', end),
+        supabase.from('categories').select('*').order('name', { ascending: true }),
+        supabase.from('habit_categories').select('habit_id, category_id')
+      ])
+      if (e1 || e2 || e3 || e4) toast.error('Failed to load some data')
+      if (habitsData) setHabits(habitsData)
+      if (logsData) setLogs(logsData)
+      if (catsData) setCategories(catsData)
+      if (hcData) {
+        const map = {}
+        hcData.forEach(({ habit_id, category_id }) => { if (!map[habit_id]) map[habit_id] = []; map[habit_id].push(category_id) })
+        setHabitCategoryIds(map)
+      }
+    } catch {
+      toast.error('Network error loading data')
     }
     setLoading(false)
   }
 
-  function getCount(habitId) { return logs.filter(l => l.habit_id === habitId).length }
-  function toggleNewCategory(catId) { setNewCategoryIds(prev => prev.includes(catId) ? prev.filter(id => id !== catId) : [...prev, catId]) }
+  const getCount = useCallback((habitId) => logs.filter(l => l.habit_id === habitId).length, [logs])
+  const toggleNewCategory = useCallback((catId) => setNewCategoryIds(prev => prev.includes(catId) ? prev.filter(id => id !== catId) : [...prev, catId]), [])
 
-  const filteredHabits = selectedCategoryId === 'all' ? habits : habits.filter(h => (habitCategoryIds[h.id] || []).includes(selectedCategoryId))
+  const filteredHabits = useMemo(
+    () => selectedCategoryId === 'all' ? habits : habits.filter(h => (habitCategoryIds[h.id] || []).includes(selectedCategoryId)),
+    [selectedCategoryId, habits, habitCategoryIds]
+  )
 
-  async function increment(habit) {
+  const chartData = useMemo(
+    () => filteredHabits.map(h => ({ name: h.name, count: getCount(h.id), color: h.color || '#60a5fa' })),
+    [filteredHabits, getCount]
+  )
+
+  const increment = useCallback(async (habit) => {
+    if (mutating) return
+    setMutating(habit.id)
     setBumping(habit.id)
-    const { data, error } = await supabase.from('habit_logs').insert({ habit_id: habit.id }).select().single()
-    if (!error) setLogs(prev => [...prev, data])
-    await supabase.from('habits').update({ count: habit.count + 1 }).eq('id', habit.id)
-    setHabits(prev => prev.map(h => h.id === habit.id ? { ...h, count: h.count + 1 } : h))
-    setTimeout(() => setBumping(null), 300)
-  }
-
-  async function decrement(habit) {
-    if (getCount(habit.id) <= 0) return
-    const { start, end } = getPeriodRange(period)
-    const { data: recentLog } = await supabase.from('habit_logs').select('id').eq('habit_id', habit.id).gte('logged_at', start).lte('logged_at', end).order('logged_at', { ascending: false }).limit(1).single()
-    if (recentLog) {
-      await supabase.from('habit_logs').delete().eq('id', recentLog.id)
-      setLogs(prev => prev.filter(l => l.id !== recentLog.id))
-      await supabase.from('habits').update({ count: Math.max(0, habit.count - 1) }).eq('id', habit.id)
-      setHabits(prev => prev.map(h => h.id === habit.id ? { ...h, count: Math.max(0, h.count - 1) } : h))
+    try {
+      const { data, error } = await supabase.from('habit_logs').insert({ habit_id: habit.id }).select().single()
+      if (error) { toast.error('Failed to log habit'); return }
+      setLogs(prev => [...prev, data])
+      const { error: e2 } = await supabase.from('habits').update({ count: habit.count + 1 }).eq('id', habit.id)
+      if (e2) toast.error('Failed to update count')
+      setHabits(prev => prev.map(h => h.id === habit.id ? { ...h, count: h.count + 1 } : h))
+    } catch {
+      toast.error('Network error')
+    } finally {
+      setTimeout(() => setBumping(null), 300)
+      setMutating(null)
     }
-  }
+  }, [mutating, toast])
 
-  async function saveHabit() {
-    if (!newName.trim() || newCategoryIds.length === 0) return
-    if (editingId) {
-      const { data, error } = await supabase.from('habits').update({ name: newName.trim(), color: newColor }).eq('id', editingId).select().single()
-      if (!error) {
+  const decrement = useCallback(async (habit) => {
+    if (mutating || getCount(habit.id) <= 0) return
+    setMutating(habit.id)
+    try {
+      const { start, end } = getPeriodRange(period)
+      const { data: recentLog, error: e1 } = await supabase.from('habit_logs').select('id').eq('habit_id', habit.id).gte('logged_at', start).lte('logged_at', end).order('logged_at', { ascending: false }).limit(1).single()
+      if (e1 || !recentLog) { toast.error('No log found to remove'); return }
+      const { error: e2 } = await supabase.from('habit_logs').delete().eq('id', recentLog.id)
+      if (e2) { toast.error('Failed to remove log'); return }
+      setLogs(prev => prev.filter(l => l.id !== recentLog.id))
+      const { error: e3 } = await supabase.from('habits').update({ count: Math.max(0, habit.count - 1) }).eq('id', habit.id)
+      if (e3) toast.error('Failed to update count')
+      setHabits(prev => prev.map(h => h.id === habit.id ? { ...h, count: Math.max(0, h.count - 1) } : h))
+    } catch {
+      toast.error('Network error')
+    } finally {
+      setMutating(null)
+    }
+  }, [mutating, period, getCount, toast])
+
+  const saveHabit = useCallback(async () => {
+    if (!newName.trim() || newCategoryIds.length === 0 || saving) return
+    setSaving(true)
+    try {
+      if (editingId) {
+        const { data, error } = await supabase.from('habits').update({ name: newName.trim(), color: newColor }).eq('id', editingId).select().single()
+        if (error) { toast.error('Failed to update habit'); return }
         await supabase.from('habit_categories').delete().eq('habit_id', editingId)
-        await supabase.from('habit_categories').insert(newCategoryIds.map(cid => ({ habit_id: editingId, category_id: cid })))
+        const { error: e2 } = await supabase.from('habit_categories').insert(newCategoryIds.map(cid => ({ habit_id: editingId, category_id: cid })))
+        if (e2) toast.error('Failed to update categories')
         setHabits(prev => prev.map(h => h.id === editingId ? data : h))
         setHabitCategoryIds(prev => ({ ...prev, [editingId]: newCategoryIds }))
-      }
-      setEditingId(null)
-    } else {
-      const maxOrder = habits.reduce((m, h) => Math.max(m, h.sort_order || 0), 0)
-      const { data, error } = await supabase.from('habits').insert({ name: newName.trim(), color: newColor, count: 0, sort_order: maxOrder + 1 }).select().single()
-      if (!error) {
-        await supabase.from('habit_categories').insert(newCategoryIds.map(cid => ({ habit_id: data.id, category_id: cid })))
+        setEditingId(null)
+        toast.success('Habit updated')
+      } else {
+        const maxOrder = habits.reduce((m, h) => Math.max(m, h.sort_order || 0), 0)
+        const { data, error } = await supabase.from('habits').insert({ name: newName.trim(), color: newColor, count: 0, sort_order: maxOrder + 1 }).select().single()
+        if (error) { toast.error('Failed to create habit'); return }
+        const { error: e2 } = await supabase.from('habit_categories').insert(newCategoryIds.map(cid => ({ habit_id: data.id, category_id: cid })))
+        if (e2) toast.error('Failed to assign categories')
         setHabits(prev => [...prev, data])
         setHabitCategoryIds(prev => ({ ...prev, [data.id]: newCategoryIds }))
+        setAdding(false)
+        toast.success('Habit created')
       }
-      setAdding(false)
+      setNewName(''); setNewCategoryIds([]); setNewColor('#60a5fa')
+    } catch {
+      toast.error('Network error saving habit')
+    } finally {
+      setSaving(false)
     }
-    setNewName(''); setNewCategoryIds([]); setNewColor('#60a5fa')
-  }
+  }, [newName, newCategoryIds, newColor, editingId, saving, habits, toast])
 
   function startEdit(habit) { setEditingId(habit.id); setNewName(habit.name); setNewCategoryIds(habitCategoryIds[habit.id] || []); setNewColor(habit.color || '#60a5fa'); setAdding(false) }
   function cancelForm() { setAdding(false); setEditingId(null); setNewName(''); setNewCategoryIds([]); setNewColor('#60a5fa') }
 
-  async function deleteHabit(id) {
-    await supabase.from('habits').delete().eq('id', id)
-    setHabits(prev => prev.filter(h => h.id !== id))
-    setLogs(prev => prev.filter(l => l.habit_id !== id))
-    setHabitCategoryIds(prev => { const n = {...prev}; delete n[id]; return n })
-  }
+  const deleteHabit = useCallback(async (id) => {
+    try {
+      const { error } = await supabase.from('habits').delete().eq('id', id)
+      if (error) { toast.error('Failed to delete habit'); return }
+      setHabits(prev => prev.filter(h => h.id !== id))
+      setLogs(prev => prev.filter(l => l.habit_id !== id))
+      setHabitCategoryIds(prev => { const n = { ...prev }; delete n[id]; return n })
+      toast.success('Habit deleted')
+    } catch {
+      toast.error('Network error')
+    }
+  }, [toast])
 
-  async function handleDragEnd(event) {
+  const handleDragEnd = useCallback(async (event) => {
     const { active, over } = event
     setActiveId(null)
     if (!over || active.id === over.id) return
@@ -175,37 +279,54 @@ export default function App({ onLogout }) {
     const reordered = arrayMove(filteredHabits, oldIndex, newIndex)
     const otherHabits = habits.filter(h => !filteredHabits.find(f => f.id === h.id))
     setHabits([...reordered, ...otherHabits])
-    await Promise.all(reordered.map((h, i) => supabase.from('habits').update({ sort_order: i + 1 }).eq('id', h.id)))
-  }
+    try {
+      await Promise.all(reordered.map((h, i) => supabase.from('habits').update({ sort_order: i + 1 }).eq('id', h.id)))
+    } catch {
+      toast.error('Failed to save new order')
+    }
+  }, [filteredHabits, habits, toast])
 
-  async function addCategory() {
-    if (!newCatName.trim()) return
-    const { data, error } = await supabase.from('categories').insert({ name: newCatName.trim() }).select().single()
-    if (!error) { setCategories(prev => [...prev, data].sort((a,b) => a.name.localeCompare(b.name))); setNewCatName('') }
-  }
+  // ── Category CRUD with error handling ──
+  const addCategory = useCallback(async (name) => {
+    if (!name.trim()) return
+    try {
+      const { data, error } = await supabase.from('categories').insert({ name: name.trim() }).select().single()
+      if (error) { toast.error('Failed to create category'); return }
+      setCategories(prev => [...prev, data].sort((a, b) => a.name.localeCompare(b.name)))
+    } catch {
+      toast.error('Network error')
+    }
+  }, [toast])
 
-  async function saveCategory() {
-    if (!editingCatName.trim()) return
-    const { data, error } = await supabase.from('categories').update({ name: editingCatName.trim() }).eq('id', editingCatId).select().single()
-    if (!error) setCategories(prev => prev.map(c => c.id === editingCatId ? data : c).sort((a,b) => a.name.localeCompare(b.name)))
-    setEditingCatId(null); setEditingCatName('')
-  }
+  const saveCategory = useCallback(async (id, name) => {
+    if (!name.trim()) return
+    try {
+      const { data, error } = await supabase.from('categories').update({ name: name.trim() }).eq('id', id).select().single()
+      if (error) { toast.error('Failed to update category'); return }
+      setCategories(prev => prev.map(c => c.id === id ? data : c).sort((a, b) => a.name.localeCompare(b.name)))
+    } catch {
+      toast.error('Network error')
+    }
+  }, [toast])
 
-  async function deleteCategory(id) {
-    await supabase.from('categories').delete().eq('id', id)
-    setCategories(prev => prev.filter(c => c.id !== id))
-    setHabitCategoryIds(prev => { const n = {}; Object.keys(prev).forEach(hid => { n[hid] = prev[hid].filter(cid => cid !== id) }); return n })
-    if (selectedCategoryId === id) setSelectedCategoryId('all')
-  }
+  const deleteCategory = useCallback(async (id) => {
+    try {
+      const { error } = await supabase.from('categories').delete().eq('id', id)
+      if (error) { toast.error('Failed to delete category'); return }
+      setCategories(prev => prev.filter(c => c.id !== id))
+      setHabitCategoryIds(prev => { const n = {}; Object.keys(prev).forEach(hid => { n[hid] = prev[hid].filter(cid => cid !== id) }); return n })
+      if (selectedCategoryId === id) setSelectedCategoryId('all')
+    } catch {
+      toast.error('Network error')
+    }
+  }, [selectedCategoryId, toast])
 
-  const chartData = filteredHabits.map(h => ({ name: h.name, count: getCount(h.id), color: h.color || '#60a5fa' }))
   const activeHabit = activeId ? filteredHabits.find(h => h.id === activeId) : null
   const isFormOpen = adding || !!editingId
   const selectedCatLabel = selectedCategoryId === 'all' ? 'All Categories' : (categories.find(c => c.id === selectedCategoryId)?.name || 'All Categories')
 
   return (
     <div className={`app ${activeTab === "planner" ? "app-wide" : ""}`}>
-      {/* Top-level tab switcher */}
       <div className="app-tabs">
         <button className={`app-tab ${activeTab === 'planner' ? 'active' : ''}`} onClick={() => setActiveTab('planner')}>Planner</button>
         <button className={`app-tab ${activeTab === 'tracker' ? 'active' : ''}`} onClick={() => setActiveTab('tracker')}>Habits</button>
@@ -229,34 +350,17 @@ export default function App({ onLogout }) {
           <main className="main">
             <div className="cat-bar">
               <div className="cat-dropdown-wrap">
-                <select className="cat-dropdown" value={selectedCategoryId} onChange={e => setSelectedCategoryId(e.target.value)}>
+                <select className="cat-dropdown" value={selectedCategoryId} onChange={e => setSelectedCategoryId(e.target.value)} aria-label="Filter by category">
                   <option value="all">All Categories</option>
                   {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                 </select>
                 <span className="cat-dropdown-arrow">▾</span>
               </div>
-              <button className="manage-cats-btn" onClick={() => setShowCatManager(v => !v)}>⚙️</button>
+              <button className="manage-cats-btn" onClick={() => setShowCatManager(v => !v)} aria-label="Manage categories">⚙️</button>
             </div>
 
             {showCatManager && (
-              <div className="cat-manager">
-                <p className="section-label" style={{marginBottom:12}}>Manage Categories</p>
-                <ul className="cat-list">
-                  {categories.map(c => (
-                    <li key={c.id} className="cat-row">
-                      {editingCatId === c.id ? (
-                        <><input className="input cat-input" value={editingCatName} onChange={e => setEditingCatName(e.target.value)} onKeyDown={e => e.key === 'Enter' && saveCategory()} autoFocus /><button className="cat-action-btn save" onClick={saveCategory}>✓</button><button className="cat-action-btn cancel" onClick={() => { setEditingCatId(null); setEditingCatName('') }}>✕</button></>
-                      ) : (
-                        <><span className="cat-name">{c.name}</span><button className="cat-action-btn" onClick={() => { setEditingCatId(c.id); setEditingCatName(c.name) }}>✏️</button><button className="cat-action-btn" onClick={() => deleteCategory(c.id)}>🗑</button></>
-                      )}
-                    </li>
-                  ))}
-                </ul>
-                <div className="cat-add-row">
-                  <input className="input cat-input" placeholder="New category name" value={newCatName} onChange={e => setNewCatName(e.target.value)} onKeyDown={e => e.key === 'Enter' && addCategory()} />
-                  <button className="confirm-btn" style={{padding:'8px 14px', whiteSpace:'nowrap'}} onClick={addCategory}>+ Add</button>
-                </div>
-              </div>
+              <CategoryManager categories={categories} onAdd={addCategory} onSave={saveCategory} onDelete={deleteCategory} />
             )}
 
             <section className="chart-section">
@@ -282,38 +386,13 @@ export default function App({ onLogout }) {
               </div>
 
               {isFormOpen && (
-                <div className="add-form">
-                  <input className="input" placeholder="Habit name" value={newName} onChange={e => setNewName(e.target.value)} onKeyDown={e => e.key === 'Enter' && saveHabit()} autoFocus />
-                  <div className="field-wrap">
-                    <p className="color-label" style={{marginBottom:8}}>Categories <span className="required-star">*</span></p>
-                    {categories.length === 0 ? <p className="field-hint">No categories yet — create one using ⚙️ above</p> : (
-                      <div className="cat-checkboxes">
-                        {categories.map(c => (
-                          <button key={c.id} type="button" className={`cat-checkbox-btn ${newCategoryIds.includes(c.id) ? 'selected' : ''}`} onClick={() => toggleNewCategory(c.id)}>
-                            {newCategoryIds.includes(c.id) && <span className="check-icon">✓</span>}{c.name}
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                    {categories.length > 0 && newCategoryIds.length === 0 && <p className="field-hint">Select at least one category</p>}
-                  </div>
-                  <div className="color-row">
-                    <span className="color-label">Color</span>
-                    <div className="color-picker-wrap" ref={colorRef}>
-                      <button className="color-swatch-btn" style={{ background: newColor }} onClick={() => setShowColorPicker(v => !v)} />
-                      {showColorPicker && (
-                        <div className="color-popover">
-                          <div className="color-presets">{PRESET_COLORS.map(c => <button key={c} className={`preset-swatch ${newColor === c ? 'selected' : ''}`} style={{ background: c }} onClick={() => { setNewColor(c); setShowColorPicker(false) }} />)}</div>
-                          <input type="color" className="color-input-native" value={newColor} onChange={e => setNewColor(e.target.value)} />
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                  <div className="form-actions">
-                    <button className="confirm-btn" onClick={saveHabit} disabled={!newName.trim() || newCategoryIds.length === 0}>{editingId ? 'Save Changes' : 'Add Habit'}</button>
-                    <button className="cancel-btn" onClick={cancelForm}>Cancel</button>
-                  </div>
-                </div>
+                <HabitForm
+                  editingId={editingId} newName={newName} setNewName={setNewName}
+                  newCategoryIds={newCategoryIds} categories={categories} toggleNewCategory={toggleNewCategory}
+                  newColor={newColor} setNewColor={setNewColor}
+                  showColorPicker={showColorPicker} setShowColorPicker={setShowColorPicker} colorRef={colorRef}
+                  onSave={saveHabit} onCancel={cancelForm} saving={saving}
+                />
               )}
 
               {loading ? <div className="loading">Loading…</div> : (
@@ -325,6 +404,7 @@ export default function App({ onLogout }) {
                           onIncrement={increment} onDecrement={decrement}
                           onEdit={(h) => editingId === h.id ? cancelForm() : startEdit(h)}
                           onDelete={deleteHabit}
+                          mutating={mutating}
                         />
                       ))}
                     </ul>
@@ -349,5 +429,13 @@ export default function App({ onLogout }) {
         </div>
       )}
     </div>
+  )
+}
+
+export default function App({ onLogout }) {
+  return (
+    <ToastProvider>
+      <AppInner onLogout={onLogout} />
+    </ToastProvider>
   )
 }

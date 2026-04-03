@@ -1,22 +1,29 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
+import { computeEndTime } from '../utils'
 
 function GlossaryForm({ item, onSave, onCancel }) {
   const [name, setName] = useState(item?.name || '')
   const [description, setDescription] = useState(item?.description || '')
   const [duration, setDuration] = useState(item?.default_duration_minutes || '')
-  const [defaultTime, setDefaultTime] = useState(item?.default_time?.slice(0,5) || '')
+  const [defaultTime, setDefaultTime] = useState(item?.default_time?.slice(0, 5) || '')
   const [tags, setTags] = useState(item?.tags?.join(', ') || '')
+  const [saving, setSaving] = useState(false)
 
-  function handleSave() {
-    if (!name.trim()) return
-    onSave({
-      name: name.trim(),
-      description,
-      default_duration_minutes: duration ? parseInt(duration) : null,
-      default_time: defaultTime || null,
-      tags: tags ? tags.split(',').map(t => t.trim()).filter(Boolean) : [],
-      source: 'custom'
-    })
+  async function handleSave() {
+    if (!name.trim() || saving) return
+    setSaving(true)
+    try {
+      await onSave({
+        name: name.trim(),
+        description,
+        default_duration_minutes: duration ? parseInt(duration) : null,
+        default_time: defaultTime || null,
+        tags: tags ? tags.split(',').map(t => t.trim()).filter(Boolean) : [],
+        source: 'custom'
+      })
+    } finally {
+      setSaving(false)
+    }
   }
 
   return (
@@ -24,15 +31,15 @@ function GlossaryForm({ item, onSave, onCancel }) {
       <div className="drawer">
         <div className="drawer-header">
           <h2 className="drawer-title">{item ? 'Edit Item' : 'New Glossary Item'}</h2>
-          <button className="icon-btn" onClick={onCancel}>✕</button>
+          <button className="icon-btn" onClick={onCancel} aria-label="Close">✕</button>
         </div>
         <div className="drawer-body">
-          <input className="input" placeholder="Name (required)" value={name} onChange={e => setName(e.target.value)} autoFocus />
-          <textarea className="input textarea" placeholder="Description (optional)" value={description} onChange={e => setDescription(e.target.value)} rows={3} />
+          <input className="input" placeholder="Name (required)" value={name} onChange={e => setName(e.target.value)} autoFocus maxLength={200} />
+          <textarea className="input textarea" placeholder="Description (optional)" value={description} onChange={e => setDescription(e.target.value)} rows={3} maxLength={2000} />
           <div className="two-col">
             <div>
               <label className="field-label">Default Duration (mins)</label>
-              <input className="input" type="number" placeholder="e.g. 60" value={duration} onChange={e => setDuration(e.target.value)} min="1" />
+              <input className="input" type="number" placeholder="e.g. 60" value={duration} onChange={e => setDuration(e.target.value)} min="1" max="1440" />
             </div>
             <div>
               <label className="field-label">Default Time</label>
@@ -40,11 +47,11 @@ function GlossaryForm({ item, onSave, onCancel }) {
             </div>
           </div>
           <label className="field-label">Tags <span className="field-hint-inline">(comma separated)</span></label>
-          <input className="input" placeholder="e.g. art, drawing, study" value={tags} onChange={e => setTags(e.target.value)} />
+          <input className="input" placeholder="e.g. art, drawing, study" value={tags} onChange={e => setTags(e.target.value)} maxLength={500} />
         </div>
         <div className="drawer-footer">
-          <button className="confirm-btn" onClick={handleSave} disabled={!name.trim()}>
-            {item ? 'Save Changes' : 'Add Item'}
+          <button className={`confirm-btn ${saving ? 'loading' : ''}`} onClick={handleSave} disabled={!name.trim() || saving}>
+            {saving ? 'Saving…' : item ? 'Save Changes' : 'Add Item'}
           </button>
           <button className="cancel-btn" onClick={onCancel}>Cancel</button>
         </div>
@@ -57,18 +64,29 @@ function ScheduleModal({ item, onSchedule, onCancel }) {
   const now = new Date()
   const todayStr = now.toISOString().split('T')[0]
   const [date, setDate] = useState(todayStr)
-  const [startTime, setStartTime] = useState(item.default_time?.slice(0,5) || '09:00')
+  const [startTime, setStartTime] = useState(item.default_time?.slice(0, 5) || '09:00')
   const endMins = item.default_duration_minutes
-    ? (() => { const [h,m] = startTime.split(':').map(Number); const t = h*60+m+item.default_duration_minutes; return `${String(Math.floor(t/60)).padStart(2,'0')}:${String(t%60).padStart(2,'0')}` })()
+    ? computeEndTime(startTime, item.default_duration_minutes)
     : ''
   const [endTime, setEndTime] = useState(endMins)
+  const [saving, setSaving] = useState(false)
+
+  async function handleSchedule() {
+    if (!date || !startTime || !endTime || saving) return
+    setSaving(true)
+    try {
+      await onSchedule({ date, start_time: startTime, end_time: endTime })
+    } finally {
+      setSaving(false)
+    }
+  }
 
   return (
     <div className="drawer-overlay" onClick={e => e.target === e.currentTarget && onCancel()}>
       <div className="drawer">
         <div className="drawer-header">
           <h2 className="drawer-title">Schedule "{item.name}"</h2>
-          <button className="icon-btn" onClick={onCancel}>✕</button>
+          <button className="icon-btn" onClick={onCancel} aria-label="Close">✕</button>
         </div>
         <div className="drawer-body">
           <label className="field-label">Date</label>
@@ -86,8 +104,8 @@ function ScheduleModal({ item, onSchedule, onCancel }) {
           {item.description && <p className="glossary-desc-preview">{item.description}</p>}
         </div>
         <div className="drawer-footer">
-          <button className="confirm-btn" onClick={() => onSchedule({ date, start_time: startTime, end_time: endTime })} disabled={!date || !startTime || !endTime}>
-            Add to Planner
+          <button className={`confirm-btn ${saving ? 'loading' : ''}`} onClick={handleSchedule} disabled={!date || !startTime || !endTime || saving}>
+            {saving ? 'Scheduling…' : 'Add to Planner'}
           </button>
           <button className="cancel-btn" onClick={onCancel}>Cancel</button>
         </div>
@@ -102,8 +120,7 @@ export default function GlossaryView({ glossaryItems, habits, onAddItem, onEditI
   const [scheduling, setScheduling] = useState(null)
   const [filterTag, setFilterTag] = useState('all')
 
-  // Merge glossary items + habits into one alphabetical list
-  const habitEntries = habits.map(h => ({
+  const habitEntries = useMemo(() => habits.map(h => ({
     id: `habit-${h.id}`,
     name: h.name,
     description: null,
@@ -113,15 +130,20 @@ export default function GlossaryView({ glossaryItems, habits, onAddItem, onEditI
     tags: [],
     default_duration_minutes: null,
     default_time: null,
-  }))
+  })), [habits])
 
-  const allItems = [...glossaryItems, ...habitEntries]
-    .filter(item => item.name.toLowerCase().includes(search.toLowerCase()))
-    .filter(item => filterTag === 'all' || (item.tags || []).includes(filterTag))
-    .sort((a, b) => a.name.localeCompare(b.name))
+  const allItems = useMemo(
+    () => [...glossaryItems, ...habitEntries]
+      .filter(item => item.name.toLowerCase().includes(search.toLowerCase()))
+      .filter(item => filterTag === 'all' || (item.tags || []).includes(filterTag))
+      .sort((a, b) => a.name.localeCompare(b.name)),
+    [glossaryItems, habitEntries, search, filterTag]
+  )
 
-  // Collect all unique tags
-  const allTags = [...new Set(glossaryItems.flatMap(i => i.tags || []))].sort()
+  const allTags = useMemo(
+    () => [...new Set(glossaryItems.flatMap(i => i.tags || []))].sort(),
+    [glossaryItems]
+  )
 
   async function handleSchedule(item, scheduleData) {
     await onScheduleItem(item, scheduleData)
@@ -138,7 +160,6 @@ export default function GlossaryView({ glossaryItems, habits, onAddItem, onEditI
         <button className="add-btn" onClick={() => setForm({})}>+ New Item</button>
       </div>
 
-      {/* Search + filter */}
       <div className="glossary-controls">
         <div className="glossary-search-wrap">
           <span className="search-icon">🔍</span>
@@ -160,7 +181,6 @@ export default function GlossaryView({ glossaryItems, habits, onAddItem, onEditI
         )}
       </div>
 
-      {/* List */}
       <ul className="glossary-list">
         {allItems.length === 0 && (
           <li className="glossary-empty">No items found{search ? ` for "${search}"` : ''}</li>
@@ -182,16 +202,16 @@ export default function GlossaryView({ glossaryItems, habits, onAddItem, onEditI
                 {item.description && <p className="glossary-desc">{item.description}</p>}
                 <div className="glossary-meta">
                   {item.default_duration_minutes && <span className="gmeta">⏱ {item.default_duration_minutes}m</span>}
-                  {item.default_time && <span className="gmeta">🕐 {item.default_time.slice(0,5)}</span>}
+                  {item.default_time && <span className="gmeta">🕐 {item.default_time.slice(0, 5)}</span>}
                 </div>
               </div>
             </div>
             <div className="glossary-actions">
-              <button className="glossary-schedule-btn" title="Schedule" onClick={() => setScheduling(item)}>+</button>
+              <button className="glossary-schedule-btn" title="Schedule" onClick={() => setScheduling(item)} aria-label="Schedule item">+</button>
               {item.source === 'custom' && (
                 <>
-                  <button className="icon-btn" onClick={() => setForm({ item })}>✏️</button>
-                  <button className="icon-btn" onClick={() => onDeleteItem(item.id)}>🗑</button>
+                  <button className="icon-btn" onClick={() => setForm({ item })} aria-label="Edit item">✏️</button>
+                  <button className="icon-btn" onClick={() => onDeleteItem(item.id)} aria-label="Delete item">🗑</button>
                 </>
               )}
             </div>
