@@ -2,12 +2,24 @@ import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '../supabase'
 import { useToast } from '../Toast'
 import { todayStr } from '../utils'
+import DashboardView from './DashboardView'
 import TodayView from './TodayView'
 import WeeklyView from './WeeklyView'
 import ProjectsView from './ProjectsView'
 import GlossaryView from './GlossaryView'
 
 const PLANNER_TABS = ['Today', 'Week', 'Projects', 'Glossary']
+
+function useIsDesktop(breakpoint = 768) {
+  const [isDesktop, setIsDesktop] = useState(() => typeof window !== 'undefined' && window.innerWidth >= breakpoint)
+  useEffect(() => {
+    const mql = window.matchMedia(`(min-width: ${breakpoint}px)`)
+    const handler = (e) => setIsDesktop(e.matches)
+    mql.addEventListener('change', handler)
+    return () => mql.removeEventListener('change', handler)
+  }, [breakpoint])
+  return isDesktop
+}
 
 export default function Planner({ habits }) {
   const toast = useToast()
@@ -179,12 +191,36 @@ export default function Planner({ habits }) {
   }, [habits, addBlock])
 
   const today = todayStr()
+  const isDesktop = useIsDesktop()
 
   const habitGlossaryEntries = habits.map(h => ({
     id: `habit-${h.id}`, name: h.name, source: 'habit', habit_id: h.id,
     color: h.color, default_duration_minutes: null, default_time: null
   }))
 
+  const allGlossary = [...glossaryItems, ...habitGlossaryEntries]
+
+  if (loading) {
+    return <div className="planner"><div className="loading" style={{ padding: '60px 0' }}>Loading…</div></div>
+  }
+
+  // Desktop: bento dashboard
+  if (isDesktop) {
+    return (
+      <div className="planner">
+        <div className="planner-content">
+          <DashboardView
+            tasks={tasks} blocks={blocks} projects={projects} habits={habits}
+            glossaryItems={allGlossary}
+            onAddBlock={addBlock} onEditBlock={editBlock} onDeleteBlock={deleteBlock}
+            onAddTask={addTask} onEditTask={editTask} onDeleteTask={deleteTask} onCompleteTask={completeTask}
+          />
+        </div>
+      </div>
+    )
+  }
+
+  // Mobile: tabbed navigation
   return (
     <div className="planner">
       <div className="planner-tabs">
@@ -193,46 +229,42 @@ export default function Planner({ habits }) {
         ))}
       </div>
 
-      {loading ? (
-        <div className="loading" style={{ padding: '60px 0' }}>Loading…</div>
-      ) : (
-        <div className="planner-content">
-          {tab === 'Today' && (
-            <TodayView
-              tasks={tasks} blocks={blocks} projects={projects} habits={habits}
-              glossaryItems={[...glossaryItems, ...habitGlossaryEntries]}
-              todayStr={today}
-              onAddBlock={addBlock} onEditBlock={editBlock} onDeleteBlock={deleteBlock}
-              onAddTask={addTask} onEditTask={editTask} onDeleteTask={deleteTask} onCompleteTask={completeTask}
-            />
-          )}
-          {tab === 'Week' && (
-            <WeeklyView
-              tasks={tasks} blocks={blocks} projects={projects} habits={habits}
-              glossaryItems={[...glossaryItems, ...habitGlossaryEntries]}
-              onAddBlock={addBlock} onEditBlock={editBlock} onDeleteBlock={deleteBlock}
-              onAddTask={addTask} onEditTask={editTask} onDeleteTask={deleteTask} onCompleteTask={completeTask}
-            />
-          )}
-          {tab === 'Projects' && (
-            <ProjectsView
-              projects={projects} tasks={tasks} habits={habits}
-              onAddProject={addProject} onEditProject={editProject} onDeleteProject={deleteProject}
-              onAddTask={addTask} onEditTask={editTask} onDeleteTask={deleteTask} onCompleteTask={completeTask}
-            />
-          )}
-          {tab === 'Glossary' && (
-            <GlossaryView
-              glossaryItems={glossaryItems}
-              habits={habits}
-              onAddItem={addGlossaryItem}
-              onEditItem={editGlossaryItem}
-              onDeleteItem={deleteGlossaryItem}
-              onScheduleItem={scheduleGlossaryItem}
-            />
-          )}
-        </div>
-      )}
+      <div className="planner-content">
+        {tab === 'Today' && (
+          <TodayView
+            tasks={tasks} blocks={blocks} projects={projects} habits={habits}
+            glossaryItems={allGlossary}
+            todayStr={today}
+            onAddBlock={addBlock} onEditBlock={editBlock} onDeleteBlock={deleteBlock}
+            onAddTask={addTask} onEditTask={editTask} onDeleteTask={deleteTask} onCompleteTask={completeTask}
+          />
+        )}
+        {tab === 'Week' && (
+          <WeeklyView
+            tasks={tasks} blocks={blocks} projects={projects} habits={habits}
+            glossaryItems={allGlossary}
+            onAddBlock={addBlock} onEditBlock={editBlock} onDeleteBlock={deleteBlock}
+            onAddTask={addTask} onEditTask={editTask} onDeleteTask={deleteTask} onCompleteTask={completeTask}
+          />
+        )}
+        {tab === 'Projects' && (
+          <ProjectsView
+            projects={projects} tasks={tasks} habits={habits}
+            onAddProject={addProject} onEditProject={editProject} onDeleteProject={deleteProject}
+            onAddTask={addTask} onEditTask={editTask} onDeleteTask={deleteTask} onCompleteTask={completeTask}
+          />
+        )}
+        {tab === 'Glossary' && (
+          <GlossaryView
+            glossaryItems={glossaryItems}
+            habits={habits}
+            onAddItem={addGlossaryItem}
+            onEditItem={editGlossaryItem}
+            onDeleteItem={deleteGlossaryItem}
+            onScheduleItem={scheduleGlossaryItem}
+          />
+        )}
+      </div>
     </div>
   )
 }
