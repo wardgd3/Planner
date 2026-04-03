@@ -49,14 +49,17 @@ export function getPeriodRange(period) {
   return { start: start.toISOString(), end: now.toISOString() }
 }
 
-/** Today as YYYY-MM-DD */
+/** Today as YYYY-MM-DD (local timezone) */
 export function todayStr() {
-  return new Date().toISOString().split('T')[0]
+  return toDateStr(new Date())
 }
 
-/** Date object to YYYY-MM-DD */
+/** Date object to YYYY-MM-DD (local timezone) */
 export function toDateStr(d) {
-  return d.toISOString().split('T')[0]
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${y}-${m}-${day}`
 }
 
 /** Get week days array starting from Monday, with optional week offset */

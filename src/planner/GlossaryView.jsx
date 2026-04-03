@@ -62,7 +62,7 @@ function GlossaryForm({ item, onSave, onCancel }) {
 
 function ScheduleModal({ item, onSchedule, onCancel }) {
   const now = new Date()
-  const todayStr = now.toISOString().split('T')[0]
+  const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
   const [date, setDate] = useState(todayStr)
   const [startTime, setStartTime] = useState(item.default_time?.slice(0, 5) || '09:00')
   const endMins = item.default_duration_minutes
