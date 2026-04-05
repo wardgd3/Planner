@@ -47,11 +47,6 @@ function Sparkline({ data, color }) {
   )
 }
 
-// Format a date string to a readable label
-function dayLabel(dateStr) {
-  const d = new Date(dateStr + 'T00:00:00')
-  return `${DAY_NAMES[d.getDay()]}, ${MONTHS_FULL[d.getMonth()]} ${d.getDate()}`
-}
 
 export default function DashboardView({
   tasks, blocks, projects, habits,
@@ -68,7 +63,6 @@ export default function DashboardView({
   const [calMonth, setCalMonth] = useState(now.getMonth())
   const [calYear, setCalYear] = useState(now.getFullYear())
   const [habitLogs, setHabitLogs] = useState([])
-  const [selectedDay, setSelectedDay] = useState(today)
 
   // Notes state
   const [notes, setNotes] = useState([])
@@ -156,20 +150,53 @@ export default function DashboardView({
   // ── Week data ──
   const weekDays = useMemo(() => getWeekDays(), [])
 
-  // ── Selected day data (for week detail panel) ──
-  const selectedBlocks = useMemo(
-    () => blocks.filter(b => b.date === selectedDay).sort((a, b) => a.start_time.localeCompare(b.start_time)),
-    [blocks, selectedDay]
-  )
-  const selectedTasks = useMemo(
-    () => tasks.filter(t => t.due_date === selectedDay && t.status !== 'done')
-      .sort((a, b) => { const o = { high: 0, medium: 1, low: 2 }; return o[a.priority] - o[b.priority] }),
-    [tasks, selectedDay]
-  )
-  const selectedDone = useMemo(
-    () => tasks.filter(t => t.due_date === selectedDay && t.status === 'done'),
-    [tasks, selectedDay]
-  )
+  // ── Next-up block with live countdown ──
+  const [nowTime, setNowTime] = useState(new Date())
+  useEffect(() => {
+    const interval = setInterval(() => setNowTime(new Date()), 30_000)
+    return () => clearInterval(interval)
+  }, [])
+
+  const nextUpBlock = useMemo(() => {
+    const currentTime = nowTime.toTimeString().slice(0, 5)
+    // Find the block currently in progress
+    const activeBlock = todayBlocks.find(b =>
+      b.start_time.slice(0, 5) <= currentTime && b.end_time.slice(0, 5) > currentTime
+    )
+    // Find the next upcoming block
+    const upcoming = todayBlocks.find(b => b.start_time.slice(0, 5) > currentTime)
+    return { active: activeBlock || null, next: upcoming || null }
+  }, [todayBlocks, nowTime])
+
+  const nextUpHint = useMemo(() => {
+    const block = nextUpBlock.next
+    if (!block) return null
+    const [h, m] = block.start_time.split(':').map(Number)
+    const blockStart = new Date(nowTime)
+    blockStart.setHours(h, m, 0, 0)
+    const diffMs = blockStart - nowTime
+    if (diffMs <= 0) return null
+    const diffMin = Math.round(diffMs / 60_000)
+    if (diffMin < 60) return `in ${diffMin} min`
+    const hrs = Math.floor(diffMin / 60)
+    const mins = diffMin % 60
+    return mins > 0 ? `in ${hrs}h ${mins}m` : `in ${hrs}h`
+  }, [nextUpBlock.next, nowTime])
+
+  const activeTimeLeft = useMemo(() => {
+    const block = nextUpBlock.active
+    if (!block) return null
+    const [h, m] = block.end_time.split(':').map(Number)
+    const blockEnd = new Date(nowTime)
+    blockEnd.setHours(h, m, 0, 0)
+    const diffMs = blockEnd - nowTime
+    if (diffMs <= 0) return null
+    const diffMin = Math.round(diffMs / 60_000)
+    if (diffMin < 60) return `${diffMin} min left`
+    const hrs = Math.floor(diffMin / 60)
+    const mins = diffMin % 60
+    return mins > 0 ? `${hrs}h ${mins}m left` : `${hrs}h left`
+  }, [nextUpBlock.active, nowTime])
 
   // ── Calendar data ──
   const calCells = useMemo(() => getMonthGrid(calYear, calMonth), [calYear, calMonth])
@@ -227,8 +254,7 @@ export default function DashboardView({
 
   return (
     <div className="dash">
-      {/* ══ Row 1 — Today's Focus + Weather ══ */}
-      <div className="dash-row-1">
+      {/* ══ Row 1 — Today's Focus (full-width hero banner) ══ */}
       <div className="dash-card dash-today">
         <div className="dash-card-header">
           <div>
@@ -248,17 +274,21 @@ export default function DashboardView({
               <p className="empty-msg" style={{ padding: '12px 0' }}>No blocks today</p>
             ) : (
               <div className="dash-timeline-list">
-                {todayBlocks.map(block => (
-                  <div
-                    key={block.id}
-                    className="dash-tl-block"
-                    style={{ borderLeftColor: block.color, background: block.color + '30' }}
-                    onClick={() => setBlockForm({ block, date: today })}
-                  >
-                    <span className="dash-tl-time">{block.start_time.slice(0, 5)} – {block.end_time.slice(0, 5)}</span>
-                    <span className="dash-tl-title">{block.title}</span>
-                  </div>
-                ))}
+                {todayBlocks.map(block => {
+                  const isActive = nextUpBlock.active && nextUpBlock.active.id === block.id
+                  return (
+                    <div
+                      key={block.id}
+                      className={`dash-tl-block ${isActive ? 'dash-tl-active' : ''}`}
+                      style={{ borderLeftColor: block.color, background: block.color + '30' }}
+                      onClick={() => setBlockForm({ block, date: today })}
+                    >
+                      <span className="dash-tl-time">{block.start_time.slice(0, 5)} – {block.end_time.slice(0, 5)}</span>
+                      <span className="dash-tl-title">{block.title}</span>
+                      {isActive && <span className="dash-tl-live">NOW</span>}
+                    </div>
+                  )
+                })}
               </div>
             )}
           </div>
@@ -288,12 +318,35 @@ export default function DashboardView({
               ))}
             </ul>
           </div>
+
+          <div className="dash-next-up">
+            <p className="dash-next-up-label">Next Up</p>
+            {nextUpBlock.active && (
+              <div className="dash-next-up-active">
+                <div className="dash-next-up-pulse" />
+                <div>
+                  <p className="dash-next-up-title">{nextUpBlock.active.title}</p>
+                  <p className="dash-next-up-time">{activeTimeLeft}</p>
+                </div>
+              </div>
+            )}
+            {nextUpBlock.next ? (
+              <div className="dash-next-up-upcoming">
+                <p className="dash-next-up-title">{nextUpBlock.next.title}</p>
+                <p className="dash-next-up-time">
+                  {nextUpBlock.next.start_time.slice(0, 5)} — {nextUpHint}
+                </p>
+              </div>
+            ) : !nextUpBlock.active ? (
+              <p className="dash-next-up-empty">Nothing else today</p>
+            ) : null}
+          </div>
         </div>
 
         <div className="dash-quick-add">
           <input
             className="input"
-            placeholder="Quick add task… (Enter)"
+            placeholder="Quick add task... (Enter)"
             value={quickAdd}
             onChange={e => setQuickAdd(e.target.value)}
             onKeyDown={handleQuickAdd}
@@ -301,94 +354,44 @@ export default function DashboardView({
         </div>
       </div>
 
-      <div className="dash-card dash-weather">
-        <h2 className="dash-card-title">Weather</h2>
-        <WeatherWidget supabase={supabase} />
-      </div>
-      </div>
-
-      {/* ══ Row 2 — Interactive Week ══ */}
-      <div className="dash-card dash-week">
-        <h2 className="dash-card-title">This Week</h2>
-        <div className="dash-week-grid">
-          {weekDays.map((day, i) => {
-            const ds = toDateStr(day)
-            const dayBlocks = blocks.filter(b => b.date === ds)
-            const isToday = ds === today
-            const isSelected = ds === selectedDay
-            return (
-              <div
-                key={ds}
-                className={`dash-week-day ${isToday ? 'dash-week-today' : ''} ${isSelected ? 'dash-week-selected' : ''}`}
-                onClick={() => setSelectedDay(ds)}
-              >
-                <span className="dash-week-name">{WEEK_HEADERS[i]}</span>
-                <span className={`dash-week-num ${isToday ? 'accent' : ''}`}>{day.getDate()}</span>
-                <div className="dash-week-chips">
-                  {dayBlocks.slice(0, 3).map(b => (
-                    <div key={b.id} className="dash-week-chip" style={{ background: b.color }} />
-                  ))}
-                  {dayBlocks.length > 3 && <span className="dash-week-more">+{dayBlocks.length - 3}</span>}
+      {/* ══ Row 2 — Week + Weather (left) | Habit Streaks (right) ══ */}
+      <div className="dash-row2-left">
+        <div className="dash-card dash-week">
+          <h2 className="dash-card-title">This Week</h2>
+          <div className="dash-week-grid">
+            {weekDays.map((day, i) => {
+              const ds = toDateStr(day)
+              const dayBlocks = blocks.filter(b => b.date === ds)
+              const dayTasks = tasks.filter(t => t.due_date === ds && t.status !== 'done')
+              const isToday = ds === today
+              return (
+                <div
+                  key={ds}
+                  className={`dash-week-day ${isToday ? 'dash-week-today' : ''}`}
+                  onClick={() => setBlockForm({ date: ds })}
+                >
+                  <span className="dash-week-name">{WEEK_HEADERS[i]}</span>
+                  <span className={`dash-week-num ${isToday ? 'accent' : ''}`}>{day.getDate()}</span>
+                  <div className="dash-week-chips">
+                    {dayBlocks.slice(0, 4).map(b => (
+                      <div key={b.id} className="dash-week-chip" style={{ background: b.color }} title={b.title} />
+                    ))}
+                  </div>
+                  {dayTasks.length > 0 && (
+                    <span className="dash-week-task-count">{dayTasks.length} task{dayTasks.length !== 1 ? 's' : ''}</span>
+                  )}
                 </div>
-              </div>
-            )
-          })}
-        </div>
-
-        {/* Day detail panel */}
-        <div className="dash-day-detail">
-          <div className="dash-day-detail-header">
-            <p className="dash-day-detail-label">{dayLabel(selectedDay)}</p>
-            <div className="dash-day-detail-actions">
-              <button className="add-btn" onClick={() => setBlockForm({ date: selectedDay })} title="Add block">+ Block</button>
-              <button className="add-btn" onClick={() => setTaskForm({ prefillDate: selectedDay })} title="Add task">+ Task</button>
-            </div>
+              )
+            })}
           </div>
+        </div>
 
-          {selectedBlocks.length === 0 && selectedTasks.length === 0 && selectedDone.length === 0 ? (
-            <p className="empty-msg" style={{ padding: '16px 0' }}>Nothing scheduled</p>
-          ) : (
-            <div className="dash-day-detail-body">
-              {selectedBlocks.length > 0 && (
-                <div className="dash-day-blocks">
-                  {selectedBlocks.map(block => (
-                    <div
-                      key={block.id}
-                      className="dash-tl-block"
-                      style={{ borderLeftColor: block.color, background: block.color + '30' }}
-                      onClick={() => setBlockForm({ block, date: selectedDay })}
-                    >
-                      <span className="dash-tl-time">{block.start_time.slice(0, 5)} – {block.end_time.slice(0, 5)}</span>
-                      <span className="dash-tl-title">{block.title}</span>
-                    </div>
-                  ))}
-                </div>
-              )}
-              {(selectedTasks.length > 0 || selectedDone.length > 0) && (
-                <ul className="task-list" style={{ marginTop: selectedBlocks.length > 0 ? 8 : 0 }}>
-                  {selectedTasks.map(task => (
-                    <li key={task.id} className="task-row compact">
-                      <button className="task-check small" onClick={() => onCompleteTask(task)} aria-label="Complete task" />
-                      <div className="task-info">
-                        <p className="task-title">{task.title}</p>
-                      </div>
-                      <span className="priority-dot" style={{ background: priorityColor(task.priority) }} />
-                    </li>
-                  ))}
-                  {selectedDone.map(task => (
-                    <li key={task.id} className="task-row compact done">
-                      <span className="task-check small done">✓</span>
-                      <p className="task-title done-title">{task.title}</p>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-          )}
+        <div className="dash-card dash-weather">
+          <h2 className="dash-card-title">Weather</h2>
+          <WeatherWidget supabase={supabase} />
         </div>
       </div>
 
-      {/* ══ Row 2 — Habit Streaks ══ */}
       <div className="dash-card dash-habits">
         <h2 className="dash-card-title">Habit Streaks</h2>
         {habits.length === 0 ? (

@@ -455,7 +455,11 @@ h1 {
 /* ══ Dashboard bento grid ══ */
 .dash {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 3fr 2fr;
+  grid-template-areas:
+    "hero    hero"
+    "left    right"
+    "cal     notes";
   gap: 16px;
   padding-top: 28px;
 }
@@ -484,15 +488,26 @@ h1 {
   font-weight: 600; margin-bottom: 8px;
 }
 
-/* Row 1 — Today's Focus + Weather */
-.dash-row-1 {
-  grid-column: 1 / -1;
-  display: grid;
-  grid-template-columns: 1fr 380px;
+/* Row 1 — Today's Focus hero banner */
+.dash-today {
+  grid-area: hero;
+  background: linear-gradient(135deg, var(--surface) 0%, var(--surface2) 100%);
+  border-radius: 16px;
+}
+
+/* Row 2 — stacked left column */
+.dash-row2-left {
+  grid-area: left;
+  display: flex;
+  flex-direction: column;
   gap: 16px;
 }
-.dash-today { }
+.dash-habits { grid-area: right; align-self: start; }
 .dash-weather { display: flex; flex-direction: column; }
+
+/* Row 3 */
+.dash-calendar { grid-area: cal; }
+.dash-notes { grid-area: notes; }
 
 /* ── Weather Widget (Google-inspired) ── */
 .wx { flex: 1; display: flex; flex-direction: column; gap: 14px; }
@@ -634,8 +649,69 @@ h1 {
 .dash-today-actions { display: flex; gap: 8px; flex-shrink: 0; }
 .dash-today-body {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 1fr 1fr auto;
   gap: 20px;
+  align-items: start;
+}
+
+/* Next-up indicator */
+.dash-next-up {
+  display: flex; flex-direction: column; gap: 10px;
+  padding: 14px 18px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  min-width: 190px; max-width: 220px;
+}
+.dash-next-up-label {
+  font-size: 10px; color: var(--accent);
+  text-transform: uppercase; letter-spacing: 1.2px;
+  font-weight: 700;
+}
+.dash-next-up-active {
+  display: flex; align-items: center; gap: 10px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+.dash-next-up-pulse {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: #4ade80;
+  box-shadow: 0 0 6px #4ade80;
+  flex-shrink: 0;
+  animation: pulse-glow 2s ease-in-out infinite;
+}
+@keyframes pulse-glow {
+  0%, 100% { opacity: 1; box-shadow: 0 0 4px #4ade80; }
+  50% { opacity: 0.5; box-shadow: 0 0 10px #4ade80; }
+}
+.dash-next-up-upcoming { }
+.dash-next-up-title {
+  font-size: 13px; font-weight: 600;
+  color: var(--text);
+}
+.dash-next-up-time {
+  font-family: var(--font-mono);
+  font-size: 12px; color: var(--accent);
+  font-weight: 500; margin-top: 2px;
+}
+.dash-next-up-empty {
+  font-size: 12px; color: var(--muted);
+  font-style: italic;
+}
+
+/* Active block highlight */
+.dash-tl-active {
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+.dash-tl-live {
+  font-family: var(--font-mono);
+  font-size: 9px; font-weight: 700;
+  color: #4ade80; letter-spacing: 1px;
+  flex-shrink: 0;
+  padding: 2px 6px;
+  background: rgba(74,222,128,0.12);
+  border-radius: 4px;
 }
 .dash-timeline { min-width: 0; }
 .dash-tasks { min-width: 0; }
@@ -676,12 +752,12 @@ h1 {
 }
 .dash-week-day {
   display: flex; flex-direction: column;
-  align-items: center; gap: 4px;
-  padding: 10px 4px;
+  align-items: center; gap: 6px;
+  padding: 14px 6px 12px;
   border-radius: var(--radius-sm);
   border: 1px solid var(--border-subtle);
   cursor: pointer; transition: all 0.2s;
-  min-height: 80px;
+  min-height: 105px;
 }
 .dash-week-day:hover { border-color: var(--accent); background: var(--surface2); }
 .dash-week-today {
@@ -696,7 +772,12 @@ h1 {
 }
 .dash-week-num {
   font-family: var(--font-display);
-  font-size: 18px; font-weight: 700;
+  font-size: 22px; font-weight: 700;
+}
+.dash-week-task-count {
+  font-size: 9px; color: var(--muted);
+  font-family: var(--font-mono);
+  margin-top: auto;
 }
 .dash-week-num.accent { color: var(--accent); }
 .dash-week-chips {
@@ -741,29 +822,7 @@ h1 {
   min-width: 24px; text-align: right;
 }
 
-/* Week selected state + day detail panel */
-.dash-week-selected {
-  border-color: var(--accent) !important;
-  background: var(--accent-dim);
-}
-.dash-day-detail {
-  margin-top: 16px;
-  padding-top: 16px;
-  border-top: 1px solid var(--border-subtle);
-}
-.dash-day-detail-header {
-  display: flex; align-items: center;
-  justify-content: space-between;
-  margin-bottom: 10px;
-}
-.dash-day-detail-label {
-  font-family: var(--font-display);
-  font-size: 15px; font-weight: 600;
-  color: var(--text-secondary);
-}
-.dash-day-detail-actions { display: flex; gap: 6px; }
-.dash-day-detail-body { display: flex; flex-direction: column; gap: 4px; }
-.dash-day-blocks { display: flex; flex-direction: column; gap: 4px; }
+/* (day-detail panel removed — clicking week day is the only interaction) */
 
 /* Row 3 — Calendar + Notes (two columns) */
 /* Calendar and Notes sit side by side */
@@ -1021,7 +1080,17 @@ h1 {
 
   .projects-view { padding-top: 16px; }
 
-  .dash-row-1 { grid-template-columns: 1fr; }
+  .dash {
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      "hero"
+      "left"
+      "right"
+      "cal"
+      "notes";
+  }
+  .dash-today-body { grid-template-columns: 1fr; }
+  .dash-next-up { max-width: none; }
   .wx-forecast { grid-template-columns: repeat(7, 1fr); gap: 3px; }
   .wx-pill { min-width: 50px; padding: 6px 8px 5px; }
 }
