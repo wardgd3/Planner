@@ -455,49 +455,23 @@ h1 {
 
 /* ══ Dashboard bento grid ══ */
 .dash {
-  padding-top: 28px;
-  transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-/* Focus mode: only Today's Focus, centered */
-.dash-focused {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  min-height: calc(100vh - 100px);
-}
-.dash-focused .dash-today {
-  width: 100%;
-  max-width: 1200px;
-  animation: focus-in 0.5s cubic-bezier(0.4, 0, 0.2, 1);
-}
-.dash-focused .dash-rest {
-  opacity: 0;
-  max-height: 0;
-  overflow: hidden;
-  pointer-events: none;
-  transition: opacity 0.4s ease, max-height 0.5s cubic-bezier(0.4, 0, 0.2, 1);
-}
-@keyframes focus-in {
-  from { opacity: 0; transform: translateY(20px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
-/* Expanded mode: full dashboard grid */
-.dash-expanded {
   display: grid;
   grid-template-columns: 3fr 2fr;
   grid-template-areas:
-    "hero    hero"
-    "rest    rest";
+    "hero  hero"
+    "rest  rest";
   gap: 16px;
+  padding-top: 28px;
 }
-.dash-expanded .dash-today {
+
+/* Today's Focus — always grid-area hero, slides via transform */
+.dash .dash-today {
   grid-area: hero;
-  animation: slide-up 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: transform 0.55s cubic-bezier(0.4, 0, 0.2, 1);
 }
-.dash-expanded .dash-rest {
+
+/* Rest container — always present, fades in/out */
+.dash .dash-rest {
   grid-area: rest;
   display: grid;
   grid-template-columns: 3fr 2fr;
@@ -505,18 +479,40 @@ h1 {
     "left    right"
     "cal     notes";
   gap: 16px;
+  transition: opacity 0.45s cubic-bezier(0.4, 0, 0.2, 1),
+              transform 0.45s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* ── Focus mode: centered hero, hidden rest ── */
+.dash-focused {
+  min-height: calc(100vh - 100px);
+  align-content: center;
+}
+.dash-focused .dash-today {
+  transform: translateY(calc(50vh - 50% - 80px));
+}
+.dash-focused .dash-rest {
+  opacity: 0;
+  transform: translateY(24px);
+  pointer-events: none;
+  visibility: hidden;
+  transition: opacity 0.4s cubic-bezier(0.4, 0, 0.2, 1),
+              transform 0.4s cubic-bezier(0.4, 0, 0.2, 1),
+              visibility 0s 0.4s;
+}
+
+/* ── Expanded mode: normal layout ── */
+.dash-expanded .dash-today {
+  transform: translateY(0);
+}
+.dash-expanded .dash-rest {
   opacity: 1;
-  max-height: 5000px;
-  transition: opacity 0.5s ease 0.15s, max-height 0.6s cubic-bezier(0.4, 0, 0.2, 1);
-  animation: content-fade-in 0.6s cubic-bezier(0.4, 0, 0.2, 1) 0.1s both;
-}
-@keyframes slide-up {
-  from { transform: translateY(30vh); }
-  to { transform: translateY(0); }
-}
-@keyframes content-fade-in {
-  from { opacity: 0; transform: translateY(30px); }
-  to { opacity: 1; transform: translateY(0); }
+  transform: translateY(0);
+  pointer-events: auto;
+  visibility: visible;
+  transition: opacity 0.5s cubic-bezier(0.4, 0, 0.2, 1) 0.1s,
+              transform 0.5s cubic-bezier(0.4, 0, 0.2, 1) 0.1s,
+              visibility 0s 0s;
 }
 .dash-card {
   background: var(--surface);
@@ -1228,10 +1224,10 @@ h1 {
 
   .projects-view { padding-top: 16px; }
 
-  .dash-expanded {
+  .dash {
     grid-template-columns: 1fr;
   }
-  .dash-expanded .dash-rest {
+  .dash .dash-rest {
     grid-template-columns: 1fr;
     grid-template-areas:
       "left"
