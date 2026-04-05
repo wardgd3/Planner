@@ -1,19 +1,11 @@
 import { useEffect, useState } from "react";
-import { fetchNashvilleWeather, syncWeatherToSupabase } from "./weatherService";
+import { fetchWeather, syncWeatherToSupabase, parseCondition, weatherEmoji, generateSummary } from "./weatherService";
 
-function weatherEmoji(code) {
-  if (code === 0 || code === 1) return "\u2600\uFE0F";
-  if (code === 2) return "\u26C5";
-  if (code === 3) return "\u2601\uFE0F";
-  if ([45, 48].includes(code)) return "\uD83C\uDF2B\uFE0F";
-  if ([51, 53, 55, 61, 63, 65, 80, 81, 82].includes(code)) return "\uD83C\uDF27\uFE0F";
-  if ([71, 73, 75].includes(code)) return "\u2744\uFE0F";
-  if ([95, 96, 99].includes(code)) return "\u26C8\uFE0F";
-  return "\uD83C\uDF21\uFE0F";
-}
+const DAY_ABBR = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
 export default function WeatherWidget({ supabase = null }) {
-  const [weather, setWeather] = useState(null);
+  const [forecast, setForecast] = useState(null);
+  const [selectedIdx, setSelectedIdx] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -24,9 +16,9 @@ export default function WeatherWidget({ supabase = null }) {
         if (supabase) {
           data = await syncWeatherToSupabase(supabase);
         } else {
-          data = await fetchNashvilleWeather();
+          data = await fetchWeather();
         }
-        setWeather(data);
+        setForecast(data);
       } catch (e) {
         setError(e.message);
       } finally {
@@ -37,72 +29,105 @@ export default function WeatherWidget({ supabase = null }) {
   }, []);
 
   if (loading) return (
-    <div className="weather-widget">
-      <span className="weather-loading">Loading weather...</span>
+    <div className="wx">
+      <div className="wx-loading">Loading weather...</div>
     </div>
   );
 
   if (error) return (
-    <div className="weather-widget">
-      <span className="weather-error">Weather unavailable</span>
+    <div className="wx">
+      <div className="wx-error">Weather unavailable</div>
     </div>
   );
 
-  const emoji = weatherEmoji(weather.condition_code);
-  const uvLevel = weather.uv_index >= 8 ? "Very High"
-    : weather.uv_index >= 6 ? "High"
-    : weather.uv_index >= 3 ? "Moderate"
-    : "Low";
+  const day = forecast.days[selectedIdx];
+  const isToday = selectedIdx === 0;
+  const displayTemp = isToday ? Math.round(forecast.current_temp_f) : Math.round(day.temp_high_f);
+  const conditionCode = isToday ? forecast.current_code : day.weathercode;
+  const emoji = weatherEmoji(conditionCode);
+  const condition = parseCondition(conditionCode);
+  const summary = generateSummary(day);
 
-  const uvClass = weather.uv_index >= 8 ? "uv-very-high"
-    : weather.uv_index >= 6 ? "uv-high"
-    : weather.uv_index >= 3 ? "uv-moderate"
-    : "uv-low";
+  const uvLevel = day.uv_index >= 8 ? "Very High"
+    : day.uv_index >= 6 ? "High"
+    : day.uv_index >= 3 ? "Moderate"
+    : "Low";
+  const uvClass = day.uv_index >= 8 ? "wx-uv-vhigh"
+    : day.uv_index >= 6 ? "wx-uv-high"
+    : day.uv_index >= 3 ? "wx-uv-mod"
+    : "wx-uv-low";
 
   return (
-    <div className="weather-widget">
-      <div className="weather-hero">
-        <span className="weather-emoji">{emoji}</span>
-        <div className="weather-hero-info">
-          <div className="weather-condition">{weather.condition}</div>
-          <div className="weather-location">{weather.location}</div>
+    <div className="wx">
+      {/* ── Top: Selected Day Detail ── */}
+      <div className="wx-detail">
+        <div className="wx-detail-top">
+          <span className="wx-detail-emoji">{emoji}</span>
+          <div className="wx-detail-main">
+            <span className="wx-detail-temp">{displayTemp}°</span>
+            <span className="wx-detail-unit">F</span>
+          </div>
         </div>
-        <div className="weather-temp">{Math.round(weather.temp_current_f)}°</div>
+
+        <div className="wx-detail-info">
+          <p className="wx-detail-condition">{condition}</p>
+          <p className="wx-detail-location">{forecast.location}</p>
+        </div>
+
+        <p className="wx-detail-range">
+          H: {Math.round(day.temp_high_f)}°{"  "}L: {Math.round(day.temp_low_f)}°
+        </p>
+
+        <p className="wx-detail-summary">{summary}</p>
+
+        <div className="wx-pills">
+          <div className="wx-pill">
+            <span className="wx-pill-icon">{day.precipitation_in > 0 ? "\uD83C\uDF27\uFE0F" : "\uD83D\uDCA7"}</span>
+            <span className="wx-pill-value">{day.precipitation_in}"</span>
+            <span className="wx-pill-label">Precip</span>
+          </div>
+          {day.humidity != null && (
+            <div className="wx-pill">
+              <span className="wx-pill-icon">{"\uD83D\uDCA6"}</span>
+              <span className="wx-pill-value">{Math.round(day.humidity)}%</span>
+              <span className="wx-pill-label">Humidity</span>
+            </div>
+          )}
+          <div className="wx-pill">
+            <span className="wx-pill-icon">{"\uD83D\uDCA8"}</span>
+            <span className="wx-pill-value">{Math.round(day.wind_speed_mph)}</span>
+            <span className="wx-pill-label">mph</span>
+          </div>
+          <div className="wx-pill">
+            <span className="wx-pill-icon">{"\u2600\uFE0F"}</span>
+            <span className={`wx-pill-value ${uvClass}`}>{uvLevel}</span>
+            <span className="wx-pill-label">UV</span>
+          </div>
+        </div>
       </div>
 
-      <div className="weather-details">
-        <div className="weather-detail">
-          <span className="weather-detail-label">High</span>
-          <span className="weather-detail-value">{Math.round(weather.temp_high_f)}°</span>
-        </div>
-        <div className="weather-detail">
-          <span className="weather-detail-label">Low</span>
-          <span className="weather-detail-value">{Math.round(weather.temp_low_f)}°</span>
-        </div>
-        <div className="weather-detail">
-          <span className="weather-detail-label">Rain</span>
-          <span className="weather-detail-value">{weather.precipitation_mm} mm</span>
-        </div>
-        <div className="weather-detail">
-          <span className="weather-detail-label">Wind</span>
-          <span className="weather-detail-value">{Math.round(weather.wind_speed_mph)} mph</span>
-        </div>
-        <div className="weather-detail">
-          <span className="weather-detail-label">UV</span>
-          <span className={`weather-detail-value ${uvClass}`}>{uvLevel}</span>
-        </div>
+      {/* ── Bottom: 7-Day Selector ── */}
+      <div className="wx-forecast">
+        {forecast.days.map((d, i) => {
+          const dt = new Date(d.date + "T00:00:00");
+          const abbr = i === 0 ? "Today" : DAY_ABBR[dt.getDay()];
+          const active = i === selectedIdx;
+          return (
+            <button
+              key={d.date}
+              className={`wx-day ${active ? "wx-day-active" : ""}`}
+              onClick={() => setSelectedIdx(i)}
+            >
+              <span className="wx-day-name">{abbr}</span>
+              <span className="wx-day-emoji">{weatherEmoji(d.weathercode)}</span>
+              <span className="wx-day-temps">
+                <span className="wx-day-high">{Math.round(d.temp_high_f)}°</span>
+                <span className="wx-day-low">{Math.round(d.temp_low_f)}°</span>
+              </span>
+            </button>
+          );
+        })}
       </div>
-
-      {weather.precipitation_mm > 2 && (
-        <div className="weather-warning">
-          Rain expected — check outdoor blocks
-        </div>
-      )}
-      {weather.uv_index >= 8 && (
-        <div className="weather-warning">
-          Very high UV — apply sunscreen for outdoor activities
-        </div>
-      )}
     </div>
   );
 }
