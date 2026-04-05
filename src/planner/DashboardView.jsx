@@ -9,16 +9,25 @@ import WeatherWidget from './WeatherWidget'
 
 const WEEK_HEADERS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
 
-function getWeekDays() {
+function getWeekDays(offset = 0) {
   const now = new Date()
   const day = now.getDay()
   const monday = new Date(now)
-  monday.setDate(now.getDate() - ((day + 6) % 7))
+  monday.setDate(now.getDate() - ((day + 6) % 7) + offset * 7)
   return Array.from({ length: 7 }, (_, i) => {
     const d = new Date(monday)
     d.setDate(monday.getDate() + i)
     return d
   })
+}
+
+function weekLabel(days) {
+  const mon = days[0]
+  const sun = days[6]
+  const sameMonth = mon.getMonth() === sun.getMonth()
+  const mStr = MONTHS_FULL[mon.getMonth()]
+  if (sameMonth) return `${mStr} ${mon.getDate()} – ${sun.getDate()}`
+  return `${mStr.slice(0, 3)} ${mon.getDate()} – ${MONTHS_FULL[sun.getMonth()].slice(0, 3)} ${sun.getDate()}`
 }
 
 function getMonthGrid(year, month) {
@@ -63,6 +72,8 @@ export default function DashboardView({
   const [calMonth, setCalMonth] = useState(now.getMonth())
   const [calYear, setCalYear] = useState(now.getFullYear())
   const [habitLogs, setHabitLogs] = useState([])
+  const [weekOffset, setWeekOffset] = useState(0)
+  const [selectedDay, setSelectedDay] = useState(today)
 
   // Notes state
   const [notes, setNotes] = useState([])
@@ -148,7 +159,18 @@ export default function DashboardView({
   )
 
   // ── Week data ──
-  const weekDays = useMemo(() => getWeekDays(), [])
+  const weekDays = useMemo(() => getWeekDays(weekOffset), [weekOffset])
+
+  // ── Selected day data (for week detail) ──
+  const selectedBlocks = useMemo(
+    () => blocks.filter(b => b.date === selectedDay).sort((a, b) => a.start_time.localeCompare(b.start_time)),
+    [blocks, selectedDay]
+  )
+  const selectedTasks = useMemo(
+    () => tasks.filter(t => t.due_date === selectedDay && t.status !== 'done')
+      .sort((a, b) => { const o = { high: 0, medium: 1, low: 2 }; return o[a.priority] - o[b.priority] }),
+    [tasks, selectedDay]
+  )
 
   // ── Next-up block with live countdown ──
   const [nowTime, setNowTime] = useState(new Date())
@@ -357,18 +379,28 @@ export default function DashboardView({
       {/* ══ Row 2 — Week + Weather (left) | Habit Streaks (right) ══ */}
       <div className="dash-row2-left">
         <div className="dash-card dash-week">
-          <h2 className="dash-card-title">This Week</h2>
+          <div className="dash-week-header">
+            <h2 className="dash-card-title">This Week</h2>
+            <div className="dash-week-nav">
+              {weekOffset !== 0 && (
+                <button className="add-btn" onClick={() => { setWeekOffset(0); setSelectedDay(today) }}>Today</button>
+              )}
+              <button className="nav-btn" onClick={() => setWeekOffset(o => o - 1)} aria-label="Previous week">&#8249;</button>
+              <span className="dash-week-range">{weekLabel(weekDays)}</span>
+              <button className="nav-btn" onClick={() => setWeekOffset(o => o + 1)} aria-label="Next week">&#8250;</button>
+            </div>
+          </div>
           <div className="dash-week-grid">
             {weekDays.map((day, i) => {
               const ds = toDateStr(day)
               const dayBlocks = blocks.filter(b => b.date === ds)
-              const dayTasks = tasks.filter(t => t.due_date === ds && t.status !== 'done')
               const isToday = ds === today
+              const isSelected = ds === selectedDay
               return (
                 <div
                   key={ds}
-                  className={`dash-week-day ${isToday ? 'dash-week-today' : ''}`}
-                  onClick={() => setBlockForm({ date: ds })}
+                  className={`dash-week-day ${isToday ? 'dash-week-today' : ''} ${isSelected ? 'dash-week-selected' : ''}`}
+                  onClick={() => setSelectedDay(ds)}
                 >
                   <span className="dash-week-name">{WEEK_HEADERS[i]}</span>
                   <span className={`dash-week-num ${isToday ? 'accent' : ''}`}>{day.getDate()}</span>
@@ -377,12 +409,49 @@ export default function DashboardView({
                       <div key={b.id} className="dash-week-chip" style={{ background: b.color }} title={b.title} />
                     ))}
                   </div>
-                  {dayTasks.length > 0 && (
-                    <span className="dash-week-task-count">{dayTasks.length} task{dayTasks.length !== 1 ? 's' : ''}</span>
-                  )}
                 </div>
               )
             })}
+          </div>
+
+          {/* Selected day detail */}
+          <div className="dash-week-detail">
+            <div className="dash-week-detail-header">
+              <p className="dash-week-detail-label">
+                {(() => {
+                  const d = new Date(selectedDay + 'T00:00:00')
+                  return `${DAY_NAMES[d.getDay()]}, ${MONTHS_FULL[d.getMonth()]} ${d.getDate()}`
+                })()}
+              </p>
+              <button
+                className="dash-week-add-btn"
+                onClick={() => setBlockForm({ date: selectedDay })}
+                title="Add block"
+              >+</button>
+            </div>
+            {selectedBlocks.length === 0 && selectedTasks.length === 0 ? (
+              <p className="empty-msg" style={{ padding: '8px 0' }}>Nothing scheduled</p>
+            ) : (
+              <div className="dash-week-detail-list">
+                {selectedBlocks.map(block => (
+                  <div
+                    key={block.id}
+                    className="dash-tl-block"
+                    style={{ borderLeftColor: block.color, background: block.color + '30' }}
+                    onClick={() => setBlockForm({ block, date: selectedDay })}
+                  >
+                    <span className="dash-tl-time">{block.start_time.slice(0, 5)} – {block.end_time.slice(0, 5)}</span>
+                    <span className="dash-tl-title">{block.title}</span>
+                  </div>
+                ))}
+                {selectedTasks.map(task => (
+                  <div key={task.id} className="dash-week-detail-task">
+                    <span className="priority-dot" style={{ background: priorityColor(task.priority) }} />
+                    <span className="dash-tl-title">{task.title}</span>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
 

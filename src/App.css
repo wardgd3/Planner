@@ -502,7 +502,7 @@ h1 {
   flex-direction: column;
   gap: 16px;
 }
-.dash-habits { grid-area: right; align-self: start; }
+.dash-habits { grid-area: right; }
 .dash-weather { display: flex; flex-direction: column; }
 
 /* Row 3 */
@@ -745,10 +745,24 @@ h1 {
 }
 
 /* Row 2 — This Week */
+.dash-week-header {
+  display: flex; align-items: center;
+  justify-content: space-between; gap: 12px;
+  margin-bottom: 12px;
+}
+.dash-week-nav {
+  display: flex; align-items: center; gap: 8px;
+}
+.dash-week-range {
+  font-family: var(--font-mono);
+  font-size: 12px; color: var(--muted);
+  min-width: 120px; text-align: center;
+  white-space: nowrap;
+}
 .dash-week-grid {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
-  gap: 6px; margin-top: 12px;
+  gap: 6px;
 }
 .dash-week-day {
   display: flex; flex-direction: column;
@@ -757,13 +771,17 @@ h1 {
   border-radius: var(--radius-sm);
   border: 1px solid var(--border-subtle);
   cursor: pointer; transition: all 0.2s;
-  min-height: 105px;
+  min-height: 100px;
 }
 .dash-week-day:hover { border-color: var(--accent); background: var(--surface2); }
 .dash-week-today {
   border-color: var(--accent);
   background: var(--accent-dim);
   box-shadow: 0 0 0 1px var(--accent-dim);
+}
+.dash-week-selected {
+  border-color: var(--accent) !important;
+  background: var(--accent-dim);
 }
 .dash-week-name {
   font-size: 10px; color: var(--muted);
@@ -774,11 +792,6 @@ h1 {
   font-family: var(--font-display);
   font-size: 22px; font-weight: 700;
 }
-.dash-week-task-count {
-  font-size: 9px; color: var(--muted);
-  font-family: var(--font-mono);
-  margin-top: auto;
-}
 .dash-week-num.accent { color: var(--accent); }
 .dash-week-chips {
   display: flex; flex-wrap: wrap;
@@ -787,13 +800,53 @@ h1 {
 }
 .dash-week-chip {
   width: 8px; height: 8px;
-  border-radius: 2px; cursor: pointer;
+  border-radius: 2px;
   transition: transform 0.15s;
 }
 .dash-week-chip:hover { transform: scale(1.4); }
-.dash-week-more {
-  font-size: 9px; color: var(--muted);
-  font-family: var(--font-mono);
+
+/* Week detail panel */
+.dash-week-detail {
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border-subtle);
+}
+.dash-week-detail-header {
+  display: flex; align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+.dash-week-detail-label {
+  font-family: var(--font-display);
+  font-size: 16px; font-weight: 600;
+  color: var(--text-secondary);
+}
+.dash-week-add-btn {
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: var(--surface2);
+  color: var(--accent);
+  font-size: 18px; font-weight: 500;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: all 0.15s;
+  line-height: 1;
+  padding: 0;
+}
+.dash-week-add-btn:hover {
+  background: var(--accent-dim);
+  border-color: var(--accent);
+}
+.dash-week-detail-list {
+  display: flex; flex-direction: column; gap: 4px;
+}
+.dash-week-detail-task {
+  display: flex; align-items: center; gap: 10px;
+  padding: 6px 14px;
+  border-radius: var(--radius-sm);
+  background: var(--surface2);
+  font-size: 13px;
 }
 
 /* Row 2 — Habit Streaks */
@@ -822,7 +875,7 @@ h1 {
   min-width: 24px; text-align: right;
 }
 
-/* (day-detail panel removed — clicking week day is the only interaction) */
+/* (old day-detail CSS removed — now integrated into dash-week-detail above) */
 
 /* Row 3 — Calendar + Notes (two columns) */
 /* Calendar and Notes sit side by side */
