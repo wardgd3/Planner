@@ -5,7 +5,6 @@ import { todayStr, toDateStr, priorityColor } from '../utils'
 import { useToast } from '../Toast'
 import BlockForm from './BlockForm'
 import TaskForm from './TaskForm'
-import WeatherWidget from './WeatherWidget'
 import { fetchWeather, weatherEmoji, parseCondition } from './weatherService'
 
 const WEEK_HEADERS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
@@ -199,6 +198,14 @@ export default function DashboardView({
 
   // ── Week data ──
   const weekDays = useMemo(() => getWeekDays(weekOffset), [weekOffset])
+
+  // ── Weather by date lookup ──
+  const weatherByDate = useMemo(() => {
+    if (!weatherGlance?.days) return {}
+    const map = {}
+    weatherGlance.days.forEach(d => { map[d.date] = d })
+    return map
+  }, [weatherGlance])
 
   // ── Selected day data (for week detail) ──
   const selectedBlocks = useMemo(
@@ -433,113 +440,120 @@ export default function DashboardView({
       {/* ══ Expandable content ══ */}
       <div className="dash-rest">
 
-      {/* ══ Row 2 — Week + Weather (left) | Habit Streaks (right) ══ */}
-      <div className="dash-row2-left">
-        <div className="dash-card dash-week">
-          <div className="dash-week-header">
-            <h2 className="dash-card-title">This Week</h2>
-            <div className="dash-week-nav">
-              {weekOffset !== 0 && (
-                <button className="add-btn" onClick={() => { setWeekOffset(0); setSelectedDay(today) }}>Today</button>
-              )}
-              <button className="nav-btn" onClick={() => setWeekOffset(o => o - 1)} aria-label="Previous week">&#8249;</button>
-              <span className="dash-week-range">{weekLabel(weekDays)}</span>
-              <button className="nav-btn" onClick={() => setWeekOffset(o => o + 1)} aria-label="Next week">&#8250;</button>
-            </div>
-          </div>
-          <div className="dash-week-grid">
-            {weekDays.map((day, i) => {
-              const ds = toDateStr(day)
-              const dayBlocks = blocks.filter(b => b.date === ds)
-              const isToday = ds === today
-              const isSelected = ds === selectedDay
-              return (
-                <div
-                  key={ds}
-                  className={`dash-week-day ${isToday ? 'dash-week-today' : ''} ${isSelected ? 'dash-week-selected' : ''}`}
-                  onClick={() => setSelectedDay(ds)}
-                >
-                  <span className="dash-week-name">{WEEK_HEADERS[i]}</span>
-                  <span className={`dash-week-num ${isToday ? 'accent' : ''}`}>{day.getDate()}</span>
-                  <div className="dash-week-chips">
-                    {dayBlocks.slice(0, 4).map(b => (
-                      <div key={b.id} className="dash-week-chip" style={{ background: b.color }} title={b.title} />
-                    ))}
-                  </div>
-                </div>
-              )
-            })}
-          </div>
-
-          {/* Selected day detail */}
-          <div className="dash-week-detail">
-            <div className="dash-week-detail-header">
-              <p className="dash-week-detail-label">
-                {(() => {
-                  const d = new Date(selectedDay + 'T00:00:00')
-                  return `${DAY_NAMES[d.getDay()]}, ${MONTHS_FULL[d.getMonth()]} ${d.getDate()}`
-                })()}
-              </p>
-              <button
-                className="dash-week-add-btn"
-                onClick={() => setBlockForm({ date: selectedDay })}
-                title="Add block"
-              >+</button>
-            </div>
-            {selectedBlocks.length === 0 && selectedTasks.length === 0 ? (
-              <p className="empty-msg" style={{ padding: '8px 0' }}>Nothing scheduled</p>
-            ) : (
-              <div className="dash-week-detail-list">
-                {selectedBlocks.map(block => (
-                  <div
-                    key={block.id}
-                    className="dash-tl-block"
-                    style={{ borderLeftColor: block.color, background: block.color + '30' }}
-                    onClick={() => setBlockForm({ block, date: selectedDay })}
-                  >
-                    <span className="dash-tl-time">{block.start_time.slice(0, 5)} – {block.end_time.slice(0, 5)}</span>
-                    <span className="dash-tl-title">{block.title}</span>
-                  </div>
-                ))}
-                {selectedTasks.map(task => (
-                  <div key={task.id} className="dash-week-detail-task">
-                    <span className="priority-dot" style={{ background: priorityColor(task.priority) }} />
-                    <span className="dash-tl-title">{task.title}</span>
-                  </div>
-                ))}
-              </div>
+      {/* ══ Row 2 — This Week (left) | Calendar (right) ══ */}
+      <div className="dash-card dash-week">
+        <div className="dash-week-header">
+          <h2 className="dash-card-title">This Week</h2>
+          <div className="dash-week-nav">
+            {weekOffset !== 0 && (
+              <button className="add-btn" onClick={() => { setWeekOffset(0); setSelectedDay(today) }}>Today</button>
             )}
+            <button className="nav-btn" onClick={() => setWeekOffset(o => o - 1)} aria-label="Previous week">&#8249;</button>
+            <span className="dash-week-range">{weekLabel(weekDays)}</span>
+            <button className="nav-btn" onClick={() => setWeekOffset(o => o + 1)} aria-label="Next week">&#8250;</button>
           </div>
         </div>
-
-        <div className="dash-card dash-weather">
-          <h2 className="dash-card-title">Weather</h2>
-          <WeatherWidget supabase={supabase} />
-        </div>
-      </div>
-
-      <div className="dash-card dash-habits">
-        <h2 className="dash-card-title">Habit Streaks</h2>
-        {habits.length === 0 ? (
-          <p className="empty-msg">No habits tracked yet</p>
-        ) : (
-          <div className="dash-habit-list">
-            {habits.map(h => {
-              const spark = habitSparkData[h.id] || { daily: Array(30).fill(0), monthCount: 0 }
-              return (
-                <div key={h.id} className="dash-habit-row">
-                  <span className="dash-habit-dot" style={{ background: h.color }} />
-                  <span className="dash-habit-name">{h.name}</span>
-                  <Sparkline data={spark.daily} color={h.color} />
-                  <span className="dash-habit-count">{spark.monthCount}</span>
+        <div className="dash-week-grid">
+          {weekDays.map((day, i) => {
+            const ds = toDateStr(day)
+            const dayBlocks = blocks.filter(b => b.date === ds)
+            const isToday = ds === today
+            const isSelected = ds === selectedDay
+            const wx = weatherByDate[ds]
+            return (
+              <div
+                key={ds}
+                className={`dash-week-day ${isToday ? 'dash-week-today' : ''} ${isSelected ? 'dash-week-selected' : ''}`}
+                onClick={() => setSelectedDay(ds)}
+              >
+                <span className="dash-week-name">{WEEK_HEADERS[i]}</span>
+                <span className={`dash-week-num ${isToday ? 'accent' : ''}`}>{day.getDate()}</span>
+                {wx && (
+                  <>
+                    <span className="dash-week-wx-icon">{weatherEmoji(wx.weathercode)}</span>
+                    <span className="dash-week-wx-temps">
+                      {Math.round(wx.temp_high_f)}° / {Math.round(wx.temp_low_f)}°
+                    </span>
+                  </>
+                )}
+                <div className="dash-week-chips">
+                  {dayBlocks.slice(0, 4).map(b => (
+                    <div key={b.id} className="dash-week-chip" style={{ background: b.color }} title={b.title} />
+                  ))}
                 </div>
-              )
-            })}
+              </div>
+            )
+          })}
+        </div>
+
+        {/* Selected day detail */}
+        <div className="dash-week-detail">
+          <div className="dash-week-detail-header">
+            <p className="dash-week-detail-label">
+              {(() => {
+                const d = new Date(selectedDay + 'T00:00:00')
+                return `${DAY_NAMES[d.getDay()]}, ${MONTHS_FULL[d.getMonth()]} ${d.getDate()}`
+              })()}
+            </p>
+            <button
+              className="dash-week-add-btn"
+              onClick={() => setBlockForm({ date: selectedDay })}
+              title="Add block"
+            >+</button>
           </div>
-        )}
+
+          {/* Weather detail for selected day */}
+          {weatherByDate[selectedDay] && (() => {
+            const wx = weatherByDate[selectedDay]
+            const isCurrentDay = selectedDay === today
+            return (
+              <div className="dash-week-wx-detail">
+                <div className="dash-week-wx-main">
+                  <span className="dash-week-wx-emoji">{weatherEmoji(wx.weathercode)}</span>
+                  <span className="dash-week-wx-temp-lg">
+                    {isCurrentDay && weatherGlance ? Math.round(weatherGlance.current_temp_f) : Math.round(wx.temp_high_f)}°
+                  </span>
+                  <span className="dash-week-wx-cond">{parseCondition(wx.weathercode)}</span>
+                </div>
+                <div className="dash-week-wx-stats">
+                  <span className="dash-week-wx-stat">H: {Math.round(wx.temp_high_f)}°</span>
+                  <span className="dash-week-wx-stat">L: {Math.round(wx.temp_low_f)}°</span>
+                  <span className="dash-week-wx-stat">{wx.precipitation_in}" rain</span>
+                  <span className="dash-week-wx-stat">{Math.round(wx.wind_speed_mph)} mph</span>
+                  {wx.humidity != null && <span className="dash-week-wx-stat">{Math.round(wx.humidity)}% hum</span>}
+                  <span className="dash-week-wx-stat">UV {Math.round(wx.uv_index)}</span>
+                </div>
+              </div>
+            )
+          })()}
+
+          {selectedBlocks.length === 0 && selectedTasks.length === 0 ? (
+            <p className="empty-msg" style={{ padding: '8px 0' }}>Nothing scheduled</p>
+          ) : (
+            <div className="dash-week-detail-list">
+              {selectedBlocks.map(block => (
+                <div
+                  key={block.id}
+                  className="dash-tl-block"
+                  style={{ borderLeftColor: block.color, background: block.color + '30' }}
+                  onClick={() => setBlockForm({ block, date: selectedDay })}
+                >
+                  <span className="dash-tl-time">{block.start_time.slice(0, 5)} – {block.end_time.slice(0, 5)}</span>
+                  <span className="dash-tl-title">{block.title}</span>
+                </div>
+              ))}
+              {selectedTasks.map(task => (
+                <div key={task.id} className="dash-week-detail-task">
+                  <span className="priority-dot" style={{ background: priorityColor(task.priority) }} />
+                  <span className="dash-tl-title">{task.title}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
 
-      {/* ══ Row 3 — Calendar + Notes ══ */}
+      {/* Calendar (replaces Habit Streaks) */}
       <div className="dash-card dash-calendar">
         <div className="dash-cal-header">
           <h2 className="dash-card-title">{MONTHS_FULL[calMonth]} {calYear}</h2>
@@ -547,8 +561,8 @@ export default function DashboardView({
             {(calMonth !== now.getMonth() || calYear !== now.getFullYear()) && (
               <button className="add-btn" onClick={goToday}>Today</button>
             )}
-            <button className="nav-btn" onClick={prevMonth} aria-label="Previous month">‹</button>
-            <button className="nav-btn" onClick={nextMonth} aria-label="Next month">›</button>
+            <button className="nav-btn" onClick={prevMonth} aria-label="Previous month">&#8249;</button>
+            <button className="nav-btn" onClick={nextMonth} aria-label="Next month">&#8250;</button>
           </div>
         </div>
         <div className="dash-cal-grid">

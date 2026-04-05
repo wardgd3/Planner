@@ -477,7 +477,7 @@ h1 {
   grid-template-columns: 3fr 2fr;
   grid-template-areas:
     "left    right"
-    "cal     notes";
+    "notes   notes";
   gap: 16px;
   transition: opacity 0.45s cubic-bezier(0.4, 0, 0.2, 1),
               transform 0.45s cubic-bezier(0.4, 0, 0.2, 1);
@@ -546,18 +546,9 @@ h1 {
   border-radius: 16px;
 }
 
-/* Row 2 — stacked left column */
-.dash-row2-left {
-  grid-area: left;
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-.dash-habits { grid-area: right; }
-.dash-weather { display: flex; flex-direction: column; }
-
-/* Row 3 */
-.dash-calendar { grid-area: cal; }
+/* Row 2 — Week (left) + Calendar (right) */
+.dash-week { grid-area: left; }
+.dash-calendar { grid-area: right; }
 .dash-notes { grid-area: notes; }
 
 /* Cursor hint in focus mode */
@@ -896,6 +887,43 @@ h1 {
 }
 .dash-week-chip:hover { transform: scale(1.4); }
 
+/* Weather on day cards */
+.dash-week-wx-icon { font-size: 1.1rem; line-height: 1; margin-top: 2px; }
+.dash-week-wx-temps {
+  font-family: var(--font-mono);
+  font-size: 10px; color: var(--muted);
+  white-space: nowrap;
+}
+
+/* Weather detail in selected day panel */
+.dash-week-wx-detail {
+  display: flex; flex-direction: column; gap: 6px;
+  padding: 10px 14px;
+  background: var(--surface2);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  margin-bottom: 10px;
+}
+.dash-week-wx-main {
+  display: flex; align-items: center; gap: 10px;
+}
+.dash-week-wx-emoji { font-size: 1.5rem; line-height: 1; }
+.dash-week-wx-temp-lg {
+  font-family: var(--font-display);
+  font-size: 26px; font-weight: 700;
+  color: var(--text);
+}
+.dash-week-wx-cond {
+  font-size: 13px; color: var(--muted);
+}
+.dash-week-wx-stats {
+  display: flex; flex-wrap: wrap; gap: 6px 14px;
+}
+.dash-week-wx-stat {
+  font-family: var(--font-mono);
+  font-size: 11px; color: var(--text-secondary);
+}
+
 /* Week detail panel */
 .dash-week-detail {
   margin-top: 14px;
@@ -1232,7 +1260,6 @@ h1 {
     grid-template-areas:
       "left"
       "right"
-      "cal"
       "notes";
   }
   .dash-today-body { grid-template-columns: 1fr; }
