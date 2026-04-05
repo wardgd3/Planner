@@ -6,6 +6,7 @@ import { useToast } from '../Toast'
 import BlockForm from './BlockForm'
 import TaskForm from './TaskForm'
 import WeatherWidget from './WeatherWidget'
+import { fetchWeather, weatherEmoji, parseCondition } from './weatherService'
 
 const WEEK_HEADERS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
 
@@ -74,6 +75,20 @@ export default function DashboardView({
   const [habitLogs, setHabitLogs] = useState([])
   const [weekOffset, setWeekOffset] = useState(0)
   const [selectedDay, setSelectedDay] = useState(today)
+
+  // Weather glance for hero
+  const [weatherGlance, setWeatherGlance] = useState(null)
+  useEffect(() => {
+    fetchWeather().then(data => setWeatherGlance(data)).catch(() => {})
+  }, [])
+
+  // Live clock
+  const [clockTime, setClockTime] = useState(new Date())
+  useEffect(() => {
+    const tick = setInterval(() => setClockTime(new Date()), 1000)
+    return () => clearInterval(tick)
+  }, [])
+  const timeStr = clockTime.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })
 
   // Notes state
   const [notes, setNotes] = useState([])
@@ -341,27 +356,42 @@ export default function DashboardView({
             </ul>
           </div>
 
-          <div className="dash-next-up">
-            <p className="dash-next-up-label">Next Up</p>
-            {nextUpBlock.active && (
-              <div className="dash-next-up-active">
-                <div className="dash-next-up-pulse" />
-                <div>
-                  <p className="dash-next-up-title">{nextUpBlock.active.title}</p>
-                  <p className="dash-next-up-time">{activeTimeLeft}</p>
+          <div className="dash-hero-right">
+            {/* Weather & Time glance */}
+            <div className="dash-glance">
+              <div className="dash-glance-time">{timeStr}</div>
+              {weatherGlance && (
+                <div className="dash-glance-weather">
+                  <span className="dash-glance-emoji">{weatherEmoji(weatherGlance.current_code)}</span>
+                  <span className="dash-glance-temp">{Math.round(weatherGlance.current_temp_f)}°</span>
+                  <span className="dash-glance-cond">{parseCondition(weatherGlance.current_code)}</span>
                 </div>
-              </div>
-            )}
-            {nextUpBlock.next ? (
-              <div className="dash-next-up-upcoming">
-                <p className="dash-next-up-title">{nextUpBlock.next.title}</p>
-                <p className="dash-next-up-time">
-                  {nextUpBlock.next.start_time.slice(0, 5)} — {nextUpHint}
-                </p>
-              </div>
-            ) : !nextUpBlock.active ? (
-              <p className="dash-next-up-empty">Nothing else today</p>
-            ) : null}
+              )}
+            </div>
+
+            {/* Next Up */}
+            <div className="dash-next-up">
+              <p className="dash-next-up-label">Next Up</p>
+              {nextUpBlock.active && (
+                <div className="dash-next-up-active">
+                  <div className="dash-next-up-pulse" />
+                  <div>
+                    <p className="dash-next-up-title">{nextUpBlock.active.title}</p>
+                    <p className="dash-next-up-time">{activeTimeLeft}</p>
+                  </div>
+                </div>
+              )}
+              {nextUpBlock.next ? (
+                <div className="dash-next-up-upcoming">
+                  <p className="dash-next-up-title">{nextUpBlock.next.title}</p>
+                  <p className="dash-next-up-time">
+                    {nextUpBlock.next.start_time.slice(0, 5)} — {nextUpHint}
+                  </p>
+                </div>
+              ) : !nextUpBlock.active ? (
+                <p className="dash-next-up-empty">Nothing else today</p>
+              ) : null}
+            </div>
           </div>
         </div>
 
