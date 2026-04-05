@@ -5,6 +5,7 @@ import { todayStr, toDateStr, priorityColor } from '../utils'
 import { useToast } from '../Toast'
 import BlockForm from './BlockForm'
 import TaskForm from './TaskForm'
+import WeatherWidget from './WeatherWidget'
 
 const WEEK_HEADERS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
 
@@ -226,7 +227,8 @@ export default function DashboardView({
 
   return (
     <div className="dash">
-      {/* ══ Row 1 — Today's Focus ══ */}
+      {/* ══ Row 1 — Today's Focus + Weather ══ */}
+      <div className="dash-row-1">
       <div className="dash-card dash-today">
         <div className="dash-card-header">
           <div>
@@ -297,6 +299,12 @@ export default function DashboardView({
             onKeyDown={handleQuickAdd}
           />
         </div>
+      </div>
+
+      <div className="dash-card dash-weather">
+        <h2 className="dash-card-title">Weather</h2>
+        <WeatherWidget supabase={supabase} />
+      </div>
       </div>
 
       {/* ══ Row 2 — Interactive Week ══ */}

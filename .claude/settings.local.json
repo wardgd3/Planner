@@ -3,7 +3,10 @@
     "allow": [
       "Bash(npm run:*)",
       "Bash(npx vite:*)",
-      "Bash(npm install:*)"
+      "Bash(npm install:*)",
+      "Read(//c/tmp/**)",
+      "Bash(unzip -o \"C:\\\\Users\\\\Grant\\\\Downloads\\\\files.zip\" -d weather_widget)",
+      "mcp__Claude_Preview__preview_start"
     ]
   }
 }
