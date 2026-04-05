@@ -653,7 +653,7 @@ h1 {
 .dash-today-body {
   display: grid;
   grid-template-columns: 1fr 0.65fr auto;
-  gap: 24px;
+  gap: 34px;
   align-items: start;
 }
 
