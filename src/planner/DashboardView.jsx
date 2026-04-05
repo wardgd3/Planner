@@ -69,6 +69,30 @@ export default function DashboardView({
   const now = new Date()
   const [blockForm, setBlockForm] = useState(null)
   const [taskForm, setTaskForm] = useState(null)
+  const [expanded, setExpanded] = useState(false)
+
+  // Spacebar toggles expanded state, scroll-down expands
+  useEffect(() => {
+    function handleKey(e) {
+      // Ignore if user is typing in an input/textarea
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return
+      if (e.code === 'Space') {
+        e.preventDefault()
+        setExpanded(prev => !prev)
+      }
+    }
+    function handleWheel(e) {
+      if (!expanded && e.deltaY > 0) {
+        setExpanded(true)
+      }
+    }
+    window.addEventListener('keydown', handleKey)
+    window.addEventListener('wheel', handleWheel, { passive: true })
+    return () => {
+      window.removeEventListener('keydown', handleKey)
+      window.removeEventListener('wheel', handleWheel)
+    }
+  }, [expanded])
   const [quickAdd, setQuickAdd] = useState('')
   const [calMonth, setCalMonth] = useState(now.getMonth())
   const [calYear, setCalYear] = useState(now.getFullYear())
@@ -290,9 +314,9 @@ export default function DashboardView({
   const dateLabel = `${DAY_NAMES[now.getDay()]}, ${MONTHS_FULL[now.getMonth()]} ${now.getDate()}`
 
   return (
-    <div className="dash">
+    <div className={`dash ${expanded ? 'dash-expanded' : 'dash-focused'}`}>
       {/* ══ Row 1 — Today's Focus (full-width hero banner) ══ */}
-      <div className="dash-card dash-today">
+      <div className="dash-card dash-today" onClick={() => { if (!expanded) setExpanded(true) }}>
         <div className="dash-card-header">
           <div>
             <h2 className="dash-card-title">Today's Focus</h2>
@@ -405,6 +429,9 @@ export default function DashboardView({
           />
         </div>
       </div>
+
+      {/* ══ Expandable content ══ */}
+      <div className="dash-rest">
 
       {/* ══ Row 2 — Week + Weather (left) | Habit Streaks (right) ══ */}
       <div className="dash-row2-left">
@@ -611,6 +638,8 @@ export default function DashboardView({
           ))}
         </div>
       </div>
+
+      </div>{/* end dash-rest */}
 
       {/* ── Forms ── */}
       {blockForm !== null && (

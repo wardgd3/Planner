@@ -455,14 +455,68 @@ h1 {
 
 /* ══ Dashboard bento grid ══ */
 .dash {
+  padding-top: 28px;
+  transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Focus mode: only Today's Focus, centered */
+.dash-focused {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: calc(100vh - 100px);
+}
+.dash-focused .dash-today {
+  width: 100%;
+  max-width: 1200px;
+  animation: focus-in 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.dash-focused .dash-rest {
+  opacity: 0;
+  max-height: 0;
+  overflow: hidden;
+  pointer-events: none;
+  transition: opacity 0.4s ease, max-height 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+@keyframes focus-in {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Expanded mode: full dashboard grid */
+.dash-expanded {
   display: grid;
   grid-template-columns: 3fr 2fr;
   grid-template-areas:
     "hero    hero"
+    "rest    rest";
+  gap: 16px;
+}
+.dash-expanded .dash-today {
+  grid-area: hero;
+  animation: slide-up 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.dash-expanded .dash-rest {
+  grid-area: rest;
+  display: grid;
+  grid-template-columns: 3fr 2fr;
+  grid-template-areas:
     "left    right"
     "cal     notes";
   gap: 16px;
-  padding-top: 28px;
+  opacity: 1;
+  max-height: 5000px;
+  transition: opacity 0.5s ease 0.15s, max-height 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+  animation: content-fade-in 0.6s cubic-bezier(0.4, 0, 0.2, 1) 0.1s both;
+}
+@keyframes slide-up {
+  from { transform: translateY(30vh); }
+  to { transform: translateY(0); }
+}
+@keyframes content-fade-in {
+  from { opacity: 0; transform: translateY(30px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 .dash-card {
   background: var(--surface);
@@ -509,6 +563,9 @@ h1 {
 /* Row 3 */
 .dash-calendar { grid-area: cal; }
 .dash-notes { grid-area: notes; }
+
+/* Cursor hint in focus mode */
+.dash-focused .dash-today { cursor: pointer; }
 
 /* ── Weather Widget (Google-inspired) ── */
 .wx { flex: 1; display: flex; flex-direction: column; gap: 14px; }
@@ -1171,10 +1228,12 @@ h1 {
 
   .projects-view { padding-top: 16px; }
 
-  .dash {
+  .dash-expanded {
+    grid-template-columns: 1fr;
+  }
+  .dash-expanded .dash-rest {
     grid-template-columns: 1fr;
     grid-template-areas:
-      "hero"
       "left"
       "right"
       "cal"
