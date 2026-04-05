@@ -641,9 +641,10 @@ h1 {
   font-size: 0.6rem;
   color: var(--muted);
 }
+.dash-today .dash-card-title { font-size: 31px; }
 .dash-date-label {
   font-family: var(--font-display);
-  font-size: 14px; color: var(--muted);
+  font-size: 18px; color: var(--muted);
   font-weight: 400; margin-top: 2px;
 }
 .dash-today-actions { display: flex; gap: 8px; flex-shrink: 0; }
