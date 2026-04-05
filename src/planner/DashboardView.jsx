@@ -527,29 +527,42 @@ export default function DashboardView({
             )
           })()}
 
-          {selectedBlocks.length === 0 && selectedTasks.length === 0 ? (
-            <p className="empty-msg" style={{ padding: '8px 0' }}>Nothing scheduled</p>
-          ) : (
-            <div className="dash-week-detail-list">
-              {selectedBlocks.map(block => (
-                <div
-                  key={block.id}
-                  className="dash-tl-block"
-                  style={{ borderLeftColor: block.color, background: block.color + '30' }}
-                  onClick={() => setBlockForm({ block, date: selectedDay })}
-                >
-                  <span className="dash-tl-time">{block.start_time.slice(0, 5)} – {block.end_time.slice(0, 5)}</span>
-                  <span className="dash-tl-title">{block.title}</span>
+          {/* Schedule + Tasks side by side */}
+          <div className="dash-week-detail-row">
+            <div className="dash-week-detail-schedule">
+              {selectedBlocks.length === 0 ? (
+                <p className="empty-msg">No blocks</p>
+              ) : (
+                <div className="dash-week-detail-list">
+                  {selectedBlocks.map(block => (
+                    <div
+                      key={block.id}
+                      className="dash-tl-block"
+                      style={{ borderLeftColor: block.color, background: block.color + '30' }}
+                      onClick={() => setBlockForm({ block, date: selectedDay })}
+                    >
+                      <span className="dash-tl-time">{block.start_time.slice(0, 5)} – {block.end_time.slice(0, 5)}</span>
+                      <span className="dash-tl-title">{block.title}</span>
+                    </div>
+                  ))}
                 </div>
-              ))}
-              {selectedTasks.map(task => (
-                <div key={task.id} className="dash-week-detail-task">
-                  <span className="priority-dot" style={{ background: priorityColor(task.priority) }} />
-                  <span className="dash-tl-title">{task.title}</span>
-                </div>
-              ))}
+              )}
             </div>
-          )}
+            <div className="dash-week-detail-tasks">
+              {selectedTasks.length === 0 ? (
+                <p className="empty-msg">No tasks</p>
+              ) : (
+                <div className="dash-week-detail-list">
+                  {selectedTasks.map(task => (
+                    <div key={task.id} className="dash-week-detail-task">
+                      <span className="priority-dot" style={{ background: priorityColor(task.priority) }} />
+                      <span className="dash-tl-title">{task.title}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       </div>
 
