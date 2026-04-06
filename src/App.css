@@ -820,7 +820,7 @@ h1 {
   top: 50%;
   transform: translateY(-50%);
   color: var(--accent);
-  font-size: 14px;
+  font-size: 22px;
 }
 .dash-tl-block:hover { filter: brightness(1.3); }
 .dash-tl-time {
