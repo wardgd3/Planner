@@ -565,7 +565,7 @@ export default function DashboardView({
                     <div
                       key={block.id}
                       className="dash-tl-block"
-                      style={{ borderLeftColor: block.color, background: block.color + '30' }}
+                      style={{ borderLeftColor: block.color, background: block.color + '60' }}
                       onClick={() => setBlockForm({ block, date: selectedDay })}
                     >
                       <span className="dash-tl-time">{block.start_time.slice(0, 5)} – {block.end_time.slice(0, 5)}</span>

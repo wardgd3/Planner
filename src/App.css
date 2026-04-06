@@ -791,7 +791,7 @@ h1 {
 
 /* Active block highlight */
 .dash-tl-active {
-  box-shadow: inset 0 0 0 1px var(--accent);
+  box-shadow: inset 0 0 0 2px var(--accent);
 }
 .dash-tl-live {
   font-family: var(--font-mono);
@@ -806,11 +806,21 @@ h1 {
 .dash-tasks { min-width: 0; }
 .dash-timeline-list { display: flex; flex-direction: column; gap: 4px; }
 .dash-tl-block {
+  position: relative;
   display: flex; align-items: center; gap: 10px;
   border-left: 4px solid;
   border-radius: var(--radius-sm);
   padding: 10px 14px;
   cursor: pointer; transition: all 0.15s;
+}
+.dash-tl-active::before {
+  content: '▸';
+  position: absolute;
+  left: -16px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--accent);
+  font-size: 14px;
 }
 .dash-tl-block:hover { filter: brightness(1.3); }
 .dash-tl-time {
