@@ -6,6 +6,7 @@ import { useToast } from '../Toast'
 import BlockForm from './BlockForm'
 import TaskForm from './TaskForm'
 import WeatherWidget from './WeatherWidget'
+import AiChat from './AiChat'
 import { fetchWeather, weatherEmoji, parseCondition } from './weatherService'
 
 const WEEK_HEADERS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
@@ -690,6 +691,11 @@ export default function DashboardView({
             </div>
           ))}
         </div>
+      </div>
+
+      <div className="dash-card dash-ai-chat">
+        <h2 className="dash-card-title">Assistant</h2>
+        <AiChat todayBlocks={todayBlocks} todayTasks={[...todayTasks, ...doneTasks]} dateLabel={dateLabel} />
       </div>
 
       </div>{/* end dash-rest */}

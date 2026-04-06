@@ -483,7 +483,7 @@ h1 {
   grid-template-columns: 3fr 2fr;
   grid-template-areas:
     "left    right"
-    "notes   notes";
+    "notes   chat";
   gap: 16px;
   transition: opacity 0.45s cubic-bezier(0.4, 0, 0.2, 1),
               transform 0.45s cubic-bezier(0.4, 0, 0.2, 1);
@@ -556,6 +556,7 @@ h1 {
 .dash-week { grid-area: left; }
 .dash-calendar { grid-area: right; }
 .dash-notes { grid-area: notes; }
+.dash-ai-chat { grid-area: chat; display: flex; flex-direction: column; }
 
 /* Cursor hint in focus mode */
 .dash-focused .dash-today { cursor: pointer; }
@@ -798,7 +799,7 @@ h1 {
   color: #4ade80; letter-spacing: 1px;
   flex-shrink: 0;
   padding: 2px 6px;
-  background: rgba(74,222,128,0.12);
+  /*background: rgba(74,222,128,0.12);*/
   border-radius: 4px;
 }
 .dash-timeline { min-width: 0; }
@@ -1319,7 +1320,8 @@ h1 {
     grid-template-areas:
       "left"
       "right"
-      "notes";
+      "notes"
+      "chat";
   }
   .dash-today-body { grid-template-columns: 1fr; }
   .dash-next-up { max-width: none; }
