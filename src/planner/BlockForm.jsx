@@ -40,9 +40,10 @@ export default function BlockForm({ block, date, startTime, projects, tasks, hab
 
   function applyGlossaryItem(item) {
     setTitle(item.name)
-    if (item.default_time) setStart(item.default_time.slice(0, 5))
-    if (item.default_duration_minutes && item.default_time) {
-      setEnd(computeEndTime(item.default_time.slice(0, 5), item.default_duration_minutes))
+    const baseStart = item.default_time ? item.default_time.slice(0, 5) : start
+    if (item.default_time) setStart(baseStart)
+    if (item.default_duration_minutes) {
+      setEnd(computeEndTime(baseStart, item.default_duration_minutes))
     }
     if (item.source === 'habit' && item.habit_id) setHabitId(item.habit_id)
     if (item.color) setColor(item.color)

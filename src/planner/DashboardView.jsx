@@ -78,7 +78,10 @@ export default function DashboardView({
       if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return
       if (e.code === 'Space') {
         e.preventDefault()
-        setExpanded(prev => !prev)
+        setExpanded(prev => {
+          if (prev) window.scrollTo({ top: 0, behavior: 'smooth' })
+          return !prev
+        })
       }
     }
     function handleWheel(e) {
