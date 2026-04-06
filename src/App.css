@@ -832,6 +832,50 @@ h1 {
   justify-content: space-between; gap: 12px;
   margin-bottom: 12px;
 }
+.dash-week-header-left {
+  display: flex; align-items: center; gap: 12px;
+}
+
+/* Weather popup button */
+.dash-wx-btn-wrap { position: relative; }
+.dash-wx-btn {
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: var(--surface2);
+  color: var(--muted);
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: all 0.15s;
+  padding: 0;
+}
+.dash-wx-btn:hover, .dash-wx-btn.active {
+  color: var(--accent);
+  border-color: var(--accent);
+  background: var(--accent-dim);
+}
+.dash-wx-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+}
+.dash-wx-popup {
+  position: absolute;
+  top: calc(100% + 10px);
+  left: 0;
+  z-index: 91;
+  width: 380px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 22px 24px;
+  box-shadow: 0 16px 48px rgba(0,0,0,0.5);
+  animation: wx-pop-in 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+@keyframes wx-pop-in {
+  from { opacity: 0; transform: translateY(-6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
 .dash-week-nav {
   display: flex; align-items: center; gap: 8px;
 }

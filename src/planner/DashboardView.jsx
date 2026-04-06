@@ -5,6 +5,7 @@ import { todayStr, toDateStr, priorityColor } from '../utils'
 import { useToast } from '../Toast'
 import BlockForm from './BlockForm'
 import TaskForm from './TaskForm'
+import WeatherWidget from './WeatherWidget'
 import { fetchWeather, weatherEmoji, parseCondition } from './weatherService'
 
 const WEEK_HEADERS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
@@ -98,6 +99,7 @@ export default function DashboardView({
   const [habitLogs, setHabitLogs] = useState([])
   const [weekOffset, setWeekOffset] = useState(0)
   const [selectedDay, setSelectedDay] = useState(today)
+  const [showWeatherPopup, setShowWeatherPopup] = useState(false)
 
   // Weather glance for hero
   const [weatherGlance, setWeatherGlance] = useState(null)
@@ -443,7 +445,29 @@ export default function DashboardView({
       {/* ══ Row 2 — This Week (left) | Calendar (right) ══ */}
       <div className="dash-card dash-week">
         <div className="dash-week-header">
-          <h2 className="dash-card-title">This Week</h2>
+          <div className="dash-week-header-left">
+            <h2 className="dash-card-title">This Week</h2>
+            <div className="dash-wx-btn-wrap">
+              <button
+                className={`dash-wx-btn ${showWeatherPopup ? 'active' : ''}`}
+                onClick={() => setShowWeatherPopup(v => !v)}
+                aria-label="Weather"
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41" />
+                  <circle cx="12" cy="12" r="4" />
+                </svg>
+              </button>
+              {showWeatherPopup && (
+                <>
+                  <div className="dash-wx-backdrop" onClick={() => setShowWeatherPopup(false)} />
+                  <div className="dash-wx-popup">
+                    <WeatherWidget supabase={supabase} />
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
           <div className="dash-week-nav">
             {weekOffset !== 0 && (
               <button className="add-btn" onClick={() => { setWeekOffset(0); setSelectedDay(today) }}>Today</button>
@@ -495,11 +519,10 @@ export default function DashboardView({
                 return `${DAY_NAMES[d.getDay()]}, ${MONTHS_FULL[d.getMonth()]} ${d.getDate()}`
               })()}
             </p>
-            <button
-              className="dash-week-add-btn"
-              onClick={() => setBlockForm({ date: selectedDay })}
-              title="Add block"
-            >+</button>
+            <div className="dash-today-actions">
+              <button className="add-btn" onClick={() => setBlockForm({ date: selectedDay })}>+ Block</button>
+              <button className="add-btn" onClick={() => setTaskForm({ prefillDate: selectedDay })}>+ Task</button>
+            </div>
           </div>
 
           {/* Weather detail for selected day */}
