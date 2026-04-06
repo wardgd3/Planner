@@ -34,8 +34,14 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
+/* ══ Fade in from black ══ */
+@keyframes fadeInFromBlack {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
 /* ══ App shell ══ */
-.app { width: 100%; padding: 0 0 60px; }
+.app { width: 100%; padding: 0 0 60px; animation: fadeInFromBlack 0.8s ease-out; }
 .app.app-wide { width: 100%; }
 
 /* ══ App-level tabs ══ */
@@ -295,7 +301,7 @@ h1 {
 }
 
 /* ══ Login screen ══ */
-.login-wrap { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 24px; background: var(--bg); }
+.login-wrap { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 24px; background: var(--bg); animation: fadeInFromBlack 0.8s ease-out; }
 .login-box {
   width: 100%; max-width: 380px;
   background: var(--surface); border: 1px solid var(--border);
