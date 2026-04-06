@@ -790,9 +790,9 @@ h1 {
 }
 
 /* Active block highlight */
-.dash-tl-active {
-  box-shadow: inset 0 0 0 1px var(--accent);
-}
+/*.dash-tl-active {
+  /*box-shadow: inset 0 0 0 1px var(--accent);
+}*/
 .dash-tl-live {
   font-family: var(--font-mono);
   font-size: 9px; font-weight: 700;
