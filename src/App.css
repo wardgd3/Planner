@@ -816,7 +816,7 @@ h1 {
 .dash-tl-active::before {
   content: '▸';
   position: absolute;
-  left: -10px;
+  left: -30px;
   top: 50%;
   transform: translateY(-50%);
   color: var(--accent);
