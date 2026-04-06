@@ -58,7 +58,7 @@ export default function WeeklyView({ tasks, blocks, projects, habits, glossaryIt
                   dayBlocks.map(block => {
                     const proj = projects.find(p => p.id === block.project_id)
                     return (
-                      <div key={block.id} className="week-block" style={{ background: block.color + '33', borderLeft: `3px solid ${block.color}` }}>
+                      <div key={block.id} className="week-block" style={{ background: '#d4af3733', borderLeft: '3px solid #d4af37' }}>
                         <div className="block-header">
                           <p className="week-block-title" onClick={e => { e.stopPropagation(); setBlockForm({ block, date: ds }) }}>{block.title}</p>
                           <button className="block-delete-btn" onClick={e => { e.stopPropagation(); onDeleteBlock(block.id) }} aria-label="Delete block">✕</button>

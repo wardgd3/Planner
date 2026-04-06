@@ -354,7 +354,7 @@ export default function DashboardView({
                     <div
                       key={block.id}
                       className={`dash-tl-block ${isActive ? 'dash-tl-active' : ''}`}
-                      style={{ borderLeftColor: block.color, background: block.color + '60' }}
+                      style={{ background: '#d4af3760' }}
                       onClick={() => setBlockForm({ block, date: today })}
                     >
                       <span className="dash-tl-time">{block.start_time.slice(0, 5)} – {block.end_time.slice(0, 5)}</span>
@@ -506,7 +506,7 @@ export default function DashboardView({
                 )}
                 <div className="dash-week-chips">
                   {dayBlocks.slice(0, 4).map(b => (
-                    <div key={b.id} className="dash-week-chip" style={{ background: b.color }} title={b.title} />
+                    <div key={b.id} className="dash-week-chip" style={{ background: '#d4af37' }} title={b.title} />
                   ))}
                 </div>
               </div>
@@ -565,7 +565,7 @@ export default function DashboardView({
                     <div
                       key={block.id}
                       className="dash-tl-block"
-                      style={{ borderLeftColor: block.color, background: block.color + '60' }}
+                      style={{ background: '#d4af3760' }}
                       onClick={() => setBlockForm({ block, date: selectedDay })}
                     >
                       <span className="dash-tl-time">{block.start_time.slice(0, 5)} – {block.end_time.slice(0, 5)}</span>
@@ -627,7 +627,7 @@ export default function DashboardView({
                 {dayBlocks.length > 0 && (
                   <div className="dash-cal-dots">
                     {dayBlocks.slice(0, 4).map(b => (
-                      <span key={b.id} className="dash-cal-dot" style={{ background: b.color }} />
+                      <span key={b.id} className="dash-cal-dot" style={{ background: '#d4af37' }} />
                     ))}
                   </div>
                 )}

@@ -65,7 +65,7 @@ export default function TodayView({ tasks, blocks, projects, habits, glossaryIte
               const { top, height } = getBlockStyle(block)
               const proj = projects.find(p => p.id === block.project_id)
               return (
-                <div key={block.id} className="timeline-block" style={{ top, height, background: block.color + 'cc', borderLeft: `3px solid ${block.color}` }}>
+                <div key={block.id} className="timeline-block" style={{ top, height, background: '#d4af37cc', borderLeft: '3px solid #d4af37' }}>
                   <div className="block-header">
                     <p className="block-title" onClick={e => { e.stopPropagation(); setBlockForm({ block }) }}>{block.title}</p>
                     <button className="block-delete-btn" onClick={e => { e.stopPropagation(); onDeleteBlock(block.id) }} aria-label="Delete block">✕</button>

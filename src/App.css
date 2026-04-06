@@ -808,7 +808,7 @@ h1 {
 .dash-tl-block {
   position: relative;
   display: flex; align-items: center; gap: 10px;
-  border-left: 4px solid;
+  border: none;
   border-radius: var(--radius-sm);
   padding: 10px 14px;
   cursor: pointer; transition: all 0.15s;

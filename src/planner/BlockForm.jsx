@@ -1,5 +1,4 @@
 import { useState, useRef, useMemo } from 'react'
-import { PRESET_COLORS } from '../constants'
 import { timeToMinutes, computeEndTime, timeRangesOverlap } from '../utils'
 
 export default function BlockForm({ block, date, startTime, projects, tasks, habits, glossaryItems = [], existingBlocks = [], onSave, onCancel }) {
@@ -10,13 +9,10 @@ export default function BlockForm({ block, date, startTime, projects, tasks, hab
   const [projectId, setProjectId] = useState(block?.project_id || '')
   const [taskId, setTaskId] = useState(block?.task_id || '')
   const [habitId, setHabitId] = useState(block?.habit_id || '')
-  const [color, setColor] = useState(block?.color || '#60a5fa')
   const [notes, setNotes] = useState(block?.notes || '')
-  const [showPicker, setShowPicker] = useState(false)
   const [glossarySearch, setGlossarySearch] = useState('')
   const [showGlossary, setShowGlossary] = useState(false)
   const [saving, setSaving] = useState(false)
-  const colorRef = useRef(null)
 
   const filteredTasks = projectId ? tasks.filter(t => t.project_id === projectId) : tasks
 
@@ -46,7 +42,6 @@ export default function BlockForm({ block, date, startTime, projects, tasks, hab
       setEnd(computeEndTime(baseStart, item.default_duration_minutes))
     }
     if (item.source === 'habit' && item.habit_id) setHabitId(item.habit_id)
-    if (item.color) setColor(item.color)
     if (item.description) setNotes(item.description)
     setGlossarySearch('')
     setShowGlossary(false)
@@ -56,7 +51,7 @@ export default function BlockForm({ block, date, startTime, projects, tasks, hab
     if (!title.trim() || !blockDate || !start || !end || timeError || saving) return
     setSaving(true)
     try {
-      await onSave({ title: title.trim(), date: blockDate, start_time: start, end_time: end, project_id: projectId || null, task_id: taskId || null, habit_id: habitId || null, color, notes })
+      await onSave({ title: title.trim(), date: blockDate, start_time: start, end_time: end, project_id: projectId || null, task_id: taskId || null, habit_id: habitId || null, color: '#d4af37', notes })
     } finally {
       setSaving(false)
     }
@@ -114,21 +109,6 @@ export default function BlockForm({ block, date, startTime, projects, tasks, hab
             </div>
           </div>
           {timeError && <p className="field-hint" style={{ color: '#fb7185' }}>{timeError}</p>}
-
-          <label className="field-label">Color</label>
-          <div className="color-picker-wrap" ref={colorRef}>
-            <button className="color-swatch-btn" style={{ background: color }} onClick={() => setShowPicker(v => !v)} />
-            {showPicker && (
-              <div className="color-popover">
-                <div className="color-presets">
-                  {PRESET_COLORS.map(c => (
-                    <button key={c} className={`preset-swatch ${color === c ? 'selected' : ''}`} style={{ background: c }} onClick={() => { setColor(c); setShowPicker(false) }} />
-                  ))}
-                </div>
-                <input type="color" className="color-input-native" value={color} onChange={e => setColor(e.target.value)} />
-              </div>
-            )}
-          </div>
 
           <label className="field-label">Project</label>
           <select className="input select-input" value={projectId} onChange={e => { setProjectId(e.target.value); setTaskId('') }}>
