@@ -870,7 +870,7 @@ h1 {
   top: calc(100% + 10px);
   left: 0;
   z-index: 91;
-  width: 380px;
+  width: 456px;
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 14px;
