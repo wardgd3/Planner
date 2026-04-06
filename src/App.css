@@ -483,7 +483,8 @@ h1 {
   grid-template-columns: 3fr 2fr;
   grid-template-areas:
     "left    right"
-    "notes   chat";
+    "notes   chat"
+    "inspiration inspiration";
   gap: 16px;
   transition: opacity 0.45s cubic-bezier(0.4, 0, 0.2, 1),
               transform 0.45s cubic-bezier(0.4, 0, 0.2, 1);
@@ -557,6 +558,50 @@ h1 {
 .dash-calendar { grid-area: right; }
 .dash-notes { grid-area: notes; }
 .dash-ai-chat { grid-area: chat; display: flex; flex-direction: column; }
+.dash-inspiration { grid-area: inspiration; }
+
+/* ── Inspiration card ── */
+.inspiration-content {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  padding-top: 8px;
+}
+.inspiration-section {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.inspiration-label {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--accent);
+}
+.inspiration-text {
+  font-size: 15px;
+  line-height: 1.6;
+  color: var(--text);
+}
+.inspiration-quote {
+  font-family: var(--font-display);
+  font-size: 20px;
+  font-style: italic;
+  line-height: 1.5;
+  color: var(--text);
+  margin: 0;
+  padding-left: 16px;
+  border-left: 3px solid var(--accent);
+}
+.inspiration-author {
+  display: block;
+  font-family: var(--font-ui);
+  font-size: 13px;
+  font-style: normal;
+  color: var(--muted);
+  margin-top: 8px;
+}
 
 /* Cursor hint in focus mode */
 .dash-focused .dash-today { cursor: pointer; }
@@ -816,11 +861,11 @@ h1 {
 .dash-tl-active::before {
   content: '▸';
   position: absolute;
-  left: -30px;
+  left: -23px;
   top: 50%;
   transform: translateY(-50%);
   color: var(--accent);
-  font-size: 38px;
+  font-size: 30px;
 }
 .dash-tl-block:hover { filter: brightness(1.3); }
 .dash-tl-time {
@@ -1331,7 +1376,8 @@ h1 {
       "left"
       "right"
       "notes"
-      "chat";
+      "chat"
+      "inspiration";
   }
   .dash-today-body { grid-template-columns: 1fr; }
   .dash-next-up { max-width: none; }

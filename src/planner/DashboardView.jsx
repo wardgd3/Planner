@@ -124,6 +124,7 @@ export default function DashboardView({
   const [noteInput, setNoteInput] = useState('')
   const [editingNote, setEditingNote] = useState(null)
   const [editingText, setEditingText] = useState('')
+  const [dailyInspiration, setDailyInspiration] = useState({ quote: null, tip: null })
 
   // Fetch habit logs
   useEffect(() => {
@@ -149,6 +150,26 @@ export default function DashboardView({
       if (data) setNotes(data)
     }
     fetchNotes()
+  }, [])
+
+  // Fetch daily inspiration (one random quote + one random tip)
+  useEffect(() => {
+    async function fetchInspiration() {
+      const { data: quotes } = await supabase
+        .from('daily_inspiration')
+        .select('*')
+        .eq('type', 'quote')
+      const { data: tips } = await supabase
+        .from('daily_inspiration')
+        .select('*')
+        .eq('type', 'tip')
+
+      // Pick a deterministic daily random using the date as seed
+      const daySeed = new Date().toISOString().slice(0, 10).replace(/-/g, '') | 0
+      const pick = (arr) => arr && arr.length > 0 ? arr[daySeed % arr.length] : null
+      setDailyInspiration({ quote: pick(quotes), tip: pick(tips) })
+    }
+    fetchInspiration()
   }, [])
 
   // Notes CRUD
@@ -696,6 +717,33 @@ export default function DashboardView({
       <div className="dash-card dash-ai-chat">
         <h2 className="dash-card-title">Assistant</h2>
         <AiChat todayBlocks={todayBlocks} todayTasks={[...todayTasks, ...doneTasks]} dateLabel={dateLabel} />
+      </div>
+
+      {/* ── Daily Inspiration ── */}
+      <div className="dash-card dash-inspiration" style={{ gridArea: 'inspiration' }}>
+        <h2 className="dash-card-title">Daily Inspiration</h2>
+        <div className="inspiration-content">
+          {dailyInspiration.tip && (
+            <div className="inspiration-section">
+              <span className="inspiration-label">Tip of the Day</span>
+              <p className="inspiration-text">{dailyInspiration.tip.content}</p>
+            </div>
+          )}
+          {dailyInspiration.quote && (
+            <div className="inspiration-section">
+              <span className="inspiration-label">Quote of the Day</span>
+              <blockquote className="inspiration-quote">
+                "{dailyInspiration.quote.content}"
+                {dailyInspiration.quote.author && (
+                  <cite className="inspiration-author">— {dailyInspiration.quote.author}</cite>
+                )}
+              </blockquote>
+            </div>
+          )}
+          {!dailyInspiration.tip && !dailyInspiration.quote && (
+            <p className="empty-msg">No inspiration yet — add quotes and tips to the daily_inspiration table.</p>
+          )}
+        </div>
       </div>
 
       </div>{/* end dash-rest */}
