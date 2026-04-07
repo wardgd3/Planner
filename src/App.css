@@ -316,10 +316,12 @@ h1 {
 /* ══ Planner shell ══ */
 .planner { width: 100%; padding: 0 0 80px; max-width: 1440px; margin: 0 auto; overflow-x: hidden; }
 .planner-tabs { display: flex; gap: 0; border-bottom: 1px solid var(--border); padding: 0 32px; }
-.planner-wx-btn, .planner-wx-backdrop, .planner-wx-popup { display: none; }
+.planner-wx-btn, .planner-wx-backdrop, .planner-wx-popup,
+.planner-cal-btn, .planner-cal-backdrop, .planner-cal-popup { display: none; }
 @media (max-width: 600px) {
-  .planner-wx-btn { display: flex; }
-  .planner-wx-backdrop, .planner-wx-popup { display: block; }
+  .planner-wx-btn, .planner-cal-btn { display: flex; }
+  .planner-wx-backdrop, .planner-wx-popup,
+  .planner-cal-backdrop, .planner-cal-popup { display: block; }
 }
 .planner-tab {
   background: none; border: none;
@@ -1398,8 +1400,7 @@ h1 {
 
   .planner-tabs { padding: 0 12px; align-items: center; }
   .planner-tab { padding: 12px 10px; font-size: 12px; }
-  .planner-wx-btn {
-    margin-left: auto;
+  .planner-wx-btn, .planner-cal-btn {
     width: 32px; height: 32px;
     border-radius: 50%;
     border: 1px solid var(--border);
@@ -1410,17 +1411,21 @@ h1 {
     transition: all 0.15s;
     flex-shrink: 0;
   }
-  .planner-wx-btn:hover, .planner-wx-btn.active {
+  .planner-wx-btn { margin-left: auto; }
+  .planner-cal-btn { margin-left: 8px; margin-right: 4px; }
+  .planner-tabs:not(:has(.planner-wx-btn)) .planner-cal-btn { margin-left: auto; }
+  .planner-wx-btn:hover, .planner-wx-btn.active,
+  .planner-cal-btn:hover, .planner-cal-btn.active {
     color: var(--accent);
     border-color: var(--accent);
     background: var(--accent-dim);
   }
-  .planner-wx-backdrop {
+  .planner-wx-backdrop, .planner-cal-backdrop {
     position: fixed; inset: 0;
     background: rgba(0,0,0,0.5);
     z-index: 90;
   }
-  .planner-wx-popup {
+  .planner-wx-popup, .planner-cal-popup {
     position: fixed;
     top: 50%; left: 50%;
     transform: translate(-50%, -50%);
@@ -1463,12 +1468,11 @@ h1 {
   .dash .dash-rest {
     grid-template-columns: 1fr;
     grid-template-areas:
-      "left"
-      "right"
-      "notes"
       "chat"
-      "inspiration";
+      "inspiration"
+      "notes";
   }
+  .dash .dash-week, .dash .dash-calendar { display: none; }
   .dash-today-body {
     grid-template-columns: 1fr;
     gap: 18px;

@@ -1,13 +1,24 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { supabase } from '../supabase'
 import { useToast } from '../Toast'
 import { todayStr } from '../utils'
+import { MONTHS_FULL } from '../constants'
 import DashboardView from './DashboardView'
 import WeeklyView from './WeeklyView'
 import ProjectsView from './ProjectsView'
-import GlossaryView from './GlossaryView'
 
-const PLANNER_TABS = ['Today', 'Week', 'Projects', 'Glossary']
+const PLANNER_TABS = ['Today', 'Week', 'Projects']
+const WEEK_HEADERS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+
+function getMonthGrid(year, month) {
+  const first = new Date(year, month, 1)
+  const lastDay = new Date(year, month + 1, 0).getDate()
+  const startDow = (first.getDay() + 6) % 7
+  const cells = []
+  for (let i = 0; i < startDow; i++) cells.push(null)
+  for (let d = 1; d <= lastDay; d++) cells.push(d)
+  return cells
+}
 
 function useIsDesktop(breakpoint = 768) {
   const [isDesktop, setIsDesktop] = useState(() => typeof window !== 'undefined' && window.innerWidth >= breakpoint)
@@ -236,12 +247,108 @@ export default function Planner({ habits }) {
 
   // Mobile: tabbed navigation
   return (
+    <MobilePlanner
+      tab={tab} setTab={setTab}
+      tasks={tasks} blocks={blocks} projects={projects} habits={habits}
+      allGlossary={allGlossary}
+      addBlock={addBlock} editBlock={editBlock} deleteBlock={deleteBlock} completeBlock={completeBlock}
+      addTask={addTask} editTask={editTask} deleteTask={deleteTask} completeTask={completeTask}
+      addProject={addProject} editProject={editProject} deleteProject={deleteProject}
+    />
+  )
+}
+
+function MobilePlanner({
+  tab, setTab,
+  tasks, blocks, projects, habits, allGlossary,
+  addBlock, editBlock, deleteBlock, completeBlock,
+  addTask, editTask, deleteTask, completeTask,
+  addProject, editProject, deleteProject,
+}) {
+  const [showCalendar, setShowCalendar] = useState(false)
+  const now = new Date()
+  const [calMonth, setCalMonth] = useState(now.getMonth())
+  const [calYear, setCalYear] = useState(now.getFullYear())
+  const today = todayStr()
+
+  const calCells = useMemo(() => getMonthGrid(calYear, calMonth), [calYear, calMonth])
+  const calBlocksByDay = useMemo(() => {
+    const map = {}
+    blocks.forEach(b => {
+      const d = new Date(b.date + 'T00:00:00')
+      if (d.getFullYear() === calYear && d.getMonth() === calMonth) {
+        const day = d.getDate()
+        if (!map[day]) map[day] = []
+        map[day].push(b)
+      }
+    })
+    return map
+  }, [blocks, calYear, calMonth])
+
+  function prevMonth() {
+    if (calMonth === 0) { setCalMonth(11); setCalYear(y => y - 1) }
+    else setCalMonth(m => m - 1)
+  }
+  function nextMonth() {
+    if (calMonth === 11) { setCalMonth(0); setCalYear(y => y + 1) }
+    else setCalMonth(m => m + 1)
+  }
+
+  return (
     <div className="planner">
       <div className="planner-tabs">
         {PLANNER_TABS.map(t => (
           <button key={t} className={`planner-tab ${tab === t ? 'active' : ''}`} onClick={() => setTab(t)}>{t}</button>
         ))}
+        <button
+          className={`planner-cal-btn ${showCalendar ? 'active' : ''}`}
+          onClick={() => setShowCalendar(v => !v)}
+          aria-label="Calendar"
+        >
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+            <line x1="16" y1="2" x2="16" y2="6" />
+            <line x1="8" y1="2" x2="8" y2="6" />
+            <line x1="3" y1="10" x2="21" y2="10" />
+          </svg>
+        </button>
       </div>
+
+      {showCalendar && (
+        <>
+          <div className="planner-cal-backdrop" onClick={() => setShowCalendar(false)} />
+          <div className="planner-cal-popup">
+            <div className="dash-cal-header">
+              <h2 className="dash-card-title">{MONTHS_FULL[calMonth]} {calYear}</h2>
+              <div className="dash-cal-nav">
+                <button className="nav-btn" onClick={prevMonth} aria-label="Previous month">&#8249;</button>
+                <button className="nav-btn" onClick={nextMonth} aria-label="Next month">&#8250;</button>
+              </div>
+            </div>
+            <div className="dash-cal-grid">
+              {WEEK_HEADERS.map(d => <div key={d} className="dash-cal-dow">{d}</div>)}
+              {calCells.map((day, i) => {
+                if (day === null) return <div key={`blank-${i}`} className="dash-cal-cell dash-cal-blank" />
+                const ds = `${calYear}-${String(calMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`
+                const dayBlocks = calBlocksByDay[day] || []
+                const isToday = ds === today
+                return (
+                  <div key={ds} className={`dash-cal-cell ${isToday ? 'dash-cal-today' : ''} ${dayBlocks.length > 0 ? 'dash-cal-has' : ''}`}>
+                    <span className="dash-cal-num">{day}</span>
+                    {dayBlocks.length > 0 && (
+                      <div className="dash-cal-dots">
+                        {dayBlocks.slice(0, 4).map(b => (
+                          <span key={b.id} className="dash-cal-dot" style={{ background: '#d4af37' }} />
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        </>
+      )}
 
       <div className="planner-content">
         {tab === 'Today' && (
@@ -265,16 +372,6 @@ export default function Planner({ habits }) {
             projects={projects} tasks={tasks} habits={habits}
             onAddProject={addProject} onEditProject={editProject} onDeleteProject={deleteProject}
             onAddTask={addTask} onEditTask={editTask} onDeleteTask={deleteTask} onCompleteTask={completeTask}
-          />
-        )}
-        {tab === 'Glossary' && (
-          <GlossaryView
-            glossaryItems={glossaryItems}
-            habits={habits}
-            onAddItem={addGlossaryItem}
-            onEditItem={editGlossaryItem}
-            onDeleteItem={deleteGlossaryItem}
-            onScheduleItem={scheduleGlossaryItem}
           />
         )}
       </div>

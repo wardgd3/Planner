@@ -105,10 +105,13 @@ export default function DashboardView({
   const [selectedDay, setSelectedDay] = useState(today)
   const [showWeatherPopup, setShowWeatherPopup] = useState(false)
 
-  // Weather glance for hero
+  // Weather glance for hero — refresh every 30 minutes
   const [weatherGlance, setWeatherGlance] = useState(null)
   useEffect(() => {
-    fetchWeather().then(data => setWeatherGlance(data)).catch(() => {})
+    const load = () => fetchWeather().then(data => setWeatherGlance(data)).catch(() => {})
+    load()
+    const id = setInterval(load, 30 * 60 * 1000)
+    return () => clearInterval(id)
   }, [])
 
   // Live clock
