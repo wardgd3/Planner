@@ -4,6 +4,7 @@ import { timeToMinutes, computeEndTime, timeRangesOverlap } from '../utils'
 export default function BlockForm({ block, date, startTime, projects, tasks, habits, glossaryItems = [], existingBlocks = [], onSave, onCancel }) {
   const [title, setTitle] = useState(block?.title || '')
   const [blockDate, setBlockDate] = useState(block?.date || date || '')
+  const [noTime, setNoTime] = useState(block ? (!block.start_time && !block.end_time) : false)
   const [start, setStart] = useState(block?.start_time?.slice(0, 5) || startTime || '09:00')
   const [end, setEnd] = useState(block?.end_time?.slice(0, 5) || '')
   const [projectId, setProjectId] = useState(block?.project_id || '')
@@ -25,14 +26,15 @@ export default function BlockForm({ block, date, startTime, projects, tasks, hab
 
   // Validation
   const timeError = useMemo(() => {
+    if (noTime) return null
     if (!start || !end) return null
     if (timeToMinutes(end) <= timeToMinutes(start)) return 'End time must be after start time'
-    // Check for conflicts with existing blocks (exclude current block if editing)
-    const otherBlocks = existingBlocks.filter(b => !block || b.id !== block.id)
+    // Check for conflicts with timed blocks only (exclude current block if editing)
+    const otherBlocks = existingBlocks.filter(b => (!block || b.id !== block.id) && b.start_time && b.end_time)
     const conflict = otherBlocks.find(b => timeRangesOverlap(start, end, b.start_time.slice(0, 5), b.end_time.slice(0, 5)))
     if (conflict) return `Overlaps with "${conflict.title}" (${conflict.start_time.slice(0, 5)}–${conflict.end_time.slice(0, 5)})`
     return null
-  }, [start, end, existingBlocks, block])
+  }, [noTime, start, end, existingBlocks, block])
 
   function applyGlossaryItem(item) {
     setTitle(item.name)
@@ -48,16 +50,23 @@ export default function BlockForm({ block, date, startTime, projects, tasks, hab
   }
 
   async function handleSave() {
-    if (!title.trim() || !blockDate || !start || !end || timeError || saving) return
+    if (!title.trim() || !blockDate || timeError || saving) return
+    if (!noTime && (!start || !end)) return
     setSaving(true)
     try {
-      await onSave({ title: title.trim(), date: blockDate, start_time: start, end_time: end, project_id: projectId || null, task_id: taskId || null, habit_id: habitId || null, color: '#d4af37', notes })
+      await onSave({
+        title: title.trim(), date: blockDate,
+        start_time: noTime ? null : start,
+        end_time: noTime ? null : end,
+        project_id: projectId || null, task_id: taskId || null, habit_id: habitId || null,
+        color: '#d4af37', notes
+      })
     } finally {
       setSaving(false)
     }
   }
 
-  const canSave = title.trim() && start && end && !timeError && !saving
+  const canSave = title.trim() && blockDate && (noTime || (start && end)) && !timeError && !saving
 
   return (
     <div className="drawer-overlay" onClick={e => e.target === e.currentTarget && onCancel()}>
@@ -98,16 +107,22 @@ export default function BlockForm({ block, date, startTime, projects, tasks, hab
           <label className="field-label">Date</label>
           <input className="input" type="date" value={blockDate} onChange={e => setBlockDate(e.target.value)} />
 
-          <div className="two-col">
-            <div>
-              <label className="field-label">Start Time</label>
-              <input className="input" type="time" value={start} onChange={e => setStart(e.target.value)} />
+          <label className="field-label-row">
+            <input type="checkbox" checked={noTime} onChange={e => setNoTime(e.target.checked)} />
+            <span>No specific time (N/A)</span>
+          </label>
+          {!noTime && (
+            <div className="two-col">
+              <div>
+                <label className="field-label">Start Time</label>
+                <input className="input" type="time" value={start} onChange={e => setStart(e.target.value)} />
+              </div>
+              <div>
+                <label className="field-label">End Time</label>
+                <input className="input" type="time" value={end} onChange={e => setEnd(e.target.value)} />
+              </div>
             </div>
-            <div>
-              <label className="field-label">End Time</label>
-              <input className="input" type="time" value={end} onChange={e => setEnd(e.target.value)} />
-            </div>
-          </div>
+          )}
           {timeError && <p className="field-hint" style={{ color: '#fb7185' }}>{timeError}</p>}
 
           <label className="field-label">Project</label>

@@ -31,7 +31,7 @@ export default function WeeklyView({ tasks, blocks, projects, habits, glossaryIt
       <div className="weekly-grid">
         {days.map((day, i) => {
           const ds = toDateStr(day)
-          const dayBlocks = blocks.filter(b => b.date === ds).sort((a, b) => a.start_time.localeCompare(b.start_time))
+          const dayBlocks = blocks.filter(b => b.date === ds).sort((a, b) => (a.start_time || '99:99').localeCompare(b.start_time || '99:99'))
           const dayTasks = tasks.filter(t => t.due_date === ds && t.status !== 'done')
           const isToday = ds === todayString
           return (
@@ -63,7 +63,7 @@ export default function WeeklyView({ tasks, blocks, projects, habits, glossaryIt
                           <p className="week-block-title" onClick={e => { e.stopPropagation(); setBlockForm({ block, date: ds }) }}>{block.title}</p>
                           <button className="block-delete-btn" onClick={e => { e.stopPropagation(); onDeleteBlock(block.id) }} aria-label="Delete block">✕</button>
                         </div>
-                        <p className="week-block-time" onClick={e => { e.stopPropagation(); setBlockForm({ block, date: ds }) }}>{block.start_time.slice(0, 5)}–{block.end_time.slice(0, 5)}</p>
+                        <p className="week-block-time" onClick={e => { e.stopPropagation(); setBlockForm({ block, date: ds }) }}>{block.start_time && block.end_time ? `${block.start_time.slice(0, 5)}–${block.end_time.slice(0, 5)}` : 'N/A'}</p>
                         {proj && <p className="week-block-proj">{proj.name}</p>}
                       </div>
                     )

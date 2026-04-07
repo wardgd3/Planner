@@ -62,7 +62,7 @@ function Sparkline({ data, color }) {
 export default function DashboardView({
   tasks, blocks, projects, habits,
   glossaryItems,
-  onAddBlock, onEditBlock, onDeleteBlock,
+  onAddBlock, onEditBlock, onDeleteBlock, onCompleteBlock,
   onAddTask, onEditTask, onDeleteTask, onCompleteTask,
 }) {
   const toast = useToast()
@@ -155,18 +155,18 @@ export default function DashboardView({
   // Fetch daily inspiration (one random quote + one random tip)
   useEffect(() => {
     async function fetchInspiration() {
-      const { data: quotes } = await supabase
+      const { data, error } = await supabase
         .from('daily_inspiration')
         .select('*')
-        .eq('type', 'quote')
-      const { data: tips } = await supabase
-        .from('daily_inspiration')
-        .select('*')
-        .eq('type', 'tip')
+      if (error) { console.error('Inspiration fetch error:', error); return }
+      if (!data || data.length === 0) return
+
+      const quotes = data.filter(d => d.type === 'quote')
+      const tips = data.filter(d => d.type === 'tip')
 
       // Pick a deterministic daily random using the date as seed
-      const daySeed = new Date().toISOString().slice(0, 10).replace(/-/g, '') | 0
-      const pick = (arr) => arr && arr.length > 0 ? arr[daySeed % arr.length] : null
+      const dayNum = new Date().getDate() + (new Date().getMonth() + 1) * 31
+      const pick = (arr) => arr.length > 0 ? arr[dayNum % arr.length] : null
       setDailyInspiration({ quote: pick(quotes), tip: pick(tips) })
     }
     fetchInspiration()
@@ -210,7 +210,7 @@ export default function DashboardView({
 
   // ── Today's data ──
   const todayBlocks = useMemo(
-    () => blocks.filter(b => b.date === today).sort((a, b) => a.start_time.localeCompare(b.start_time)),
+    () => blocks.filter(b => b.date === today).sort((a, b) => (a.start_time || '99:99').localeCompare(b.start_time || '99:99')),
     [blocks, today]
   )
   const todayTasks = useMemo(
@@ -236,7 +236,7 @@ export default function DashboardView({
 
   // ── Selected day data (for week detail) ──
   const selectedBlocks = useMemo(
-    () => blocks.filter(b => b.date === selectedDay).sort((a, b) => a.start_time.localeCompare(b.start_time)),
+    () => blocks.filter(b => b.date === selectedDay).sort((a, b) => (a.start_time || '99:99').localeCompare(b.start_time || '99:99')),
     [blocks, selectedDay]
   )
   const selectedTasks = useMemo(
@@ -254,12 +254,13 @@ export default function DashboardView({
 
   const nextUpBlock = useMemo(() => {
     const currentTime = nowTime.toTimeString().slice(0, 5)
+    const timedBlocks = todayBlocks.filter(b => b.start_time && b.end_time)
     // Find the block currently in progress
-    const activeBlock = todayBlocks.find(b =>
+    const activeBlock = timedBlocks.find(b =>
       b.start_time.slice(0, 5) <= currentTime && b.end_time.slice(0, 5) > currentTime
     )
     // Find the next upcoming block
-    const upcoming = todayBlocks.find(b => b.start_time.slice(0, 5) > currentTime)
+    const upcoming = timedBlocks.find(b => b.start_time.slice(0, 5) > currentTime)
     return { active: activeBlock || null, next: upcoming || null }
   }, [todayBlocks, nowTime])
 
@@ -374,13 +375,21 @@ export default function DashboardView({
                   return (
                     <div
                       key={block.id}
-                      className={`dash-tl-block ${isActive ? 'dash-tl-active' : ''}`}
-                      style={{ background: '#d4af3760' }}
+                      className={`dash-tl-block ${isActive ? 'dash-tl-active' : ''} ${block.completed ? 'dash-tl-done' : ''}`}
+                      style={{ background: '#e6ab2a85' }}
                       onClick={() => setBlockForm({ block, date: today })}
                     >
-                      <span className="dash-tl-time">{block.start_time.slice(0, 5)} – {block.end_time.slice(0, 5)}</span>
+                      <button
+                        className={`task-check small ${block.completed ? 'done' : ''}`}
+                        onClick={e => { e.stopPropagation(); onCompleteBlock(block) }}
+                        aria-label={block.completed ? 'Uncheck block' : 'Complete block'}
+                      >{block.completed ? '✓' : ''}</button>
+                      {block.start_time && block.end_time
+                        ? <span className="dash-tl-time">{block.start_time.slice(0, 5)} – {block.end_time.slice(0, 5)}</span>
+                        : <span className="dash-tl-time">N/A</span>}
                       <span className="dash-tl-title">{block.title}</span>
-                      {isActive && <span className="dash-tl-live">NOW</span>}
+                      {isActive && !block.completed && <span className="dash-tl-live">NOW</span>}
+                      <button className="dash-tl-delete" onClick={e => { e.stopPropagation(); onDeleteBlock(block.id) }} aria-label="Delete block">✕</button>
                     </div>
                   )
                 })}
@@ -423,6 +432,9 @@ export default function DashboardView({
                   <span className="dash-glance-emoji">{weatherEmoji(weatherGlance.current_code)}</span>
                   <span className="dash-glance-temp">{Math.round(weatherGlance.current_temp_f)}°</span>
                   <span className="dash-glance-cond">{parseCondition(weatherGlance.current_code)}</span>
+                  {weatherByDate[today] && (
+                    <span className="dash-glance-hilo">H: {Math.round(weatherByDate[today].temp_high_f)}° L: {Math.round(weatherByDate[today].temp_low_f)}°</span>
+                  )}
                 </div>
               )}
             </div>
@@ -585,12 +597,20 @@ export default function DashboardView({
                   {selectedBlocks.map(block => (
                     <div
                       key={block.id}
-                      className="dash-tl-block"
-                      style={{ background: '#d4af3760' }}
+                      className={`dash-tl-block ${block.completed ? 'dash-tl-done' : ''}`}
+                      style={{ background: '#e6ab2a85' }}
                       onClick={() => setBlockForm({ block, date: selectedDay })}
                     >
-                      <span className="dash-tl-time">{block.start_time.slice(0, 5)} – {block.end_time.slice(0, 5)}</span>
+                      <button
+                        className={`task-check small ${block.completed ? 'done' : ''}`}
+                        onClick={e => { e.stopPropagation(); onCompleteBlock(block) }}
+                        aria-label={block.completed ? 'Uncheck block' : 'Complete block'}
+                      >{block.completed ? '✓' : ''}</button>
+                      {block.start_time && block.end_time
+                        ? <span className="dash-tl-time">{block.start_time.slice(0, 5)} – {block.end_time.slice(0, 5)}</span>
+                        : <span className="dash-tl-time">N/A</span>}
                       <span className="dash-tl-title">{block.title}</span>
+                      <button className="dash-tl-delete" onClick={e => { e.stopPropagation(); onDeleteBlock(block.id) }} aria-label="Delete block">✕</button>
                     </div>
                   ))}
                 </div>

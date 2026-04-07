@@ -19,7 +19,7 @@ export default function AiChat({ todayBlocks, todayTasks, dateLabel }) {
     if (todayBlocks.length > 0) {
       lines.push('\nSchedule:')
       todayBlocks.forEach(b => {
-        lines.push(`  ${b.start_time.slice(0, 5)} - ${b.end_time.slice(0, 5)}  ${b.title}`)
+        lines.push(`  ${b.start_time && b.end_time ? `${b.start_time.slice(0, 5)} - ${b.end_time.slice(0, 5)}` : 'N/A'}  ${b.title}`)
       })
     } else {
       lines.push('\nSchedule: (empty)')

@@ -3,7 +3,6 @@ import { supabase } from '../supabase'
 import { useToast } from '../Toast'
 import { todayStr } from '../utils'
 import DashboardView from './DashboardView'
-import TodayView from './TodayView'
 import WeeklyView from './WeeklyView'
 import ProjectsView from './ProjectsView'
 import GlossaryView from './GlossaryView'
@@ -118,6 +117,21 @@ export default function Planner({ habits }) {
     } catch { toast.error('Network error') }
   }, [toast])
 
+  const completeBlock = useCallback(async (block) => {
+    try {
+      const done = !block.completed
+      const { data: b, error } = await supabase.from('planner_blocks')
+        .update({ completed: done }).eq('id', block.id).select().single()
+      if (error) { toast.error('Failed to update block'); return }
+      setBlocks(prev => prev.map(x => x.id === block.id ? b : x))
+      if (done && block.habit_id) {
+        const { error: e2 } = await supabase.from('habit_logs').insert({ habit_id: block.habit_id })
+        if (e2) toast.error('Failed to log linked habit')
+      }
+      toast.success(done ? 'Block completed' : 'Block unchecked')
+    } catch { toast.error('Network error') }
+  }, [toast])
+
   // ---- Projects ----
   const addProject = useCallback(async (data) => {
     try {
@@ -212,7 +226,7 @@ export default function Planner({ habits }) {
           <DashboardView
             tasks={tasks} blocks={blocks} projects={projects} habits={habits}
             glossaryItems={allGlossary}
-            onAddBlock={addBlock} onEditBlock={editBlock} onDeleteBlock={deleteBlock}
+            onAddBlock={addBlock} onEditBlock={editBlock} onDeleteBlock={deleteBlock} onCompleteBlock={completeBlock}
             onAddTask={addTask} onEditTask={editTask} onDeleteTask={deleteTask} onCompleteTask={completeTask}
           />
         </div>
@@ -231,11 +245,10 @@ export default function Planner({ habits }) {
 
       <div className="planner-content">
         {tab === 'Today' && (
-          <TodayView
+          <DashboardView
             tasks={tasks} blocks={blocks} projects={projects} habits={habits}
             glossaryItems={allGlossary}
-            todayStr={today}
-            onAddBlock={addBlock} onEditBlock={editBlock} onDeleteBlock={deleteBlock}
+            onAddBlock={addBlock} onEditBlock={editBlock} onDeleteBlock={deleteBlock} onCompleteBlock={completeBlock}
             onAddTask={addTask} onEditTask={editTask} onDeleteTask={deleteTask} onCompleteTask={completeTask}
           />
         )}

@@ -10,7 +10,7 @@ export default function TodayView({ tasks, blocks, projects, habits, glossaryIte
   const [quickAdd, setQuickAdd] = useState('')
 
   const todayBlocks = useMemo(
-    () => blocks.filter(b => b.date === todayStr).sort((a, b) => a.start_time.localeCompare(b.start_time)),
+    () => blocks.filter(b => b.date === todayStr).sort((a, b) => (a.start_time || '99:99').localeCompare(b.start_time || '99:99')),
     [blocks, todayStr]
   )
   const todayTasks = useMemo(
@@ -61,7 +61,7 @@ export default function TodayView({ tasks, blocks, projects, habits, glossaryIte
             </div>
           ))}
           <div className="timeline-blocks">
-            {todayBlocks.map(block => {
+            {todayBlocks.filter(b => b.start_time && b.end_time).map(block => {
               const { top, height } = getBlockStyle(block)
               const proj = projects.find(p => p.id === block.project_id)
               return (
