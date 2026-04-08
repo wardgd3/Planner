@@ -1334,23 +1334,13 @@ h1 {
 
   .week-blocks-area {
     grid-column: 2; grid-row: 1;
-    min-height: unset;
-    border: none;
-    padding: 0;
-    gap: 6px;
+    min-height: 80px;
   }
-  .week-blocks-area:hover { border-color: transparent; border-style: none; }
   .week-task-chips {
     grid-column: 2;
     grid-row: 2;
     margin-top: 6px;
   }
-  .week-block {
-    padding: 8px 10px;
-  }
-  .week-block-title { font-size: 13px; }
-  .week-block-time { font-size: 11px; }
-  .week-empty-slot { text-align: left; padding: 4px 0; font-size: 12px; }
 
   .unscheduled-section { padding-top: 16px; }
 }
@@ -1472,7 +1462,23 @@ h1 {
       "inspiration"
       "notes";
   }
-  .dash .dash-week, .dash .dash-calendar { display: none; }
+  .dash:not(.dash-mobile-week-focus) .dash-week,
+  .dash:not(.dash-mobile-week-focus) .dash-calendar { display: none; }
+  .dash-mobile-week-focus .dash-today,
+  .dash-mobile-week-focus .dash-quick-add,
+  .dash-mobile-week-focus .dash-card:not(.dash-week) { display: none !important; }
+  .dash-mobile-week-focus .dash-rest { display: block !important; opacity: 1 !important; transform: none !important; pointer-events: auto !important; visibility: visible !important; }
+  .dash-mobile-week-focus .dash-week { display: flex !important; flex-direction: column; }
+  .dash-mobile-week-focus { min-height: 0 !important; align-content: start !important; padding-top: 16px; }
+  .dash-mobile-week-focus .dash-rest { grid-template-columns: 1fr !important; grid-template-areas: none !important; }
+  .dash-mobile-week-focus .dash-week-grid { gap: 3px; }
+  .dash-mobile-week-focus .dash-week-day { padding: 8px 2px; min-height: 88px; gap: 4px; min-width: 0; }
+  .dash-mobile-week-focus .dash-week-name { font-size: 9px; letter-spacing: 0.5px; }
+  .dash-mobile-week-focus .dash-week-num { font-size: 16px; }
+  .dash-mobile-week-focus .dash-week-wx-icon { font-size: 0.95rem; }
+  .dash-mobile-week-focus .dash-week-wx-temps { font-size: 8px; }
+  .dash-mobile-week-focus .dash-week-chip { width: 6px; height: 6px; }
+  .dash-mobile-week-focus .dash-week-header { flex-wrap: wrap; gap: 8px; }
   .dash-today-body {
     grid-template-columns: 1fr;
     gap: 18px;

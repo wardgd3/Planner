@@ -6,6 +6,7 @@ import { MONTHS_FULL } from '../constants'
 import DashboardView from './DashboardView'
 import WeeklyView from './WeeklyView'
 import ProjectsView from './ProjectsView'
+import WeatherWidget from './WeatherWidget'
 
 const PLANNER_TABS = ['Today', 'Week', 'Projects']
 const WEEK_HEADERS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
@@ -266,6 +267,7 @@ function MobilePlanner({
   addProject, editProject, deleteProject,
 }) {
   const [showCalendar, setShowCalendar] = useState(false)
+  const [showWeather, setShowWeather] = useState(false)
   const now = new Date()
   const [calMonth, setCalMonth] = useState(now.getMonth())
   const [calYear, setCalYear] = useState(now.getFullYear())
@@ -301,6 +303,16 @@ function MobilePlanner({
           <button key={t} className={`planner-tab ${tab === t ? 'active' : ''}`} onClick={() => setTab(t)}>{t}</button>
         ))}
         <button
+          className={`planner-wx-btn ${showWeather ? 'active' : ''}`}
+          onClick={() => setShowWeather(v => !v)}
+          aria-label="Weather"
+        >
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41" />
+            <circle cx="12" cy="12" r="4" />
+          </svg>
+        </button>
+        <button
           className={`planner-cal-btn ${showCalendar ? 'active' : ''}`}
           onClick={() => setShowCalendar(v => !v)}
           aria-label="Calendar"
@@ -313,6 +325,15 @@ function MobilePlanner({
           </svg>
         </button>
       </div>
+
+      {showWeather && (
+        <>
+          <div className="planner-wx-backdrop" onClick={() => setShowWeather(false)} />
+          <div className="planner-wx-popup">
+            <WeatherWidget supabase={supabase} />
+          </div>
+        </>
+      )}
 
       {showCalendar && (
         <>
@@ -360,10 +381,11 @@ function MobilePlanner({
           />
         )}
         {tab === 'Week' && (
-          <WeeklyView
+          <DashboardView
+            mobileWeekFocus
             tasks={tasks} blocks={blocks} projects={projects} habits={habits}
             glossaryItems={allGlossary}
-            onAddBlock={addBlock} onEditBlock={editBlock} onDeleteBlock={deleteBlock}
+            onAddBlock={addBlock} onEditBlock={editBlock} onDeleteBlock={deleteBlock} onCompleteBlock={completeBlock}
             onAddTask={addTask} onEditTask={editTask} onDeleteTask={deleteTask} onCompleteTask={completeTask}
           />
         )}

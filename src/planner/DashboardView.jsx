@@ -64,6 +64,7 @@ export default function DashboardView({
   glossaryItems,
   onAddBlock, onEditBlock, onDeleteBlock, onCompleteBlock,
   onAddTask, onEditTask, onDeleteTask, onCompleteTask,
+  mobileWeekFocus = false,
 }) {
   const toast = useToast()
   const today = todayStr()
@@ -352,7 +353,7 @@ export default function DashboardView({
   const dateLabel = `${DAY_NAMES[now.getDay()]}, ${MONTHS_FULL[now.getMonth()]} ${now.getDate()}`
 
   return (
-    <div className={`dash ${expanded ? 'dash-expanded' : 'dash-focused'}`}>
+    <div className={`dash ${expanded ? 'dash-expanded' : 'dash-focused'} ${mobileWeekFocus ? 'dash-mobile-week-focus' : ''}`}>
       {/* ══ Row 1 — Today's Focus (full-width hero banner) ══ */}
       <div className="dash-card dash-today" onClick={() => { if (!expanded) setExpanded(true) }}>
         <div className="dash-card-header">
