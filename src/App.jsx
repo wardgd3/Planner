@@ -350,14 +350,18 @@ function AppInner({ onLogout }) {
                 <div className="settings-theme-options">
                   {[
                     ['warm', 'Warm'],
-                    ['cool', 'Cool'],
-                    ['midnight', 'Midnight'],
-                    ['rose', 'Rose'],
-                    ['slate', 'Slate'],
-                    ['noir', 'Noir'],
-                    ['daylight', 'Daylight'],
-                    ['cloud', 'Cloud'],
-                    ['terra', 'Terra'],
+                    ['noir-amber', 'Noir Amber'],
+                    ['slate-violet', 'Slate Violet'],
+                    ['ink-jade', 'Ink Jade'],
+                    ['dusk-coral', 'Dusk Coral'],
+                    ['obsidian-ice', 'Obsidian Ice'],
+                    ['charcoal-citron', 'Charcoal Citron'],
+                    ['void-crimson', 'Void Crimson'],
+                    ['parchment-amber', 'Parchment Amber'],
+                    ['chalk-violet', 'Chalk Violet'],
+                    ['linen-jade', 'Linen Jade'],
+                    ['studio-white', 'Studio White'],
+                    ['sand-coral', 'Sand Coral'],
                   ].map(([key, label]) => (
                     <button key={key} className={`settings-theme-btn${theme === key ? ' active' : ''}`} onClick={() => setTheme(key)}>
                       <span className={`settings-theme-swatch ${key}`} />
