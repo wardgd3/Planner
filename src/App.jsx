@@ -116,6 +116,13 @@ function HabitForm({ editingId, newName, setNewName, newCategoryIds, categories,
 function AppInner({ onLogout }) {
   const toast = useToast()
   const [activeTab, setActiveTab] = useState('planner')
+  const [showSettings, setShowSettings] = useState(false)
+  const [theme, setTheme] = useState(() => localStorage.getItem('app-theme') || 'warm')
+
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme)
+    localStorage.setItem('app-theme', theme)
+  }, [theme])
   const [habits, setHabits] = useState([])
   const [logs, setLogs] = useState([])
   const [categories, setCategories] = useState([])
@@ -330,6 +337,38 @@ function AppInner({ onLogout }) {
       <div className="app-tabs">
         <button className={`app-tab ${activeTab === 'planner' ? 'active' : ''}`} onClick={() => setActiveTab('planner')}>Planner</button>
         <button className={`app-tab ${activeTab === 'tracker' ? 'active' : ''}`} onClick={() => setActiveTab('tracker')}>Habits</button>
+        <div className="settings-wrap">
+          <button className="settings-btn" onClick={() => setShowSettings(s => !s)} title="Settings">&#9881;</button>
+          {showSettings && (
+            <div className="settings-popup">
+              <div className="settings-popup-header">
+                <span>Settings</span>
+                <button className="settings-popup-close" onClick={() => setShowSettings(false)}>&times;</button>
+              </div>
+              <div className="settings-section">
+                <span className="settings-label">Theme</span>
+                <div className="settings-theme-options">
+                  {[
+                    ['warm', 'Warm'],
+                    ['cool', 'Cool'],
+                    ['midnight', 'Midnight'],
+                    ['rose', 'Rose'],
+                    ['slate', 'Slate'],
+                    ['noir', 'Noir'],
+                    ['daylight', 'Daylight'],
+                    ['cloud', 'Cloud'],
+                    ['terra', 'Terra'],
+                  ].map(([key, label]) => (
+                    <button key={key} className={`settings-theme-btn${theme === key ? ' active' : ''}`} onClick={() => setTheme(key)}>
+                      <span className={`settings-theme-swatch ${key}`} />
+                      <span>{label}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
         <button className="logout-btn" onClick={onLogout}>Sign out</button>
       </div>
 

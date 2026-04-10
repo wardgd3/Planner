@@ -59,7 +59,7 @@ export default function BlockForm({ block, date, startTime, projects, tasks, hab
         start_time: noTime ? null : start,
         end_time: noTime ? null : end,
         project_id: projectId || null, task_id: taskId || null, habit_id: habitId || null,
-        color: '#d4af37', notes
+        color: getComputedStyle(document.documentElement).getPropertyValue('--accent').trim() || '#d4981a', notes
       })
     } finally {
       setSaving(false)

@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useCallback } from 'react'
+import { useState, useMemo, useEffect, useCallback, useRef } from 'react'
 import { supabase } from '../supabase'
 import { MONTHS_FULL, DAY_NAMES } from '../constants'
 import { todayStr, toDateStr, priorityColor } from '../utils'
@@ -8,6 +8,57 @@ import TaskForm from './TaskForm'
 import WeatherWidget from './WeatherWidget'
 import AiChat from './AiChat'
 import { fetchWeather, weatherEmoji, parseCondition } from './weatherService'
+import { DndContext, closestCenter, PointerSensor, useSensor, useSensors, DragOverlay } from '@dnd-kit/core'
+import { SortableContext, verticalListSortingStrategy, useSortable, arrayMove } from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
+
+// ── Moon phase calculator ──
+function getMoonPhase(date = new Date()) {
+  const year = date.getFullYear(), month = date.getMonth() + 1, day = date.getDate()
+  let c = 0, e = 0, jd = 0, b = 0
+  if (month < 3) { c = year - 1; e = month + 12 } else { c = year; e = month }
+  jd = Math.floor(365.25 * (c + 4716)) + Math.floor(30.6001 * (e + 1)) + day - 1524.5
+  b = 2 - Math.floor(c / 100) + Math.floor(c / 400)
+  jd += b
+  const daysSinceNew = (jd - 2451550.1) % 29.530588853
+  const phase = ((daysSinceNew < 0 ? daysSinceNew + 29.530588853 : daysSinceNew) / 29.530588853)
+  const idx = Math.round(phase * 8) % 8
+  const icons = ['\uD83C\uDF11', '\uD83C\uDF12', '\uD83C\uDF13', '\uD83C\uDF14', '\uD83C\uDF15', '\uD83C\uDF16', '\uD83C\uDF17', '\uD83C\uDF18']
+  const names = ['New Moon', 'Waxing Crescent', 'First Quarter', 'Waxing Gibbous', 'Full Moon', 'Waning Gibbous', 'Last Quarter', 'Waning Crescent']
+  return { icon: icons[idx], name: names[idx] }
+}
+
+
+// ── Sortable block row ──
+function SortableBlock({ block, isActive, onEdit, onComplete, onDelete, today }) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: block.id })
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    background: 'var(--block-bg)',
+  }
+  return (
+    <div
+      ref={setNodeRef}
+      className={`dash-tl-block ${isActive ? 'dash-tl-active' : ''} ${block.completed ? 'dash-tl-done' : ''} ${isDragging ? 'dragging' : ''}`}
+      style={style}
+      onClick={() => onEdit({ block, date: today })}
+    >
+      <span className="dash-tl-drag-handle" {...attributes} {...listeners}>⠿</span>
+      <button
+        className={`task-check small ${block.completed ? 'done' : ''}`}
+        onClick={e => { e.stopPropagation(); onComplete(block) }}
+        aria-label={block.completed ? 'Uncheck block' : 'Complete block'}
+      >{block.completed ? '✓' : ''}</button>
+      {block.start_time && block.end_time
+        ? <span className="dash-tl-time">{block.start_time.slice(0, 5)} – {block.end_time.slice(0, 5)}</span>
+        : <span className="dash-tl-time">N/A</span>}
+      <span className="dash-tl-title">{block.title}</span>
+      {isActive && !block.completed && <span className="dash-tl-live">NOW</span>}
+      <button className="dash-tl-delete" onClick={e => { e.stopPropagation(); onDelete(block.id) }} aria-label="Delete block">✕</button>
+    </div>
+  )
+}
 
 const WEEK_HEADERS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
 
@@ -123,12 +174,60 @@ export default function DashboardView({
   }, [])
   const timeStr = clockTime.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })
 
+  // ── Moon phase ──
+  const moonPhase = useMemo(() => getMoonPhase(), [])
+
+
+  // ── Pomodoro focus timer ──
+  const POMO_WORK = 25 * 60
+  const POMO_BREAK = 5 * 60
+  const [pomoSeconds, setPomoSeconds] = useState(POMO_WORK)
+  const [pomoRunning, setPomoRunning] = useState(false)
+  const [pomoOnBreak, setPomoOnBreak] = useState(false)
+  const pomoRef = useRef(null)
+
+  useEffect(() => {
+    if (pomoRunning) {
+      document.body.classList.add('pomo-focus-active')
+      pomoRef.current = setInterval(() => {
+        setPomoSeconds(prev => {
+          if (prev <= 1) {
+            clearInterval(pomoRef.current)
+            setPomoRunning(false)
+            setPomoOnBreak(ob => {
+              const next = !ob
+              setPomoSeconds(next ? POMO_BREAK : POMO_WORK)
+              return next
+            })
+            return 0
+          }
+          return prev - 1
+        })
+      }, 1000)
+    } else {
+      document.body.classList.remove('pomo-focus-active')
+      if (pomoRef.current) clearInterval(pomoRef.current)
+    }
+    return () => { if (pomoRef.current) clearInterval(pomoRef.current) }
+  }, [pomoRunning])
+
+  const pomoDisplay = `${Math.floor(pomoSeconds / 60)}:${String(pomoSeconds % 60).padStart(2, '0')}`
+  const pomoTotal = pomoOnBreak ? POMO_BREAK : POMO_WORK
+  const pomoPct = ((pomoTotal - pomoSeconds) / pomoTotal) * 100
+
+  // ── Drag-to-reorder blocks ──
+  const blockSensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }))
+  const [dragActiveBlock, setDragActiveBlock] = useState(null)
+
   // Notes state
   const [notes, setNotes] = useState([])
   const [noteInput, setNoteInput] = useState('')
   const [editingNote, setEditingNote] = useState(null)
   const [editingText, setEditingText] = useState('')
   const [dailyInspiration, setDailyInspiration] = useState({ quote: null, tip: null })
+  const [favoriteIds, setFavoriteIds] = useState(new Set())
+  const [favorites, setFavorites] = useState([])
+  const [showFavorites, setShowFavorites] = useState(false)
 
   // Fetch habit logs
   useEffect(() => {
@@ -176,6 +275,33 @@ export default function DashboardView({
     fetchInspiration()
   }, [])
 
+  // Fetch favorites
+  const loadFavorites = useCallback(async () => {
+    const { data } = await supabase
+      .from('favorite_tips')
+      .select('inspiration_id, type, daily_inspiration(content, author)')
+      .order('created_at', { ascending: false })
+    if (data) {
+      setFavoriteIds(new Set(data.map(d => d.inspiration_id)))
+      setFavorites(data)
+    }
+  }, [])
+
+  useEffect(() => { loadFavorites() }, [loadFavorites])
+
+  const toggleFavorite = useCallback(async (item) => {
+    const isFav = favoriteIds.has(item.id)
+    if (isFav) {
+      await supabase.from('favorite_tips').delete().eq('inspiration_id', item.id)
+      setFavoriteIds(prev => { const next = new Set(prev); next.delete(item.id); return next })
+      setFavorites(prev => prev.filter(f => f.inspiration_id !== item.id))
+    } else {
+      await supabase.from('favorite_tips').insert({ inspiration_id: item.id, type: item.type })
+      setFavoriteIds(prev => new Set(prev).add(item.id))
+      setFavorites(prev => [{ inspiration_id: item.id, type: item.type, daily_inspiration: { content: item.content, author: item.author } }, ...prev])
+    }
+  }, [favoriteIds])
+
   // Notes CRUD
   const addNote = useCallback(async () => {
     if (!noteInput.trim()) return
@@ -214,9 +340,25 @@ export default function DashboardView({
 
   // ── Today's data ──
   const todayBlocks = useMemo(
-    () => blocks.filter(b => b.date === today).sort((a, b) => (a.start_time || '99:99').localeCompare(b.start_time || '99:99')),
+    () => blocks.filter(b => b.date === today).sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0) || (a.start_time || '99:99').localeCompare(b.start_time || '99:99')),
     [blocks, today]
   )
+
+  const handleBlockDragEnd = useCallback(async (event) => {
+    setDragActiveBlock(null)
+    const { active, over } = event
+    if (!over || active.id === over.id) return
+    const oldIdx = todayBlocks.findIndex(b => b.id === active.id)
+    const newIdx = todayBlocks.findIndex(b => b.id === over.id)
+    if (oldIdx === -1 || newIdx === -1) return
+    const reordered = arrayMove(todayBlocks, oldIdx, newIdx)
+    // Optimistic update via onEditBlock
+    for (let i = 0; i < reordered.length; i++) {
+      if (reordered[i].sort_order !== i) {
+        onEditBlock(reordered[i].id, { sort_order: i })
+      }
+    }
+  }, [todayBlocks, onEditBlock])
   const todayTasks = useMemo(
     () => tasks.filter(t => t.due_date === today && t.status !== 'done')
       .sort((a, b) => { const o = { high: 0, medium: 1, low: 2 }; return o[a.priority] - o[b.priority] }),
@@ -373,31 +515,34 @@ export default function DashboardView({
             {todayBlocks.length === 0 ? (
               <p className="empty-msg" style={{ padding: '12px 0' }}>No blocks today</p>
             ) : (
-              <div className="dash-timeline-list">
-                {todayBlocks.map(block => {
-                  const isActive = nextUpBlock.active && nextUpBlock.active.id === block.id
-                  return (
-                    <div
-                      key={block.id}
-                      className={`dash-tl-block ${isActive ? 'dash-tl-active' : ''} ${block.completed ? 'dash-tl-done' : ''}`}
-                      style={{ background: '#e6ab2a85' }}
-                      onClick={() => setBlockForm({ block, date: today })}
-                    >
-                      <button
-                        className={`task-check small ${block.completed ? 'done' : ''}`}
-                        onClick={e => { e.stopPropagation(); onCompleteBlock(block) }}
-                        aria-label={block.completed ? 'Uncheck block' : 'Complete block'}
-                      >{block.completed ? '✓' : ''}</button>
-                      {block.start_time && block.end_time
-                        ? <span className="dash-tl-time">{block.start_time.slice(0, 5)} – {block.end_time.slice(0, 5)}</span>
+              <DndContext sensors={blockSensors} collisionDetection={closestCenter} onDragStart={e => setDragActiveBlock(todayBlocks.find(b => b.id === e.active.id) || null)} onDragEnd={handleBlockDragEnd}>
+                <SortableContext items={todayBlocks.map(b => b.id)} strategy={verticalListSortingStrategy}>
+                  <div className="dash-timeline-list">
+                    {todayBlocks.map(block => (
+                      <SortableBlock
+                        key={block.id}
+                        block={block}
+                        isActive={nextUpBlock.active && nextUpBlock.active.id === block.id}
+                        onEdit={setBlockForm}
+                        onComplete={onCompleteBlock}
+                        onDelete={onDeleteBlock}
+                        today={today}
+                      />
+                    ))}
+                  </div>
+                </SortableContext>
+                <DragOverlay>
+                  {dragActiveBlock && (
+                    <div className="dash-tl-drag-overlay">
+                      <span className="dash-tl-drag-handle">⠿</span>
+                      {dragActiveBlock.start_time && dragActiveBlock.end_time
+                        ? <span className="dash-tl-time">{dragActiveBlock.start_time.slice(0, 5)} – {dragActiveBlock.end_time.slice(0, 5)}</span>
                         : <span className="dash-tl-time">N/A</span>}
-                      <span className="dash-tl-title">{block.title}</span>
-                      {isActive && !block.completed && <span className="dash-tl-live">NOW</span>}
-                      <button className="dash-tl-delete" onClick={e => { e.stopPropagation(); onDeleteBlock(block.id) }} aria-label="Delete block">✕</button>
+                      <span className="dash-tl-title">{dragActiveBlock.title}</span>
                     </div>
-                  )
-                })}
-              </div>
+                  )}
+                </DragOverlay>
+              </DndContext>
             )}
           </div>
 
@@ -441,6 +586,10 @@ export default function DashboardView({
                   )}
                 </div>
               )}
+              <div className="dash-glance-moon">
+                <span className="dash-glance-moon-icon">{moonPhase.icon}</span>
+                <span>{moonPhase.name}</span>
+              </div>
             </div>
 
             {/* Next Up */}
@@ -465,6 +614,25 @@ export default function DashboardView({
               ) : !nextUpBlock.active ? (
                 <p className="dash-next-up-empty">Nothing else today</p>
               ) : null}
+            </div>
+
+            {/* Pomodoro focus timer */}
+            <div className="pomo-section">
+              <span className="pomo-label">{pomoOnBreak ? 'Break' : 'Focus'}</span>
+              <div className="pomo-display">
+                <span className={`pomo-time${pomoOnBreak ? ' pomo-break' : ''}`}>{pomoDisplay}</span>
+                <div className="pomo-controls">
+                  <button className={`pomo-btn${pomoRunning ? ' pomo-active' : ''}`} onClick={() => setPomoRunning(r => !r)}>
+                    {pomoRunning ? 'Pause' : 'Start'}
+                  </button>
+                  <button className="pomo-btn" onClick={() => { setPomoRunning(false); setPomoOnBreak(false); setPomoSeconds(POMO_WORK) }}>
+                    Reset
+                  </button>
+                </div>
+              </div>
+              <div className="pomo-progress">
+                <div className={`pomo-progress-bar${pomoOnBreak ? ' pomo-break' : ''}`} style={{ width: `${pomoPct}%` }} />
+              </div>
             </div>
           </div>
         </div>
@@ -543,7 +711,7 @@ export default function DashboardView({
                 )}
                 <div className="dash-week-chips">
                   {dayBlocks.slice(0, 4).map(b => (
-                    <div key={b.id} className="dash-week-chip" style={{ background: '#d4af37' }} title={b.title} />
+                    <div key={b.id} className="dash-week-chip" style={{ background: 'var(--block-bg)' }} title={b.title} />
                   ))}
                 </div>
               </div>
@@ -602,7 +770,7 @@ export default function DashboardView({
                     <div
                       key={block.id}
                       className={`dash-tl-block ${block.completed ? 'dash-tl-done' : ''}`}
-                      style={{ background: '#e6ab2a85' }}
+                      style={{ background: 'var(--block-bg)' }}
                       onClick={() => setBlockForm({ block, date: selectedDay })}
                     >
                       <button
@@ -672,7 +840,7 @@ export default function DashboardView({
                 {dayBlocks.length > 0 && (
                   <div className="dash-cal-dots">
                     {dayBlocks.slice(0, 4).map(b => (
-                      <span key={b.id} className="dash-cal-dot" style={{ background: '#d4af37' }} />
+                      <span key={b.id} className="dash-cal-dot" style={{ background: 'var(--block-bg)' }} />
                     ))}
                   </div>
                 )}
@@ -745,17 +913,54 @@ export default function DashboardView({
 
       {/* ── Daily Inspiration ── */}
       <div className="dash-card dash-inspiration" style={{ gridArea: 'inspiration' }}>
-        <h2 className="dash-card-title">Daily Inspiration</h2>
+        <div className="dash-card-title-row">
+          <h2 className="dash-card-title">Daily Inspiration</h2>
+          <button className="inspiration-favs-btn" onClick={() => setShowFavorites(v => !v)}>&#9733; Favorites</button>
+        </div>
+        {showFavorites && (
+          <div className="inspiration-favs-popup">
+            <div className="inspiration-favs-popup-header">
+              <span>Favorites</span>
+              <button className="inspiration-favs-close" onClick={() => setShowFavorites(false)}>&times;</button>
+            </div>
+            {favorites.length === 0 && <p className="empty-msg">No favorites yet.</p>}
+            {favorites.filter(f => f.type === 'tip').length > 0 && (
+              <div className="favs-group">
+                <span className="inspiration-label">Tips</span>
+                {favorites.filter(f => f.type === 'tip').map(f => (
+                  <p key={f.inspiration_id} className="inspiration-text">{f.daily_inspiration.content}</p>
+                ))}
+              </div>
+            )}
+            {favorites.filter(f => f.type === 'quote').length > 0 && (
+              <div className="favs-group">
+                <span className="inspiration-label">Quotes</span>
+                {favorites.filter(f => f.type === 'quote').map(f => (
+                  <blockquote key={f.inspiration_id} className="inspiration-quote">
+                    "{f.daily_inspiration.content}"
+                    {f.daily_inspiration.author && <cite className="inspiration-author">— {f.daily_inspiration.author}</cite>}
+                  </blockquote>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
         <div className="inspiration-content">
           {dailyInspiration.tip && (
             <div className="inspiration-section">
-              <span className="inspiration-label">Tip of the Day</span>
+              <div className="inspiration-header">
+                <span className="inspiration-label">Tip of the Day</span>
+                <button className={`inspiration-fav${favoriteIds.has(dailyInspiration.tip.id) ? ' is-fav' : ''}`} onClick={() => toggleFavorite(dailyInspiration.tip)} title={favoriteIds.has(dailyInspiration.tip.id) ? 'Unfavorite' : 'Favorite'}>&#9733;</button>
+              </div>
               <p className="inspiration-text">{dailyInspiration.tip.content}</p>
             </div>
           )}
           {dailyInspiration.quote && (
             <div className="inspiration-section">
-              <span className="inspiration-label">Quote of the Day</span>
+              <div className="inspiration-header">
+                <span className="inspiration-label">Quote of the Day</span>
+                <button className={`inspiration-fav${favoriteIds.has(dailyInspiration.quote.id) ? ' is-fav' : ''}`} onClick={() => toggleFavorite(dailyInspiration.quote)} title={favoriteIds.has(dailyInspiration.quote.id) ? 'Unfavorite' : 'Favorite'}>&#9733;</button>
+              </div>
               <blockquote className="inspiration-quote">
                 "{dailyInspiration.quote.content}"
                 {dailyInspiration.quote.author && (

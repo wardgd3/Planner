@@ -359,7 +359,7 @@ function MobilePlanner({
                     {dayBlocks.length > 0 && (
                       <div className="dash-cal-dots">
                         {dayBlocks.slice(0, 4).map(b => (
-                          <span key={b.id} className="dash-cal-dot" style={{ background: '#d4af37' }} />
+                          <span key={b.id} className="dash-cal-dot" style={{ background: 'var(--accent)' }} />
                         ))}
                       </div>
                     )}
