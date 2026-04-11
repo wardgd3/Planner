@@ -35,7 +35,7 @@ function SortableBlock({ block, isActive, onEdit, onComplete, onDelete, today })
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
-    background: 'var(--block-bg)',
+    background: 'var(--accent-dim)',
   }
   return (
     <div
@@ -770,7 +770,7 @@ export default function DashboardView({
                     <div
                       key={block.id}
                       className={`dash-tl-block ${block.completed ? 'dash-tl-done' : ''}`}
-                      style={{ background: 'var(--block-bg)' }}
+                      style={{ background: 'var(--accent-dim)' }}
                       onClick={() => setBlockForm({ block, date: selectedDay })}
                     >
                       <button

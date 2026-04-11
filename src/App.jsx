@@ -373,6 +373,12 @@ function AppInner({ onLogout }) {
                     ['linen-jade', 'Linen Jade'],
                     ['studio-white', 'Studio White'],
                     ['sand-coral', 'Sand Coral'],
+                    ['neon-violet-light', 'Neon Violet Light'],
+                    ['neon-ice-light', 'Neon Ice Light'],
+                    ['neon-cyan-light', 'Neon Cyan Light'],
+                    ['neon-lime-light', 'Neon Lime Light'],
+                    ['neon-rose-light', 'Neon Rose Light'],
+                    ['neon-magenta-light', 'Neon Magenta Light'],
                   ].map(([key, label]) => (
                     <button key={key} className={`settings-theme-btn${theme === key ? ' active' : ''}`} onClick={() => setTheme(key)}>
                       <span className={`settings-theme-swatch ${key}`} />
