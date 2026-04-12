@@ -2368,6 +2368,8 @@ body.pomo-focus-active .dash-today {
 
   .dash {
     grid-template-columns: 1fr;
+    gap: 20px;
+    padding-top: 20px;
   }
   .dash .dash-rest {
     grid-template-columns: 1fr;
@@ -2375,6 +2377,7 @@ body.pomo-focus-active .dash-today {
       "chat"
       "inspiration"
       "notes";
+    gap: 16px;
   }
   .dash:not(.dash-mobile-week-focus) .dash-week,
   .dash:not(.dash-mobile-week-focus) .dash-calendar { display: none; }
@@ -2393,23 +2396,38 @@ body.pomo-focus-active .dash-today {
   .dash-mobile-week-focus .dash-week-wx-temps { font-size: 8px; }
   .dash-mobile-week-focus .dash-week-chip { width: 6px; height: 6px; }
   .dash-mobile-week-focus .dash-week-header { flex-wrap: wrap; gap: 8px; }
+
+  /* Card padding on mobile */
+  .dash-card { padding: 18px 16px; }
+  .dash-card-header { margin-bottom: 18px; }
+
   .dash-today-body {
     grid-template-columns: 1fr;
-    gap: 18px;
+    gap: 22px;
   }
   .dash-next-up { max-width: none; }
   .wx-forecast { grid-template-columns: repeat(7, 1fr); gap: 3px; }
   .wx-pill { min-width: 50px; padding: 6px 8px 5px; }
 
-  /* Disable focus mode centering on mobile */
+  /* Disable focus/minimalist mode on mobile — always show all cards */
   .dash-focused { min-height: auto; align-content: stretch; }
   .dash-focused .dash-today { transform: none; }
-  .dash-focused .dash-rest { opacity: 1; transform: none; pointer-events: auto; }
+  .dash-focused .dash-rest {
+    opacity: 1; transform: none; pointer-events: auto;
+    visibility: visible;
+    transition: none;
+  }
+
+  /* Spacing for schedule blocks and tasks */
+  .dash-sublabel { margin-bottom: 10px; }
+  .dash-timeline-list { gap: 10px; }
+  .dash-tl-block { padding: 10px 12px; }
 
   /* Reset desktop block/column tweaks for single-column mobile */
   .dash-timeline {
     padding-right: 0;
     border-right: none;
+    margin-bottom: 6px;
   }
   .dash-tasks {
     padding-right: 0;
@@ -2417,26 +2435,35 @@ body.pomo-focus-active .dash-today {
     margin-right: 0;
     margin-left: 0;
     width: 100%;
+    margin-bottom: 6px;
   }
   .dash-hero-right {
     min-width: 0; max-width: none;
     flex-direction: row;
     flex-wrap: wrap;
-    gap: 10px;
+    gap: 12px;
   }
   .dash-hero-right > * { flex: 1 1 100%; }
 
   /* Smaller hero text on mobile */
   .dash-today .dash-card-title { font-size: 26px; }
-  .dash-date-label { font-size: 16px; }
-  .dash-today .dash-card-header { flex-wrap: wrap; gap: 10px; }
-  .dash-today-actions { width: 100%; }
-  .dash-today-actions .add-btn { flex: 1; }
+  .dash-date-label { font-size: 16px; margin-bottom: 4px; }
+  .dash-today .dash-card-header { flex-wrap: wrap; gap: 12px; }
+  .dash-today-actions { width: 100%; gap: 10px; }
+  .dash-today-actions .add-btn { flex: 1; text-align: center; padding: 10px 14px; }
 
-  /* This Week detail row stacks on mobile */
-  .dash-week-detail-row { grid-template-columns: 1fr; }
+  /* This Week detail header wraps on mobile */
+  .dash-week-detail-header { flex-wrap: wrap; gap: 12px; }
+  .dash-week-detail-header .dash-today-actions { width: 100%; }
+  .dash-week-detail-header .dash-today-actions .add-btn { flex: 1; text-align: center; }
 
-  /* Inspiration stays full width */
+  /* This Week detail spacing */
+  .dash-week-detail-row { grid-template-columns: 1fr; gap: 20px; }
+  .dash-week-detail-list { gap: 10px; }
+  .dash-week-detail-task { padding: 10px 14px; }
+
+  /* Quick-add spacing */
+  .dash-quick-add { margin-top: 18px; padding-top: 16px; }
 }
 
 /* ══ Projects view ══ */
