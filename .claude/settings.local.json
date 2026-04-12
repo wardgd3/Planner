@@ -9,7 +9,8 @@
       "mcp__Claude_Preview__preview_start",
       "Bash(find /c/Users/Grant/OneDrive/Desktop/Projects/planner_github/src -type f \\\\\\(-name *.jsx -o -name *.js -o -name *.tsx -o -name *.ts \\\\\\))",
       "Bash(find /c/Users/Grant/OneDrive/Desktop/Projects/planner_github -name *schema* -o -name *migration* -o -name *supabase*)",
-      "Bash(grep -n \"theme\\\\|Theme\\\\|settings\\\\|Settings\" /c/Users/Grant/OneDrive/Desktop/Projects/planner_github/src/*.jsx /c/Users/Grant/OneDrive/Desktop/Projects/planner_github/src/*.js)"
+      "Bash(grep -n \"theme\\\\|Theme\\\\|settings\\\\|Settings\" /c/Users/Grant/OneDrive/Desktop/Projects/planner_github/src/*.jsx /c/Users/Grant/OneDrive/Desktop/Projects/planner_github/src/*.js)",
+      "Bash(grep -E \"\\\\.\\(jsx|js\\)$\")"
     ]
   }
 }

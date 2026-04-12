@@ -157,6 +157,74 @@ export default function DashboardView({
   const [selectedDay, setSelectedDay] = useState(today)
   const [showWeatherPopup, setShowWeatherPopup] = useState(false)
 
+  // ── Widget visibility ──
+  const WIDGET_REGISTRY = [
+    { key: 'week', name: 'This Week' },
+    { key: 'calendar', name: 'Calendar' },
+    { key: 'notes', name: 'Notes' },
+    { key: 'ai_chat', name: 'Assistant' },
+    { key: 'inspiration', name: 'Inspiration' },
+  ]
+  const ALL_WIDGET_KEYS = WIDGET_REGISTRY.map(w => w.key)
+  const [enabledWidgets, setEnabledWidgets] = useState(() => {
+    try {
+      const stored = localStorage.getItem('dashboard_widgets')
+      if (stored) {
+        const parsed = JSON.parse(stored)
+        if (Array.isArray(parsed)) return parsed.filter(k => ALL_WIDGET_KEYS.includes(k))
+      }
+    } catch {}
+    return ALL_WIDGET_KEYS
+  })
+  const [showWidgetPicker, setShowWidgetPicker] = useState(false)
+  const toggleWidget = (key) => {
+    setEnabledWidgets(prev => {
+      const next = prev.includes(key) ? prev.filter(k => k !== key) : [...prev, key]
+      localStorage.setItem('dashboard_widgets', JSON.stringify(next))
+      return next
+    })
+  }
+
+  // Compute dynamic column spans: pack widgets into rows, then expand to fill
+  const widgetSpans = useMemo(() => {
+    const BASE = { week: 3, calendar: 2, notes: 2, ai_chat: 3, inspiration: 5 }
+    const order = ['week', 'calendar', 'notes', 'ai_chat', 'inspiration']
+    const enabled = order.filter(k => enabledWidgets.includes(k))
+    const COLS = 5
+    const spans = {}
+    const rows = []
+    let currentRow = []
+    let currentSum = 0
+    for (const key of enabled) {
+      const base = BASE[key]
+      if (currentSum + base <= COLS) {
+        currentRow.push(key)
+        currentSum += base
+      } else {
+        if (currentRow.length) rows.push(currentRow)
+        currentRow = [key]
+        currentSum = base
+      }
+    }
+    if (currentRow.length) rows.push(currentRow)
+    for (const row of rows) {
+      const rowSum = row.reduce((s, k) => s + BASE[k], 0)
+      if (rowSum === COLS) {
+        row.forEach(k => { spans[k] = BASE[k] })
+      } else {
+        let remaining = COLS
+        for (let i = 0; i < row.length - 1; i++) {
+          const span = Math.round(BASE[row[i]] * COLS / rowSum)
+          spans[row[i]] = span
+          remaining -= span
+        }
+        spans[row[row.length - 1]] = remaining
+      }
+    }
+    return spans
+  }, [enabledWidgets])
+
+
   // Weather glance for hero — refresh every 30 minutes
   const [weatherGlance, setWeatherGlance] = useState(null)
   useEffect(() => {
@@ -651,8 +719,31 @@ export default function DashboardView({
       {/* ══ Expandable content ══ */}
       <div className="dash-rest">
 
+      {/* Widget picker gear */}
+      <div className="dash-widget-picker-wrap">
+        <button className="dash-widget-gear" onClick={() => setShowWidgetPicker(v => !v)} aria-label="Customize widgets" title="Customize widgets">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+          </svg>
+        </button>
+        {showWidgetPicker && (
+          <div className="dash-widget-picker">
+            {WIDGET_REGISTRY.map(w => (
+              <button
+                key={w.key}
+                className={`dash-widget-chip ${enabledWidgets.includes(w.key) ? 'active' : ''}`}
+                onClick={() => toggleWidget(w.key)}
+              >
+                {enabledWidgets.includes(w.key) && <span className="dash-widget-check">✓</span>}
+                {w.name}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+
       {/* ══ Row 2 — This Week (left) | Calendar (right) ══ */}
-      <div className="dash-card dash-week">
+      {enabledWidgets.includes('week') && <div className="dash-card dash-week" style={{ gridColumn: `span ${widgetSpans.week}` }}>
         <div className="dash-week-header">
           <div className="dash-week-header-left">
             <h2 className="dash-card-title">This Week</h2>
@@ -804,10 +895,10 @@ export default function DashboardView({
             </div>
           </div>
         </div>
-      </div>
+      </div>}
 
       {/* Calendar (replaces Habit Streaks) */}
-      <div className="dash-card dash-calendar">
+      {enabledWidgets.includes('calendar') && <div className="dash-card dash-calendar" style={{ gridColumn: `span ${widgetSpans.calendar}` }}>
         <div className="dash-cal-header">
           <h2 className="dash-card-title">{MONTHS_FULL[calMonth]} {calYear}</h2>
           <div className="dash-cal-nav">
@@ -848,9 +939,9 @@ export default function DashboardView({
             )
           })}
         </div>
-      </div>
+      </div>}
 
-      <div className="dash-card dash-notes">
+      {enabledWidgets.includes('notes') && <div className="dash-card dash-notes" style={{ gridColumn: `span ${widgetSpans.notes}` }}>
         <h2 className="dash-card-title">Notes</h2>
         <div className="dash-notes-add">
           <input
@@ -904,15 +995,15 @@ export default function DashboardView({
             </div>
           ))}
         </div>
-      </div>
+      </div>}
 
-      <div className="dash-card dash-ai-chat">
+      {enabledWidgets.includes('ai_chat') && <div className="dash-card dash-ai-chat" style={{ gridColumn: `span ${widgetSpans.ai_chat}` }}>
         <h2 className="dash-card-title">Assistant</h2>
         <AiChat todayBlocks={todayBlocks} todayTasks={[...todayTasks, ...doneTasks]} dateLabel={dateLabel} />
-      </div>
+      </div>}
 
       {/* ── Daily Inspiration ── */}
-      <div className="dash-card dash-inspiration" style={{ gridArea: 'inspiration' }}>
+      {enabledWidgets.includes('inspiration') && <div className="dash-card dash-inspiration" style={{ gridColumn: `span ${widgetSpans.inspiration}` }}>
         <div className="dash-card-title-row">
           <h2 className="dash-card-title">Daily Inspiration</h2>
           <button className="inspiration-favs-btn" onClick={() => setShowFavorites(v => !v)}>&#9733; Favorites</button>
@@ -973,7 +1064,7 @@ export default function DashboardView({
             <p className="empty-msg">No inspiration yet — add quotes and tips to the daily_inspiration table.</p>
           )}
         </div>
-      </div>
+      </div>}
 
       </div>{/* end dash-rest */}
 
