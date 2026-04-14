@@ -16,7 +16,8 @@
       "Bash(cygpath -w /tmp/old_css.txt)",
       "Bash(node revert_fonts.js)",
       "Bash(mv revert_fonts.js revert_fonts.cjs)",
-      "Bash(node revert_fonts.cjs)"
+      "Bash(node revert_fonts.cjs)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:5173)"
     ]
   }
 }
