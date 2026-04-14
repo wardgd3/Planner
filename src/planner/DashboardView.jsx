@@ -50,12 +50,22 @@ function SortableBlock({ block, isActive, onEdit, onComplete, onDelete, today })
         onClick={e => { e.stopPropagation(); onComplete(block) }}
         aria-label={block.completed ? 'Uncheck block' : 'Complete block'}
       >{block.completed ? '✓' : ''}</button>
+      <span className="dash-tl-title">{block.title}</span>
       {block.start_time && block.end_time
         ? <span className="dash-tl-time">{block.start_time.slice(0, 5)} – {block.end_time.slice(0, 5)}</span>
         : <span className="dash-tl-time">N/A</span>}
-      <span className="dash-tl-title">{block.title}</span>
       {isActive && !block.completed && <span className="dash-tl-live">NOW</span>}
       <button className="dash-tl-delete" onClick={e => { e.stopPropagation(); onDelete(block.id) }} aria-label="Delete block">✕</button>
+      {isActive && !block.completed && block.start_time && block.end_time && (() => {
+        const now = new Date()
+        const [sh, sm] = block.start_time.split(':').map(Number)
+        const [eh, em] = block.end_time.split(':').map(Number)
+        const startMin = sh * 60 + sm
+        const endMin = eh * 60 + em
+        const nowMin = now.getHours() * 60 + now.getMinutes()
+        const pct = Math.max(0, Math.min(100, ((nowMin - startMin) / (endMin - startMin)) * 100))
+        return <div className="dash-tl-progress"><div className="dash-tl-progress-bar" style={{ width: `${pct}%` }} /></div>
+      })()}
     </div>
   )
 }
@@ -568,11 +578,15 @@ export default function DashboardView({
       <div className="dash-card dash-today" onClick={() => { if (!expanded) setExpanded(true) }}>
         <div className="dash-card-header">
           <div>
-            <h2 className="dash-card-title">Today's Focus</h2>
-            <p className="dash-date-label">{dateLabel}</p>
+            <h2 className="dash-card-title"><span className="dash-title-desktop">Today's Focus</span><span className="dash-title-mobile">{`${DAY_NAMES[now.getDay()]}, ${MONTHS_FULL[now.getMonth()].slice(0, 3)} ${now.getDate()}`}</span></h2>
+            <p className="dash-date-label"><span className="dash-date-desktop">{dateLabel}</span><span className="dash-date-mobile">{todayTasks.length + doneTasks.length} task{todayTasks.length + doneTasks.length !== 1 ? 's' : ''} · {todayBlocks.length} block{todayBlocks.length !== 1 ? 's' : ''}</span></p>
+          </div>
+          <div className="dash-header-right-mobile">
+            <span className="dash-mobile-time">{timeStr}</span>
+            {weatherGlance && <span className="dash-mobile-weather">{Math.round(weatherGlance.current_temp_f)}° {parseCondition(weatherGlance.current_code)}</span>}
           </div>
           <div className="dash-today-actions">
-            <button className="add-btn" onClick={() => setBlockForm({ date: today })}>+ Block</button>
+            <button className="add-btn dash-block-btn" onClick={() => setBlockForm({ date: today })}>+ Block</button>
             <button className="add-btn" onClick={() => setTaskForm({})}>+ Task</button>
           </div>
         </div>
@@ -628,6 +642,7 @@ export default function DashboardView({
                   <div className="task-info">
                     <p className="task-title">{task.title}</p>
                   </div>
+                  {task.due_time && <span className="task-time">{task.due_time.slice(0, 5)}</span>}
                   <span className="priority-dot" style={{ background: priorityColor(task.priority) }} />
                 </li>
               ))}
@@ -700,6 +715,25 @@ export default function DashboardView({
               </div>
               <div className="pomo-progress">
                 <div className={`pomo-progress-bar${pomoOnBreak ? ' pomo-break' : ''}`} style={{ width: `${pomoPct}%` }} />
+              </div>
+            </div>
+
+            {/* Mobile-only: time & weather card (replaces pomo on mobile) */}
+            <div className="dash-mobile-glance">
+              <div className="dash-mobile-glance-time">{timeStr}</div>
+              {weatherGlance && (
+                <div className="dash-mobile-glance-wx">
+                  <span>{weatherEmoji(weatherGlance.current_code)}</span>
+                  <span>{Math.round(weatherGlance.current_temp_f)}° {parseCondition(weatherGlance.current_code)}</span>
+                </div>
+              )}
+              {weatherByDate[today] && (
+                <div className="dash-mobile-glance-hilo">
+                  H: {Math.round(weatherByDate[today].temp_high_f)}° L: {Math.round(weatherByDate[today].temp_low_f)}°
+                </div>
+              )}
+              <div className="dash-mobile-glance-moon">
+                {moonPhase.icon} {moonPhase.name}
               </div>
             </div>
           </div>

@@ -351,7 +351,6 @@ function AppInner({ onLogout }) {
                   {[
                     ['warm', 'Warm'],
                     ['midnight-scholar', 'Midnight Scholar'],
-                    ['linen-bark', 'Linen & Bark'],
                     ['great-wave', 'Great Wave Night'],
                     ['william-morris', 'William Morris Garden'],
                     ['synthwave-night', 'Synthwave Night'],
@@ -386,10 +385,11 @@ function AppInner({ onLogout }) {
                   ))}
                 </div>
               </div>
+              <button className="logout-btn settings-logout" onClick={onLogout}>Sign out</button>
             </div>
           )}
         </div>
-        <button className="logout-btn" onClick={onLogout}>Sign out</button>
+        <button className="logout-btn desktop-only" onClick={onLogout}>Sign out</button>
       </div>
 
       {activeTab === 'planner' && <Planner habits={habits} />}

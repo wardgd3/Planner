@@ -7,8 +7,9 @@ import DashboardView from './DashboardView'
 import WeeklyView from './WeeklyView'
 import ProjectsView from './ProjectsView'
 import WeatherWidget from './WeatherWidget'
+import BlockForm from './BlockForm'
 
-const PLANNER_TABS = ['Today', 'Week', 'Projects']
+const PLANNER_TABS = ['Today', 'Week', 'Month', 'Projects']
 const WEEK_HEADERS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
 
 function getMonthGrid(year, month) {
@@ -266,12 +267,57 @@ function MobilePlanner({
   addTask, editTask, deleteTask, completeTask,
   addProject, editProject, deleteProject,
 }) {
+  const toast = useToast()
   const [showCalendar, setShowCalendar] = useState(false)
   const [showWeather, setShowWeather] = useState(false)
+  const [blockForm, setBlockForm] = useState(null)
   const now = new Date()
   const [calMonth, setCalMonth] = useState(now.getMonth())
   const [calYear, setCalYear] = useState(now.getFullYear())
   const today = todayStr()
+
+  function goCalToday() { setCalMonth(new Date().getMonth()); setCalYear(new Date().getFullYear()) }
+
+  // ── Notes ──
+  const [notes, setNotes] = useState([])
+  const [noteInput, setNoteInput] = useState('')
+  const [editingNote, setEditingNote] = useState(null)
+  const [editingText, setEditingText] = useState('')
+
+  useEffect(() => {
+    supabase.from('planner_notes').select('*').order('created_at', { ascending: false })
+      .then(({ data }) => { if (data) setNotes(data) })
+  }, [])
+
+  const addNote = useCallback(async () => {
+    if (!noteInput.trim()) return
+    try {
+      const { data, error } = await supabase.from('planner_notes').insert({ content: noteInput.trim() }).select().single()
+      if (error) { toast.error('Failed to add note'); return }
+      setNotes(prev => [data, ...prev])
+      setNoteInput('')
+    } catch { toast.error('Network error') }
+  }, [noteInput, toast])
+
+  const updateNote = useCallback(async (id) => {
+    if (!editingText.trim()) return
+    try {
+      const { data, error } = await supabase.from('planner_notes')
+        .update({ content: editingText.trim(), updated_at: new Date().toISOString() })
+        .eq('id', id).select().single()
+      if (error) { toast.error('Failed to update note'); return }
+      setNotes(prev => prev.map(n => n.id === id ? data : n))
+      setEditingNote(null); setEditingText('')
+    } catch { toast.error('Network error') }
+  }, [editingText, toast])
+
+  const deleteNote = useCallback(async (id) => {
+    try {
+      const { error } = await supabase.from('planner_notes').delete().eq('id', id)
+      if (error) { toast.error('Failed to delete note'); return }
+      setNotes(prev => prev.filter(n => n.id !== id))
+    } catch { toast.error('Network error') }
+  }, [toast])
 
   const calCells = useMemo(() => getMonthGrid(calYear, calMonth), [calYear, calMonth])
   const calBlocksByDay = useMemo(() => {
@@ -394,6 +440,67 @@ function MobilePlanner({
             projects={projects} tasks={tasks} habits={habits}
             onAddProject={addProject} onEditProject={editProject} onDeleteProject={deleteProject}
             onAddTask={addTask} onEditTask={editTask} onDeleteTask={deleteTask} onCompleteTask={completeTask}
+          />
+        )}
+        {tab === 'Month' && (
+          <div className="mobile-month-view">
+            <div className="dash-cal-header">
+              <h2 className="dash-card-title">{MONTHS_FULL[calMonth]} {calYear}</h2>
+              <div className="dash-cal-nav">
+                {(calMonth !== now.getMonth() || calYear !== now.getFullYear()) && (
+                  <button className="add-btn" onClick={goCalToday}>Today</button>
+                )}
+                <button className="nav-btn" onClick={prevMonth} aria-label="Previous month">&#8249;</button>
+                <button className="nav-btn" onClick={nextMonth} aria-label="Next month">&#8250;</button>
+              </div>
+            </div>
+            <div className="dash-cal-grid">
+              {WEEK_HEADERS.map(d => <div key={d} className="dash-cal-dow">{d}</div>)}
+              {calCells.map((day, i) => {
+                if (day === null) return <div key={`blank-${i}`} className="dash-cal-cell dash-cal-blank" />
+                const ds = `${calYear}-${String(calMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`
+                const dayBlocks = calBlocksByDay[day] || []
+                const isToday = ds === today
+                return (
+                  <div
+                    key={ds}
+                    className={`dash-cal-cell ${isToday ? 'dash-cal-today' : ''} ${dayBlocks.length > 0 ? 'dash-cal-has' : ''}`}
+                    onClick={() => {
+                      if (dayBlocks.length === 1) setBlockForm({ block: dayBlocks[0], date: ds })
+                      else setBlockForm({ date: ds })
+                    }}
+                  >
+                    <span className="dash-cal-num">{day}</span>
+                    {dayBlocks.length > 0 && (
+                      <div className="dash-cal-dots">
+                        {dayBlocks.slice(0, 4).map(b => (
+                          <span key={b.id} className="dash-cal-dot" style={{ background: 'var(--accent)' }} />
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        )}
+
+        {blockForm !== null && (
+          <BlockForm
+            block={blockForm.block}
+            date={blockForm.date}
+            projects={projects}
+            tasks={tasks}
+            habits={habits}
+            glossaryItems={allGlossary}
+            existingBlocks={blocks.filter(b => b.date === (blockForm.date || blockForm.block?.date))}
+            onSave={async (data) => {
+              if (blockForm.block) await editBlock(blockForm.block.id, data)
+              else await addBlock(data)
+              setBlockForm(null)
+            }}
+            onDelete={blockForm.block ? async () => { await deleteBlock(blockForm.block.id); setBlockForm(null) } : undefined}
+            onClose={() => setBlockForm(null)}
           />
         )}
       </div>

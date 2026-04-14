@@ -10,7 +10,13 @@
       "Bash(find /c/Users/Grant/OneDrive/Desktop/Projects/planner_github/src -type f \\\\\\(-name *.jsx -o -name *.js -o -name *.tsx -o -name *.ts \\\\\\))",
       "Bash(find /c/Users/Grant/OneDrive/Desktop/Projects/planner_github -name *schema* -o -name *migration* -o -name *supabase*)",
       "Bash(grep -n \"theme\\\\|Theme\\\\|settings\\\\|Settings\" /c/Users/Grant/OneDrive/Desktop/Projects/planner_github/src/*.jsx /c/Users/Grant/OneDrive/Desktop/Projects/planner_github/src/*.js)",
-      "Bash(grep -E \"\\\\.\\(jsx|js\\)$\")"
+      "Bash(grep -E \"\\\\.\\(jsx|js\\)$\")",
+      "Bash(node -e ':*)",
+      "Read(//tmp/**)",
+      "Bash(cygpath -w /tmp/old_css.txt)",
+      "Bash(node revert_fonts.js)",
+      "Bash(mv revert_fonts.js revert_fonts.cjs)",
+      "Bash(node revert_fonts.cjs)"
     ]
   }
 }
