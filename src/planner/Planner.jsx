@@ -8,6 +8,7 @@ import WeeklyView from './WeeklyView'
 import ProjectsView from './ProjectsView'
 import WeatherWidget from './WeatherWidget'
 import BlockForm from './BlockForm'
+import TaskForm from './TaskForm'
 
 const PLANNER_TABS = ['Today', 'Week', 'Month', 'Projects']
 const WEEK_HEADERS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
@@ -241,6 +242,7 @@ export default function Planner({ habits }) {
             glossaryItems={allGlossary}
             onAddBlock={addBlock} onEditBlock={editBlock} onDeleteBlock={deleteBlock} onCompleteBlock={completeBlock}
             onAddTask={addTask} onEditTask={editTask} onDeleteTask={deleteTask} onCompleteTask={completeTask}
+            onAddProject={addProject} onEditProject={editProject} onDeleteProject={deleteProject}
           />
         </div>
       </div>
@@ -271,6 +273,8 @@ function MobilePlanner({
   const [showCalendar, setShowCalendar] = useState(false)
   const [showWeather, setShowWeather] = useState(false)
   const [blockForm, setBlockForm] = useState(null)
+  const [taskForm, setTaskForm] = useState(null) // { task?, date? } | null
+  const [dayDetail, setDayDetail] = useState(null) // { date: 'YYYY-MM-DD' } | null
   const now = new Date()
   const [calMonth, setCalMonth] = useState(now.getMonth())
   const [calYear, setCalYear] = useState(now.getFullYear())
@@ -424,6 +428,7 @@ function MobilePlanner({
             glossaryItems={allGlossary}
             onAddBlock={addBlock} onEditBlock={editBlock} onDeleteBlock={deleteBlock} onCompleteBlock={completeBlock}
             onAddTask={addTask} onEditTask={editTask} onDeleteTask={deleteTask} onCompleteTask={completeTask}
+            onAddProject={addProject} onEditProject={editProject} onDeleteProject={deleteProject}
           />
         )}
         {tab === 'Week' && (
@@ -466,7 +471,8 @@ function MobilePlanner({
                     key={ds}
                     className={`dash-cal-cell ${isToday ? 'dash-cal-today' : ''} ${dayBlocks.length > 0 ? 'dash-cal-has' : ''}`}
                     onClick={() => {
-                      if (dayBlocks.length === 1) setBlockForm({ block: dayBlocks[0], date: ds })
+                      const dayTasks = tasks.filter(t => t.due_date === ds)
+                      if (dayBlocks.length > 0 || dayTasks.length > 0) setDayDetail({ date: ds })
                       else setBlockForm({ date: ds })
                     }}
                   >
@@ -482,8 +488,113 @@ function MobilePlanner({
                 )
               })}
             </div>
+
+            <div className="dash-card dash-notes" style={{ marginTop: 20 }}>
+              <h2 className="dash-card-title">Notes</h2>
+              <div className="dash-notes-add">
+                <input
+                  className="input"
+                  placeholder="Add a note…"
+                  value={noteInput}
+                  onChange={e => setNoteInput(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter') addNote() }}
+                  maxLength={1000}
+                />
+                <button className="add-btn" onClick={addNote} disabled={!noteInput.trim()}>+</button>
+              </div>
+              <div className="dash-notes-list">
+                {notes.length === 0 && (
+                  <p className="empty-msg" style={{ padding: '12px 0' }}>No notes yet</p>
+                )}
+                {notes.map(note => (
+                  <div key={note.id} className="dash-note-item">
+                    {editingNote === note.id ? (
+                      <div className="dash-note-edit">
+                        <textarea
+                          className="input textarea"
+                          value={editingText}
+                          onChange={e => setEditingText(e.target.value)}
+                          rows={2}
+                          maxLength={1000}
+                          autoFocus
+                        />
+                        <div className="dash-note-edit-actions">
+                          <button className="add-btn" onClick={() => updateNote(note.id)}>Save</button>
+                          <button className="add-btn dash-note-cancel" onClick={() => { setEditingNote(null); setEditingText('') }}>Cancel</button>
+                        </div>
+                      </div>
+                    ) : (
+                      <>
+                        <p className="dash-note-text">{note.content}</p>
+                        <div className="dash-note-actions">
+                          <button
+                            className="icon-btn"
+                            onClick={() => { setEditingNote(note.id); setEditingText(note.content) }}
+                            aria-label="Edit note"
+                          >✏️</button>
+                          <button
+                            className="icon-btn"
+                            onClick={() => deleteNote(note.id)}
+                            aria-label="Delete note"
+                          >🗑</button>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
         )}
+
+        {dayDetail !== null && (() => {
+          const ds = dayDetail.date
+          const dayBlocks = blocks.filter(b => b.date === ds).sort((a, b) => (a.start_time || '').localeCompare(b.start_time || ''))
+          const dayTasks = tasks.filter(t => t.due_date === ds)
+          const d = new Date(ds + 'T00:00:00')
+          const label = `${['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][d.getDay()]}, ${MONTHS_FULL[d.getMonth()].slice(0,3)} ${d.getDate()}`
+          return (
+            <div className="drawer-overlay drawer-overlay-top" onClick={e => e.target === e.currentTarget && setDayDetail(null)}>
+              <div className="drawer">
+                <div className="drawer-header">
+                  <h2 className="drawer-title">{label}</h2>
+                  <button className="icon-btn" onClick={() => setDayDetail(null)} aria-label="Close">✕</button>
+                </div>
+                <div className="drawer-body">
+                  <p className="field-label">Blocks</p>
+                  {dayBlocks.length === 0 && <p className="empty-msg">No blocks</p>}
+                  {dayBlocks.map(b => (
+                    <div key={b.id} className="day-detail-item" onClick={() => { setDayDetail(null); setBlockForm({ block: b, date: ds }) }}>
+                      <div className="day-detail-item-main">
+                        <span className="day-detail-title">{b.title}</span>
+                        {b.start_time && b.end_time && (
+                          <span className="day-detail-time">{b.start_time.slice(0,5)}–{b.end_time.slice(0,5)}</span>
+                        )}
+                      </div>
+                      <button className="icon-btn" onClick={(e) => { e.stopPropagation(); deleteBlock(b.id) }} aria-label="Delete block">🗑</button>
+                    </div>
+                  ))}
+                  <p className="field-label" style={{ marginTop: 12 }}>Tasks</p>
+                  {dayTasks.length === 0 && <p className="empty-msg">No tasks</p>}
+                  {dayTasks.map(t => (
+                    <div key={t.id} className="day-detail-item" onClick={() => { setDayDetail(null); setTaskForm({ task: t, date: ds }) }}>
+                      <div className="day-detail-item-main">
+                        <span className="day-detail-title" style={{ textDecoration: t.status === 'done' ? 'line-through' : 'none', opacity: t.status === 'done' ? 0.6 : 1 }}>{t.title}</span>
+                        {t.due_time && <span className="day-detail-time">{t.due_time.slice(0,5)}</span>}
+                      </div>
+                      <button className="icon-btn" onClick={(e) => { e.stopPropagation(); deleteTask(t.id) }} aria-label="Delete task">🗑</button>
+                    </div>
+                  ))}
+                </div>
+                <div className="drawer-footer">
+                  <button className="confirm-btn" onClick={() => { setDayDetail(null); setBlockForm({ date: ds }) }}>+ Block</button>
+                  <button className="confirm-btn" onClick={() => { setDayDetail(null); setTaskForm({ date: ds }) }}>+ Task</button>
+                  <button className="cancel-btn" onClick={() => setDayDetail(null)}>Close</button>
+                </div>
+              </div>
+            </div>
+          )
+        })()}
 
         {blockForm !== null && (
           <BlockForm
@@ -499,8 +610,24 @@ function MobilePlanner({
               else await addBlock(data)
               setBlockForm(null)
             }}
-            onDelete={blockForm.block ? async () => { await deleteBlock(blockForm.block.id); setBlockForm(null) } : undefined}
-            onClose={() => setBlockForm(null)}
+            onCancel={() => setBlockForm(null)}
+            centered
+          />
+        )}
+
+        {taskForm !== null && (
+          <TaskForm
+            task={taskForm.task}
+            projects={projects}
+            habits={habits}
+            onSave={async (data) => {
+              const payload = { ...data, due_date: data.due_date || taskForm.date || null }
+              if (taskForm.task) await editTask(taskForm.task.id, payload)
+              else await addTask(payload)
+              setTaskForm(null)
+            }}
+            onCancel={() => setTaskForm(null)}
+            centered
           />
         )}
       </div>

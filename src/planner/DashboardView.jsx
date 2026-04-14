@@ -7,9 +7,10 @@ import BlockForm from './BlockForm'
 import TaskForm from './TaskForm'
 import WeatherWidget from './WeatherWidget'
 import AiChat from './AiChat'
+import ProjectsView from './ProjectsView'
 import { fetchWeather, weatherEmoji, parseCondition } from './weatherService'
 import { DndContext, closestCenter, PointerSensor, useSensor, useSensors, DragOverlay } from '@dnd-kit/core'
-import { SortableContext, verticalListSortingStrategy, useSortable, arrayMove } from '@dnd-kit/sortable'
+import { SortableContext, verticalListSortingStrategy, rectSortingStrategy, useSortable, arrayMove } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 
 // ── Moon phase calculator ──
@@ -70,6 +71,24 @@ function SortableBlock({ block, isActive, onEdit, onComplete, onDelete, today })
   )
 }
 
+function SortableCard({ id, span, order, className = '', children }) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id })
+  const style = {
+    gridColumn: `span ${span}`,
+    order,
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.4 : 1,
+    zIndex: isDragging ? 10 : 'auto',
+  }
+  return (
+    <div ref={setNodeRef} className={`dash-card ${className} sortable-card${isDragging ? ' dragging' : ''}`} style={style}>
+      <button className="dash-card-drag" {...attributes} {...listeners} aria-label="Drag to reorder" onClick={e => e.preventDefault()}>⠿</button>
+      {children}
+    </div>
+  )
+}
+
 const WEEK_HEADERS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
 
 function getWeekDays(offset = 0) {
@@ -125,6 +144,7 @@ export default function DashboardView({
   glossaryItems,
   onAddBlock, onEditBlock, onDeleteBlock, onCompleteBlock,
   onAddTask, onEditTask, onDeleteTask, onCompleteTask,
+  onAddProject, onEditProject, onDeleteProject,
   mobileWeekFocus = false,
 }) {
   const toast = useToast()
@@ -171,7 +191,9 @@ export default function DashboardView({
   const WIDGET_REGISTRY = [
     { key: 'week', name: 'This Week' },
     { key: 'calendar', name: 'Calendar' },
+    { key: 'projects', name: 'Projects' },
     { key: 'notes', name: 'Notes' },
+    { key: 'timer', name: 'Timer' },
     { key: 'ai_chat', name: 'Assistant' },
     { key: 'inspiration', name: 'Inspiration' },
   ]
@@ -195,11 +217,41 @@ export default function DashboardView({
     })
   }
 
+  // Widget ordering (drag-to-reorder)
+  const DEFAULT_WIDGET_ORDER = ['week', 'calendar', 'projects', 'notes', 'timer', 'ai_chat', 'inspiration']
+  const [widgetOrder, setWidgetOrder] = useState(() => {
+    try {
+      const stored = localStorage.getItem('dashboard_widget_order')
+      if (stored) {
+        const parsed = JSON.parse(stored)
+        if (Array.isArray(parsed)) {
+          const filtered = parsed.filter(k => ALL_WIDGET_KEYS.includes(k))
+          const missing = ALL_WIDGET_KEYS.filter(k => !filtered.includes(k))
+          return [...filtered, ...missing]
+        }
+      }
+    } catch {}
+    return DEFAULT_WIDGET_ORDER
+  })
+
+  const widgetSensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }))
+  const handleWidgetDragEnd = useCallback((event) => {
+    const { active, over } = event
+    if (!over || active.id === over.id) return
+    setWidgetOrder(prev => {
+      const oldIdx = prev.indexOf(active.id)
+      const newIdx = prev.indexOf(over.id)
+      if (oldIdx === -1 || newIdx === -1) return prev
+      const next = arrayMove(prev, oldIdx, newIdx)
+      localStorage.setItem('dashboard_widget_order', JSON.stringify(next))
+      return next
+    })
+  }, [])
+
   // Compute dynamic column spans: pack widgets into rows, then expand to fill
   const widgetSpans = useMemo(() => {
-    const BASE = { week: 3, calendar: 2, notes: 2, ai_chat: 3, inspiration: 5 }
-    const order = ['week', 'calendar', 'notes', 'ai_chat', 'inspiration']
-    const enabled = order.filter(k => enabledWidgets.includes(k))
+    const BASE = { week: 3, calendar: 2, projects: 3, notes: 2, timer: 2, ai_chat: 3, inspiration: 3 }
+    const enabled = widgetOrder.filter(k => enabledWidgets.includes(k))
     const COLS = 5
     const spans = {}
     const rows = []
@@ -219,7 +271,8 @@ export default function DashboardView({
     if (currentRow.length) rows.push(currentRow)
     for (const row of rows) {
       const rowSum = row.reduce((s, k) => s + BASE[k], 0)
-      if (rowSum === COLS) {
+      if (rowSum === COLS || row.length === 1) {
+        // Exact fit or solo card — use natural size (solo cards don't expand to full width)
         row.forEach(k => { spans[k] = BASE[k] })
       } else {
         let remaining = COLS
@@ -232,7 +285,7 @@ export default function DashboardView({
       }
     }
     return spans
-  }, [enabledWidgets])
+  }, [enabledWidgets, widgetOrder])
 
 
   // Weather glance for hero — refresh every 30 minutes
@@ -292,6 +345,40 @@ export default function DashboardView({
   const pomoDisplay = `${Math.floor(pomoSeconds / 60)}:${String(pomoSeconds % 60).padStart(2, '0')}`
   const pomoTotal = pomoOnBreak ? POMO_BREAK : POMO_WORK
   const pomoPct = ((pomoTotal - pomoSeconds) / pomoTotal) * 100
+
+  // ── Timer card state (mode: pomo | stopwatch | clock | countdown) ──
+  const [timerMode, setTimerMode] = useState(() => localStorage.getItem('timer_mode') || 'pomo')
+  useEffect(() => { localStorage.setItem('timer_mode', timerMode) }, [timerMode])
+
+  // Stopwatch
+  const [swSeconds, setSwSeconds] = useState(0)
+  const [swRunning, setSwRunning] = useState(false)
+  const swRef = useRef(null)
+  useEffect(() => {
+    if (swRunning) {
+      swRef.current = setInterval(() => setSwSeconds(s => s + 1), 1000)
+    } else if (swRef.current) { clearInterval(swRef.current); swRef.current = null }
+    return () => { if (swRef.current) clearInterval(swRef.current) }
+  }, [swRunning])
+  const swDisplay = `${String(Math.floor(swSeconds / 3600)).padStart(2, '0')}:${String(Math.floor((swSeconds % 3600) / 60)).padStart(2, '0')}:${String(swSeconds % 60).padStart(2, '0')}`
+
+  // Countdown (user-set minutes)
+  const [cdInput, setCdInput] = useState(10)
+  const [cdSeconds, setCdSeconds] = useState(0)
+  const [cdRunning, setCdRunning] = useState(false)
+  const cdRef = useRef(null)
+  useEffect(() => {
+    if (cdRunning) {
+      cdRef.current = setInterval(() => {
+        setCdSeconds(s => {
+          if (s <= 1) { clearInterval(cdRef.current); setCdRunning(false); return 0 }
+          return s - 1
+        })
+      }, 1000)
+    } else if (cdRef.current) { clearInterval(cdRef.current); cdRef.current = null }
+    return () => { if (cdRef.current) clearInterval(cdRef.current) }
+  }, [cdRunning])
+  const cdDisplay = `${String(Math.floor(cdSeconds / 60)).padStart(2, '0')}:${String(cdSeconds % 60).padStart(2, '0')}`
 
   // ── Drag-to-reorder blocks ──
   const blockSensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }))
@@ -699,25 +786,6 @@ export default function DashboardView({
               ) : null}
             </div>
 
-            {/* Pomodoro focus timer */}
-            <div className="pomo-section">
-              <span className="pomo-label">{pomoOnBreak ? 'Break' : 'Focus'}</span>
-              <div className="pomo-display">
-                <span className={`pomo-time${pomoOnBreak ? ' pomo-break' : ''}`}>{pomoDisplay}</span>
-                <div className="pomo-controls">
-                  <button className={`pomo-btn${pomoRunning ? ' pomo-active' : ''}`} onClick={() => setPomoRunning(r => !r)}>
-                    {pomoRunning ? 'Pause' : 'Start'}
-                  </button>
-                  <button className="pomo-btn" onClick={() => { setPomoRunning(false); setPomoOnBreak(false); setPomoSeconds(POMO_WORK) }}>
-                    Reset
-                  </button>
-                </div>
-              </div>
-              <div className="pomo-progress">
-                <div className={`pomo-progress-bar${pomoOnBreak ? ' pomo-break' : ''}`} style={{ width: `${pomoPct}%` }} />
-              </div>
-            </div>
-
             {/* Mobile-only: time & weather card (replaces pomo on mobile) */}
             <div className="dash-mobile-glance">
               <div className="dash-mobile-glance-time">{timeStr}</div>
@@ -777,7 +845,9 @@ export default function DashboardView({
       </div>
 
       {/* ══ Row 2 — This Week (left) | Calendar (right) ══ */}
-      {enabledWidgets.includes('week') && <div className="dash-card dash-week" style={{ gridColumn: `span ${widgetSpans.week}` }}>
+      <DndContext sensors={widgetSensors} collisionDetection={closestCenter} onDragEnd={handleWidgetDragEnd}>
+        <SortableContext items={widgetOrder.filter(k => enabledWidgets.includes(k))} strategy={rectSortingStrategy}>
+      {enabledWidgets.includes('week') && <SortableCard id="week" span={widgetSpans.week} order={widgetOrder.indexOf('week')} className="dash-week">
         <div className="dash-week-header">
           <div className="dash-week-header-left">
             <h2 className="dash-card-title">This Week</h2>
@@ -929,10 +999,10 @@ export default function DashboardView({
             </div>
           </div>
         </div>
-      </div>}
+      </SortableCard>}
 
       {/* Calendar (replaces Habit Streaks) */}
-      {enabledWidgets.includes('calendar') && <div className="dash-card dash-calendar" style={{ gridColumn: `span ${widgetSpans.calendar}` }}>
+      {enabledWidgets.includes('calendar') && <SortableCard id="calendar" span={widgetSpans.calendar} order={widgetOrder.indexOf('calendar')} className="dash-calendar">
         <div className="dash-cal-header">
           <h2 className="dash-card-title">{MONTHS_FULL[calMonth]} {calYear}</h2>
           <div className="dash-cal-nav">
@@ -973,9 +1043,20 @@ export default function DashboardView({
             )
           })}
         </div>
-      </div>}
+      </SortableCard>}
 
-      {enabledWidgets.includes('notes') && <div className="dash-card dash-notes" style={{ gridColumn: `span ${widgetSpans.notes}` }}>
+      {enabledWidgets.includes('projects') && <SortableCard id="projects" span={widgetSpans.projects} order={widgetOrder.indexOf('projects')} className="dash-projects-card">
+        <h2 className="dash-card-title">Projects</h2>
+        <div className="dash-projects-body">
+          <ProjectsView
+            projects={projects} tasks={tasks} habits={habits}
+            onAddProject={onAddProject} onEditProject={onEditProject} onDeleteProject={onDeleteProject}
+            onAddTask={onAddTask} onEditTask={onEditTask} onDeleteTask={onDeleteTask} onCompleteTask={onCompleteTask}
+          />
+        </div>
+      </SortableCard>}
+
+      {enabledWidgets.includes('notes') && <SortableCard id="notes" span={widgetSpans.notes} order={widgetOrder.indexOf('notes')} className="dash-notes">
         <h2 className="dash-card-title">Notes</h2>
         <div className="dash-notes-add">
           <input
@@ -1029,15 +1110,99 @@ export default function DashboardView({
             </div>
           ))}
         </div>
-      </div>}
+      </SortableCard>}
 
-      {enabledWidgets.includes('ai_chat') && <div className="dash-card dash-ai-chat" style={{ gridColumn: `span ${widgetSpans.ai_chat}` }}>
+      {enabledWidgets.includes('timer') && <SortableCard id="timer" span={widgetSpans.timer} order={widgetOrder.indexOf('timer')} className="dash-timer-card">
+        <div className="dash-timer-head">
+          <h2 className="dash-card-title">Timer</h2>
+          <div className="dash-timer-tabs">
+            {[
+              { k: 'pomo', label: 'Pomo' },
+              { k: 'stopwatch', label: 'Stopwatch' },
+              { k: 'countdown', label: 'Countdown' },
+              { k: 'clock', label: 'Clock' },
+            ].map(t => (
+              <button
+                key={t.k}
+                className={`dash-timer-tab${timerMode === t.k ? ' active' : ''}`}
+                onClick={() => setTimerMode(t.k)}
+              >{t.label}</button>
+            ))}
+          </div>
+        </div>
+
+        {timerMode === 'pomo' && (
+          <div className="dash-timer-body">
+            <span className="dash-timer-sublabel">{pomoOnBreak ? 'Break' : 'Focus'}</span>
+            <span className={`dash-timer-display${pomoOnBreak ? ' break' : ''}`}>{pomoDisplay}</span>
+            <div className="dash-timer-controls">
+              <button className={`pomo-btn${pomoRunning ? ' pomo-active' : ''}`} onClick={() => setPomoRunning(r => !r)}>
+                {pomoRunning ? 'Pause' : 'Start'}
+              </button>
+              <button className="pomo-btn" onClick={() => { setPomoRunning(false); setPomoOnBreak(false); setPomoSeconds(POMO_WORK) }}>Reset</button>
+            </div>
+            <div className="pomo-progress"><div className={`pomo-progress-bar${pomoOnBreak ? ' pomo-break' : ''}`} style={{ width: `${pomoPct}%` }} /></div>
+          </div>
+        )}
+
+        {timerMode === 'stopwatch' && (
+          <div className="dash-timer-body">
+            <span className="dash-timer-sublabel">Elapsed</span>
+            <span className="dash-timer-display">{swDisplay}</span>
+            <div className="dash-timer-controls">
+              <button className={`pomo-btn${swRunning ? ' pomo-active' : ''}`} onClick={() => setSwRunning(r => !r)}>
+                {swRunning ? 'Pause' : 'Start'}
+              </button>
+              <button className="pomo-btn" onClick={() => { setSwRunning(false); setSwSeconds(0) }}>Reset</button>
+            </div>
+          </div>
+        )}
+
+        {timerMode === 'countdown' && (
+          <div className="dash-timer-body">
+            <span className="dash-timer-sublabel">Countdown</span>
+            <span className="dash-timer-display">{cdDisplay}</span>
+            {!cdRunning && cdSeconds === 0 && (
+              <div className="dash-timer-controls">
+                <input
+                  type="number"
+                  min={1}
+                  max={180}
+                  value={cdInput}
+                  onChange={e => setCdInput(Math.max(1, Math.min(180, Number(e.target.value) || 0)))}
+                  className="input dash-timer-input"
+                />
+                <span className="dash-timer-unit">min</span>
+                <button className="pomo-btn pomo-active" onClick={() => { setCdSeconds(cdInput * 60); setCdRunning(true) }}>Start</button>
+              </div>
+            )}
+            {(cdRunning || cdSeconds > 0) && (
+              <div className="dash-timer-controls">
+                <button className={`pomo-btn${cdRunning ? ' pomo-active' : ''}`} onClick={() => setCdRunning(r => !r)}>
+                  {cdRunning ? 'Pause' : 'Resume'}
+                </button>
+                <button className="pomo-btn" onClick={() => { setCdRunning(false); setCdSeconds(0) }}>Reset</button>
+              </div>
+            )}
+          </div>
+        )}
+
+        {timerMode === 'clock' && (
+          <div className="dash-timer-body">
+            <span className="dash-timer-sublabel">{DAY_NAMES[clockTime.getDay()]}, {MONTHS_FULL[clockTime.getMonth()]} {clockTime.getDate()}</span>
+            <span className="dash-timer-display">{timeStr}</span>
+            <span className="dash-timer-sublabel">{clockTime.toLocaleTimeString('en-US', { timeZoneName: 'short' }).split(' ').slice(-1)[0]}</span>
+          </div>
+        )}
+      </SortableCard>}
+
+      {enabledWidgets.includes('ai_chat') && <SortableCard id="ai_chat" span={widgetSpans.ai_chat} order={widgetOrder.indexOf('ai_chat')} className="dash-ai-chat">
         <h2 className="dash-card-title">Assistant</h2>
         <AiChat todayBlocks={todayBlocks} todayTasks={[...todayTasks, ...doneTasks]} dateLabel={dateLabel} />
-      </div>}
+      </SortableCard>}
 
       {/* ── Daily Inspiration ── */}
-      {enabledWidgets.includes('inspiration') && <div className="dash-card dash-inspiration" style={{ gridColumn: `span ${widgetSpans.inspiration}` }}>
+      {enabledWidgets.includes('inspiration') && <SortableCard id="inspiration" span={widgetSpans.inspiration} order={widgetOrder.indexOf('inspiration')} className="dash-inspiration">
         <div className="dash-card-title-row">
           <h2 className="dash-card-title">Daily Inspiration</h2>
           <button className="inspiration-favs-btn" onClick={() => setShowFavorites(v => !v)}>&#9733; Favorites</button>
@@ -1098,7 +1263,10 @@ export default function DashboardView({
             <p className="empty-msg">No inspiration yet — add quotes and tips to the daily_inspiration table.</p>
           )}
         </div>
-      </div>}
+      </SortableCard>}
+
+        </SortableContext>
+      </DndContext>
 
       </div>{/* end dash-rest */}
 
@@ -1128,6 +1296,22 @@ export default function DashboardView({
           }}
           onCancel={() => setTaskForm(null)}
         />
+      )}
+
+      {/* ── Pomodoro focus overlay ── */}
+      {pomoRunning && (
+        <div className="pomo-focus-overlay">
+          <span className="pomo-focus-label">{pomoOnBreak ? 'Break' : 'Focus'}</span>
+          <span className={`pomo-focus-time${pomoOnBreak ? ' break' : ''}`}>{pomoDisplay}</span>
+          <div className="pomo-focus-controls">
+            <button className="pomo-btn pomo-active" onClick={() => setPomoRunning(false)}>Pause</button>
+            <button className="pomo-btn" onClick={() => { setPomoRunning(false); setPomoOnBreak(false); setPomoSeconds(POMO_WORK) }}>Reset</button>
+          </div>
+          <div className="pomo-focus-progress">
+            <div className={`pomo-progress-bar${pomoOnBreak ? ' pomo-break' : ''}`} style={{ width: `${pomoPct}%` }} />
+          </div>
+          <span className="pomo-focus-percent">{Math.round(pomoPct)}% complete</span>
+        </div>
       )}
     </div>
   )

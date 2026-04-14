@@ -38,6 +38,11 @@ class ErrorBoundary extends Component {
 
 function Root() {
   const [authed, setAuthed] = useState(() => !!localStorage.getItem(AUTH_TOKEN_KEY))
+  // DEV: login bypass — set to false to restore gate
+  const BYPASS_LOGIN = true
+  if (BYPASS_LOGIN) {
+    return <App onLogout={() => { localStorage.removeItem(AUTH_TOKEN_KEY); setAuthed(false) }} />
+  }
   return authed
     ? <App onLogout={() => { localStorage.removeItem(AUTH_TOKEN_KEY); setAuthed(false) }} />
     : <Login onLogin={() => setAuthed(true)} />

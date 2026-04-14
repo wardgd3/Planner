@@ -1,7 +1,7 @@
 import { useState, useRef, useMemo } from 'react'
 import { timeToMinutes, computeEndTime, timeRangesOverlap } from '../utils'
 
-export default function BlockForm({ block, date, startTime, projects, tasks, habits, glossaryItems = [], existingBlocks = [], onSave, onCancel }) {
+export default function BlockForm({ block, date, startTime, projects, tasks, habits, glossaryItems = [], existingBlocks = [], onSave, onCancel, centered = false }) {
   const [title, setTitle] = useState(block?.title || '')
   const [blockDate, setBlockDate] = useState(block?.date || date || '')
   const [noTime, setNoTime] = useState(block ? (!block.start_time && !block.end_time) : false)
@@ -69,7 +69,7 @@ export default function BlockForm({ block, date, startTime, projects, tasks, hab
   const canSave = title.trim() && blockDate && (noTime || (start && end)) && !timeError && !saving
 
   return (
-    <div className="drawer-overlay" onClick={e => e.target === e.currentTarget && onCancel()}>
+    <div className={`drawer-overlay${centered ? ' drawer-overlay-centered' : ''}`} onClick={e => e.target === e.currentTarget && onCancel()}>
       <div className="drawer">
         <div className="drawer-header">
           <h2 className="drawer-title">{block ? 'Edit Block' : 'New Time Block'}</h2>

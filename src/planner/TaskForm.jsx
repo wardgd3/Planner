@@ -1,6 +1,6 @@
 import { useState } from 'react'
 
-export default function TaskForm({ task, projects, habits, onSave, onCancel }) {
+export default function TaskForm({ task, projects, habits, onSave, onCancel, centered = false }) {
   const [title, setTitle] = useState(task?.title || '')
   const [notes, setNotes] = useState(task?.notes || '')
   const [projectId, setProjectId] = useState(task?.project_id || '')
@@ -21,7 +21,7 @@ export default function TaskForm({ task, projects, habits, onSave, onCancel }) {
   }
 
   return (
-    <div className="drawer-overlay" onClick={e => e.target === e.currentTarget && onCancel()}>
+    <div className={`drawer-overlay${centered ? ' drawer-overlay-centered' : ''}`} onClick={e => e.target === e.currentTarget && onCancel()}>
       <div className="drawer">
         <div className="drawer-header">
           <h2 className="drawer-title">{task ? 'Edit Task' : 'New Task'}</h2>
