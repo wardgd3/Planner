@@ -9,7 +9,7 @@ import WeatherWidget from './WeatherWidget'
 import AiChat from './AiChat'
 import ProjectsView from './ProjectsView'
 import { fetchWeather, weatherEmoji, parseCondition } from './weatherService'
-import { DndContext, closestCenter, PointerSensor, useSensor, useSensors, DragOverlay } from '@dnd-kit/core'
+import { DndContext, closestCenter, PointerSensor, TouchSensor, useSensor, useSensors, DragOverlay } from '@dnd-kit/core'
 import { SortableContext, verticalListSortingStrategy, rectSortingStrategy, useSortable, arrayMove } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 
@@ -234,7 +234,10 @@ export default function DashboardView({
     return DEFAULT_WIDGET_ORDER
   })
 
-  const widgetSensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }))
+  const widgetSensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 6 } }),
+  )
   const handleWidgetDragEnd = useCallback((event) => {
     const { active, over } = event
     if (!over || active.id === over.id) return
@@ -381,7 +384,10 @@ export default function DashboardView({
   const cdDisplay = `${String(Math.floor(cdSeconds / 60)).padStart(2, '0')}:${String(cdSeconds % 60).padStart(2, '0')}`
 
   // ── Drag-to-reorder blocks ──
-  const blockSensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }))
+  const blockSensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 6 } }),
+  )
   const [dragActiveBlock, setDragActiveBlock] = useState(null)
 
   // Notes state

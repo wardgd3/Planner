@@ -489,7 +489,7 @@ function MobilePlanner({
               })}
             </div>
 
-            <div className="dash-card dash-notes" style={{ marginTop: 20 }}>
+            <div className="dash-notes mobile-month-notes" style={{ marginTop: 20 }}>
               <h2 className="dash-card-title">Notes</h2>
               <div className="dash-notes-add">
                 <input

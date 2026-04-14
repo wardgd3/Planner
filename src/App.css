@@ -1499,6 +1499,8 @@ h1 {
   transition: border-color 0.25s;
 }
 .dash-card:hover { border-color: var(--surface3); }
+.mobile-month-notes { background: transparent; border: none; padding: 0; }
+.mobile-month-notes .dash-card-title { margin-bottom: 12px; }
 .sortable-card { position: relative; }
 .sortable-card.dragging { cursor: grabbing; }
 .dash-card-drag {
@@ -1516,10 +1518,14 @@ h1 {
   transition: opacity 0.2s, background 0.2s, color 0.2s;
   z-index: 2;
   line-height: 1;
+  touch-action: none;
 }
 .sortable-card:hover .dash-card-drag { opacity: 0.55; }
 .dash-card-drag:hover { opacity: 1 !important; background: var(--surface2); color: var(--text); }
 .dash-card-drag:active { cursor: grabbing; }
+@media (hover: none), (max-width: 768px) {
+  .dash-card-drag { opacity: 0.55; }
+}
 .dash-card-title {
   font-family: var(--font-display);
   font-size: 28px; font-weight: 600;
@@ -2071,7 +2077,7 @@ body.pomo-focus-active .dash-card {
   padding: 5px 9px;
   width: 100%; box-sizing: border-box;
   cursor: pointer; transition: all 0.15s;
-  touch-action: none;
+  touch-action: pan-y;
 }
 .dash-tl-block.dragging { opacity: 0.3; }
 .dash-tl-drag-overlay {
@@ -2087,6 +2093,7 @@ body.pomo-focus-active .dash-card {
   cursor: grab; color: var(--muted); font-size: 12px;
   padding: 0 4px; flex-shrink: 0; opacity: 0.4;
   transition: opacity 0.15s;
+  touch-action: none;
 }
 .dash-tl-block:hover .dash-tl-drag-handle { opacity: 1; }
 .dash-tl-active::before {
@@ -2943,7 +2950,7 @@ body.pomo-focus-active .dash-card {
   border-radius: var(--radius); overflow: hidden; transition: border-color 0.2s;
 }
 .project-card:hover { border-color: var(--surface3); }
-.project-card.expanded { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent-dim); }
+.project-card.expanded { border-color: var(--surface3); box-shadow: none; }
 .project-card-header {
   display: flex; align-items: flex-start; justify-content: space-between;
   padding: 16px 18px 12px; cursor: pointer; gap: 12px;
