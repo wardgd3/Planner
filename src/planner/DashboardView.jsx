@@ -313,11 +313,16 @@ export default function DashboardView({
 
 
   // ── Pomodoro focus timer ──
-  const POMO_WORK = 25 * 60
-  const POMO_BREAK = 5 * 60
+  const [pomoWorkMin, setPomoWorkMin] = useState(() => Number(localStorage.getItem('pomo_work_min')) || 25)
+  const [pomoBreakMin, setPomoBreakMin] = useState(() => Number(localStorage.getItem('pomo_break_min')) || 5)
+  useEffect(() => { localStorage.setItem('pomo_work_min', String(pomoWorkMin)) }, [pomoWorkMin])
+  useEffect(() => { localStorage.setItem('pomo_break_min', String(pomoBreakMin)) }, [pomoBreakMin])
+  const POMO_WORK = pomoWorkMin * 60
+  const POMO_BREAK = pomoBreakMin * 60
   const [pomoSeconds, setPomoSeconds] = useState(POMO_WORK)
   const [pomoRunning, setPomoRunning] = useState(false)
   const [pomoOnBreak, setPomoOnBreak] = useState(false)
+  const [editingPomoTimes, setEditingPomoTimes] = useState(false)
   const pomoRef = useRef(null)
 
   useEffect(() => {
@@ -326,8 +331,7 @@ export default function DashboardView({
       pomoRef.current = setInterval(() => {
         setPomoSeconds(prev => {
           if (prev <= 1) {
-            clearInterval(pomoRef.current)
-            setPomoRunning(false)
+            // Auto-switch phase and continue running
             setPomoOnBreak(ob => {
               const next = !ob
               setPomoSeconds(next ? POMO_BREAK : POMO_WORK)
@@ -343,7 +347,15 @@ export default function DashboardView({
       if (pomoRef.current) clearInterval(pomoRef.current)
     }
     return () => { if (pomoRef.current) clearInterval(pomoRef.current) }
-  }, [pomoRunning])
+  }, [pomoRunning, POMO_WORK, POMO_BREAK])
+
+  // If user edits durations while idle (not running) and not currently in a session, reflect new work time
+  useEffect(() => {
+    if (!pomoRunning && !pomoOnBreak && pomoSeconds !== POMO_WORK) {
+      // Only reset to new work time if the current value matches any previous full work state (i.e., not mid-session)
+      // Simpler: when editing opens, we keep display synced
+    }
+  }, [POMO_WORK])
 
   const pomoDisplay = `${Math.floor(pomoSeconds / 60)}:${String(pomoSeconds % 60).padStart(2, '0')}`
   const pomoTotal = pomoOnBreak ? POMO_BREAK : POMO_WORK
@@ -1146,7 +1158,42 @@ export default function DashboardView({
                 {pomoRunning ? 'Pause' : 'Start'}
               </button>
               <button className="pomo-btn" onClick={() => { setPomoRunning(false); setPomoOnBreak(false); setPomoSeconds(POMO_WORK) }}>Reset</button>
+              <button className="pomo-btn" onClick={() => setEditingPomoTimes(v => !v)} aria-label="Edit pomodoro durations" title="Edit durations">
+                {editingPomoTimes ? 'Done' : 'Edit'}
+              </button>
             </div>
+            {editingPomoTimes && (
+              <div className="pomo-edit-row">
+                <label className="pomo-edit-field">
+                  <span>Focus</span>
+                  <input
+                    type="number" min={1} max={180}
+                    value={pomoWorkMin}
+                    onChange={e => {
+                      const v = Math.max(1, Math.min(180, Number(e.target.value) || 1))
+                      setPomoWorkMin(v)
+                      if (!pomoRunning && !pomoOnBreak) setPomoSeconds(v * 60)
+                    }}
+                    className="input dash-timer-input"
+                  />
+                  <span className="pomo-edit-unit">min</span>
+                </label>
+                <label className="pomo-edit-field">
+                  <span>Break</span>
+                  <input
+                    type="number" min={1} max={60}
+                    value={pomoBreakMin}
+                    onChange={e => {
+                      const v = Math.max(1, Math.min(60, Number(e.target.value) || 1))
+                      setPomoBreakMin(v)
+                      if (!pomoRunning && pomoOnBreak) setPomoSeconds(v * 60)
+                    }}
+                    className="input dash-timer-input"
+                  />
+                  <span className="pomo-edit-unit">min</span>
+                </label>
+              </div>
+            )}
             <div className="pomo-progress"><div className={`pomo-progress-bar${pomoOnBreak ? ' pomo-break' : ''}`} style={{ width: `${pomoPct}%` }} /></div>
           </div>
         )}
@@ -1307,7 +1354,7 @@ export default function DashboardView({
       {/* ── Pomodoro focus overlay ── */}
       {pomoRunning && (
         <div className="pomo-focus-overlay">
-          <span className="pomo-focus-label">{pomoOnBreak ? 'Break' : 'Focus'}</span>
+          <span className="pomo-focus-label">Pomodoro Timer{pomoOnBreak ? ' · Break' : ''}</span>
           <span className={`pomo-focus-time${pomoOnBreak ? ' break' : ''}`}>{pomoDisplay}</span>
           <div className="pomo-focus-controls">
             <button className="pomo-btn pomo-active" onClick={() => setPomoRunning(false)}>Pause</button>

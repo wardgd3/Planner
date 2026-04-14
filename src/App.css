@@ -842,6 +842,11 @@ body {
   transition: all 0.2s;
 }
 .settings-btn:hover { border-color: var(--accent); color: var(--accent); }
+.settings-btn.settings-btn-text {
+  width: auto; height: 32px; border-radius: 999px;
+  padding: 0 14px; font-size: 13px; letter-spacing: 1px;
+  text-transform: uppercase; font-family: var(--font-ui);
+}
 .settings-popup {
   position: absolute; top: 44px; right: 0;
   background: var(--surface);
@@ -1569,6 +1574,16 @@ h1 {
 .dash-timer-display.break { color: var(--accent); }
 .dash-timer-controls { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; justify-content: center; }
 .dash-timer-input { width: 64px; padding: 6px 8px; text-align: center; }
+.pomo-edit-row {
+  display: flex; justify-content: center; gap: 18px;
+  margin-top: 10px; flex-wrap: wrap;
+}
+.pomo-edit-field {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: 12px; color: var(--muted); letter-spacing: 1px; text-transform: uppercase;
+}
+.pomo-edit-field input { width: 58px; padding: 5px 6px; text-align: center; }
+.pomo-edit-unit { color: var(--muted); font-size: 11px; }
 .dash-timer-unit { font-size: 11px; color: var(--muted); font-family: var(--font-ui); }
 .dash-projects-card { display: flex; flex-direction: column; min-height: 0; }
 .dash-projects-body { flex: 1; overflow-y: auto; margin-top: 12px; }
@@ -1960,9 +1975,108 @@ body.pomo-focus-active .dash-card {
   z-index: 250;
   pointer-events: none;
   animation: pomoFocusFadeIn 0.4s ease;
+  background: rgba(0, 0, 0, 0.6);
 }
 .pomo-focus-overlay .pomo-focus-controls { margin-top: 48px; }
 .pomo-focus-overlay > * { pointer-events: auto; }
+
+/* Light themes: overlay backdrop is dark, so force all overlay text to white */
+[data-theme="william-morris"] .pomo-focus-overlay,
+[data-theme="seventies-warm-retro"] .pomo-focus-overlay,
+[data-theme="sand-coral"] .pomo-focus-overlay,
+[data-theme="studio-white"] .pomo-focus-overlay,
+[data-theme="linen-jade"] .pomo-focus-overlay,
+[data-theme="chalk-violet"] .pomo-focus-overlay,
+[data-theme="neon-magenta-light"] .pomo-focus-overlay,
+[data-theme="neon-rose-light"] .pomo-focus-overlay,
+[data-theme="neon-lime-light"] .pomo-focus-overlay,
+[data-theme="neon-cyan-light"] .pomo-focus-overlay,
+[data-theme="neon-ice-light"] .pomo-focus-overlay,
+[data-theme="parchment-amber"] .pomo-focus-overlay,
+[data-theme="golden-hour"] .pomo-focus-overlay,
+[data-theme="mucha-violet"] .pomo-focus-overlay {
+  color: #fff;
+}
+[data-theme="william-morris"] .pomo-focus-overlay .pomo-focus-label,
+[data-theme="seventies-warm-retro"] .pomo-focus-overlay .pomo-focus-label,
+[data-theme="sand-coral"] .pomo-focus-overlay .pomo-focus-label,
+[data-theme="studio-white"] .pomo-focus-overlay .pomo-focus-label,
+[data-theme="linen-jade"] .pomo-focus-overlay .pomo-focus-label,
+[data-theme="chalk-violet"] .pomo-focus-overlay .pomo-focus-label,
+[data-theme="neon-magenta-light"] .pomo-focus-overlay .pomo-focus-label,
+[data-theme="neon-rose-light"] .pomo-focus-overlay .pomo-focus-label,
+[data-theme="neon-lime-light"] .pomo-focus-overlay .pomo-focus-label,
+[data-theme="neon-cyan-light"] .pomo-focus-overlay .pomo-focus-label,
+[data-theme="neon-ice-light"] .pomo-focus-overlay .pomo-focus-label,
+[data-theme="parchment-amber"] .pomo-focus-overlay .pomo-focus-label,
+[data-theme="golden-hour"] .pomo-focus-overlay .pomo-focus-label,
+[data-theme="mucha-violet"] .pomo-focus-overlay .pomo-focus-label,
+[data-theme="william-morris"] .pomo-focus-overlay .pomo-focus-time,
+[data-theme="seventies-warm-retro"] .pomo-focus-overlay .pomo-focus-time,
+[data-theme="sand-coral"] .pomo-focus-overlay .pomo-focus-time,
+[data-theme="studio-white"] .pomo-focus-overlay .pomo-focus-time,
+[data-theme="linen-jade"] .pomo-focus-overlay .pomo-focus-time,
+[data-theme="chalk-violet"] .pomo-focus-overlay .pomo-focus-time,
+[data-theme="neon-magenta-light"] .pomo-focus-overlay .pomo-focus-time,
+[data-theme="neon-rose-light"] .pomo-focus-overlay .pomo-focus-time,
+[data-theme="neon-lime-light"] .pomo-focus-overlay .pomo-focus-time,
+[data-theme="neon-cyan-light"] .pomo-focus-overlay .pomo-focus-time,
+[data-theme="neon-ice-light"] .pomo-focus-overlay .pomo-focus-time,
+[data-theme="parchment-amber"] .pomo-focus-overlay .pomo-focus-time,
+[data-theme="golden-hour"] .pomo-focus-overlay .pomo-focus-time,
+[data-theme="mucha-violet"] .pomo-focus-overlay .pomo-focus-time,
+[data-theme="william-morris"] .pomo-focus-overlay .pomo-focus-percent,
+[data-theme="seventies-warm-retro"] .pomo-focus-overlay .pomo-focus-percent,
+[data-theme="sand-coral"] .pomo-focus-overlay .pomo-focus-percent,
+[data-theme="studio-white"] .pomo-focus-overlay .pomo-focus-percent,
+[data-theme="linen-jade"] .pomo-focus-overlay .pomo-focus-percent,
+[data-theme="chalk-violet"] .pomo-focus-overlay .pomo-focus-percent,
+[data-theme="neon-magenta-light"] .pomo-focus-overlay .pomo-focus-percent,
+[data-theme="neon-rose-light"] .pomo-focus-overlay .pomo-focus-percent,
+[data-theme="neon-lime-light"] .pomo-focus-overlay .pomo-focus-percent,
+[data-theme="neon-cyan-light"] .pomo-focus-overlay .pomo-focus-percent,
+[data-theme="neon-ice-light"] .pomo-focus-overlay .pomo-focus-percent,
+[data-theme="parchment-amber"] .pomo-focus-overlay .pomo-focus-percent,
+[data-theme="golden-hour"] .pomo-focus-overlay .pomo-focus-percent,
+[data-theme="mucha-violet"] .pomo-focus-overlay .pomo-focus-percent {
+  color: #fff;
+}
+
+/* Light themes: overlay button text white (fills keep theme defaults) */
+[data-theme="william-morris"] .pomo-focus-overlay .pomo-btn,
+[data-theme="seventies-warm-retro"] .pomo-focus-overlay .pomo-btn,
+[data-theme="sand-coral"] .pomo-focus-overlay .pomo-btn,
+[data-theme="studio-white"] .pomo-focus-overlay .pomo-btn,
+[data-theme="linen-jade"] .pomo-focus-overlay .pomo-btn,
+[data-theme="chalk-violet"] .pomo-focus-overlay .pomo-btn,
+[data-theme="neon-magenta-light"] .pomo-focus-overlay .pomo-btn,
+[data-theme="neon-rose-light"] .pomo-focus-overlay .pomo-btn,
+[data-theme="neon-lime-light"] .pomo-focus-overlay .pomo-btn,
+[data-theme="neon-cyan-light"] .pomo-focus-overlay .pomo-btn,
+[data-theme="neon-ice-light"] .pomo-focus-overlay .pomo-btn,
+[data-theme="parchment-amber"] .pomo-focus-overlay .pomo-btn,
+[data-theme="golden-hour"] .pomo-focus-overlay .pomo-btn,
+[data-theme="mucha-violet"] .pomo-focus-overlay .pomo-btn {
+  color: #fff;
+}
+/* Light themes: darken Reset (non-active) button fill for white-text contrast */
+[data-theme="william-morris"] .pomo-focus-overlay .pomo-btn:not(.pomo-active),
+[data-theme="seventies-warm-retro"] .pomo-focus-overlay .pomo-btn:not(.pomo-active),
+[data-theme="sand-coral"] .pomo-focus-overlay .pomo-btn:not(.pomo-active),
+[data-theme="studio-white"] .pomo-focus-overlay .pomo-btn:not(.pomo-active),
+[data-theme="linen-jade"] .pomo-focus-overlay .pomo-btn:not(.pomo-active),
+[data-theme="chalk-violet"] .pomo-focus-overlay .pomo-btn:not(.pomo-active),
+[data-theme="neon-magenta-light"] .pomo-focus-overlay .pomo-btn:not(.pomo-active),
+[data-theme="neon-rose-light"] .pomo-focus-overlay .pomo-btn:not(.pomo-active),
+[data-theme="neon-lime-light"] .pomo-focus-overlay .pomo-btn:not(.pomo-active),
+[data-theme="neon-cyan-light"] .pomo-focus-overlay .pomo-btn:not(.pomo-active),
+[data-theme="neon-ice-light"] .pomo-focus-overlay .pomo-btn:not(.pomo-active),
+[data-theme="parchment-amber"] .pomo-focus-overlay .pomo-btn:not(.pomo-active),
+[data-theme="golden-hour"] .pomo-focus-overlay .pomo-btn:not(.pomo-active),
+[data-theme="mucha-violet"] .pomo-focus-overlay .pomo-btn:not(.pomo-active) {
+  background: rgba(0, 0, 0, 0.35);
+  border-color: rgba(0, 0, 0, 0.45);
+}
 .pomo-focus-label {
   font-family: var(--font-ui);
   font-size: 14px;
@@ -2333,8 +2447,8 @@ body.pomo-focus-active .dash-card {
   display: flex; align-items: center; gap: 10px;
   padding: 7px 13px;
   border-radius: var(--radius-sm);
-  background: var(--accent-dim);
-  border: 1px solid var(--accent);
+  background: transparent;
+  border: 1px solid var(--border-subtle);
   font-size: 16px;
 }
 

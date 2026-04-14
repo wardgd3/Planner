@@ -338,32 +338,21 @@ function AppInner({ onLogout }) {
         <button className={`app-tab ${activeTab === 'planner' ? 'active' : ''}`} onClick={() => setActiveTab('planner')}>Planner</button>
         <button className={`app-tab ${activeTab === 'tracker' ? 'active' : ''}`} onClick={() => setActiveTab('tracker')}>Habits</button>
         <div className="settings-wrap">
-          <button className="settings-btn" onClick={() => setShowSettings(s => !s)} title="Settings">&#9881;</button>
+          <button className="settings-btn settings-btn-text" onClick={() => setShowSettings(s => !s)} title="Themes">Themes</button>
           {showSettings && (
             <div className="settings-popup">
               <div className="settings-popup-header">
-                <span>Settings</span>
+                <span>Themes</span>
                 <button className="settings-popup-close" onClick={() => setShowSettings(false)}>&times;</button>
               </div>
-              <div className="settings-section">
-                <span className="settings-label">Theme</span>
-                <div className="settings-theme-options">
-                  {[
+              {[
+                {
+                  label: 'Dark',
+                  themes: [
                     ['warm', 'Warm'],
                     ['midnight-scholar', 'Midnight Scholar'],
                     ['great-wave', 'Great Wave Night'],
-                    ['william-morris', 'William Morris Garden'],
                     ['synthwave-night', 'Synthwave Night'],
-                    ['seventies-warm-retro', '70s Warm Retro'],
-                    ['neon-magenta-light', 'Pastel Magenta'],
-                    ['neon-rose-light', 'Pastel Rose'],
-                    ['neon-lime-light', 'Pastel Lime'],
-                    ['neon-cyan-light', 'Pastel Cyan'],
-                    ['neon-ice-light', 'Pastel Ice'],
-                    ['sand-coral', 'Sand Coral'],
-                    ['studio-white', 'Studio White'],
-                    ['linen-jade', 'Linen Jade'],
-                    ['chalk-violet', 'Chalk Violet'],
                     ['neon-magenta', 'Neon Magenta'],
                     ['neon-rose', 'Neon Rose'],
                     ['neon-lime', 'Neon Lime'],
@@ -377,14 +366,37 @@ function AppInner({ onLogout }) {
                     ['void-crimson', 'Void Crimson'],
                     ['charcoal-citron', 'Charcoal Citron'],
                     ['ink-jade', 'Ink Jade'],
-                  ].map(([key, label]) => (
-                    <button key={key} className={`settings-theme-btn${theme === key ? ' active' : ''}`} onClick={() => setTheme(key)}>
-                      <span className={`settings-theme-swatch ${key}`} />
-                      <span>{label}</span>
-                    </button>
-                  ))}
+                  ],
+                },
+                {
+                  label: 'Light',
+                  themes: [
+                    ['william-morris', 'William Morris Garden'],
+                    ['seventies-warm-retro', '70s Warm Retro'],
+                    ['sand-coral', 'Sand Coral'],
+                    ['studio-white', 'Studio White'],
+                    ['linen-jade', 'Linen Jade'],
+                    ['chalk-violet', 'Chalk Violet'],
+                    ['neon-magenta-light', 'Pastel Magenta'],
+                    ['neon-rose-light', 'Pastel Rose'],
+                    ['neon-lime-light', 'Pastel Lime'],
+                    ['neon-cyan-light', 'Pastel Cyan'],
+                    ['neon-ice-light', 'Pastel Ice'],
+                  ],
+                },
+              ].map(group => (
+                <div key={group.label} className="settings-section">
+                  <span className="settings-label">{group.label}</span>
+                  <div className="settings-theme-options">
+                    {group.themes.map(([key, label]) => (
+                      <button key={key} className={`settings-theme-btn${theme === key ? ' active' : ''}`} onClick={() => setTheme(key)}>
+                        <span className={`settings-theme-swatch ${key}`} />
+                        <span>{label}</span>
+                      </button>
+                    ))}
+                  </div>
                 </div>
-              </div>
+              ))}
               <button className="logout-btn settings-logout" onClick={onLogout}>Sign out</button>
             </div>
           )}
