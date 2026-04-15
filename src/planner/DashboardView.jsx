@@ -251,41 +251,17 @@ export default function DashboardView({
     })
   }, [])
 
-  // Compute dynamic column spans: pack widgets into rows, then expand to fill
+  // Fixed alternating 2:1 / 1:2 ratio — two widgets per row on a 3-col grid
   const widgetSpans = useMemo(() => {
-    const BASE = { week: 3, calendar: 2, projects: 3, notes: 2, timer: 2, ai_chat: 3, inspiration: 3 }
     const enabled = widgetOrder.filter(k => enabledWidgets.includes(k))
-    const COLS = 5
     const spans = {}
-    const rows = []
-    let currentRow = []
-    let currentSum = 0
-    for (const key of enabled) {
-      const base = BASE[key]
-      if (currentSum + base <= COLS) {
-        currentRow.push(key)
-        currentSum += base
-      } else {
-        if (currentRow.length) rows.push(currentRow)
-        currentRow = [key]
-        currentSum = base
-      }
-    }
-    if (currentRow.length) rows.push(currentRow)
-    for (const row of rows) {
-      const rowSum = row.reduce((s, k) => s + BASE[k], 0)
-      if (rowSum === COLS || row.length === 1) {
-        // Exact fit or solo card — use natural size (solo cards don't expand to full width)
-        row.forEach(k => { spans[k] = BASE[k] })
-      } else {
-        let remaining = COLS
-        for (let i = 0; i < row.length - 1; i++) {
-          const span = Math.round(BASE[row[i]] * COLS / rowSum)
-          spans[row[i]] = span
-          remaining -= span
-        }
-        spans[row[row.length - 1]] = remaining
-      }
+    for (let i = 0; i < enabled.length; i += 2) {
+      const a = enabled[i]
+      const b = enabled[i + 1]
+      const rowIdx = i / 2
+      if (!b) { spans[a] = 3; continue }
+      if (rowIdx % 2 === 0) { spans[a] = 2; spans[b] = 1 }
+      else { spans[a] = 1; spans[b] = 2 }
     }
     return spans
   }, [enabledWidgets, widgetOrder])
@@ -683,8 +659,8 @@ export default function DashboardView({
       <div className="dash-card dash-today" onClick={() => { if (!expanded) setExpanded(true) }}>
         <div className="dash-card-header">
           <div>
-            <h2 className="dash-card-title"><span className="dash-title-desktop">Today's Focus</span><span className="dash-title-mobile">{`${DAY_NAMES[now.getDay()]}, ${MONTHS_FULL[now.getMonth()].slice(0, 3)} ${now.getDate()}`}</span></h2>
-            <p className="dash-date-label"><span className="dash-date-desktop">{dateLabel}</span><span className="dash-date-mobile">{todayTasks.length + doneTasks.length} task{todayTasks.length + doneTasks.length !== 1 ? 's' : ''} · {todayBlocks.length} block{todayBlocks.length !== 1 ? 's' : ''}</span></p>
+            <h2 className="dash-card-title"><span className="dash-title-desktop">{dateLabel}</span><span className="dash-title-mobile">{`${DAY_NAMES[now.getDay()]}, ${MONTHS_FULL[now.getMonth()].slice(0, 3)} ${now.getDate()}`}</span></h2>
+            <p className="dash-date-label"><span className="dash-date-mobile">{todayTasks.length + doneTasks.length} task{todayTasks.length + doneTasks.length !== 1 ? 's' : ''} · {todayBlocks.length} block{todayBlocks.length !== 1 ? 's' : ''}</span></p>
           </div>
           <div className="dash-header-right-mobile">
             <span className="dash-mobile-time">{timeStr}</span>

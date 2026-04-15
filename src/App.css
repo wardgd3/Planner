@@ -602,6 +602,391 @@
   --block-text-dim: rgba(32,16,32,0.6);
 }
 
+/* ── Blueprint ── */
+[data-theme="blueprint"] {
+  --bg: #f5f8fc;
+  --surface: #e4edf6;
+  --surface2: #b8cce2;
+  --surface3: #ffffff;
+  --border: #8faac6;
+  --border-subtle: #b8cce2;
+  --text: #0a1a2e;
+  --text-secondary: #1e3a5c;
+  --muted: #6a88a8;
+  --accent: #64748b;
+  --accent-dim: rgba(100,116,139,0.22);
+  --accent-glow: rgba(100,116,139,0.08);
+  --danger: #c03030;
+  --success: #3a8050;
+  --block-bg: #a6c0dc;
+  --block-border: #7e9cbe;
+  --block-text: #0a1a2e;
+  --block-text-dim: rgba(10,26,46,0.6);
+}
+
+/* ── Field Tan ── */
+[data-theme="field-tan"] {
+  --bg: #f4ede0;
+  --surface: #e8ddc4;
+  --surface2: #c8b488;
+  --surface3: #fbf5e8;
+  --border: #b49c70;
+  --border-subtle: #ccb88c;
+  --text: #2a1e0a;
+  --text-secondary: #5c4820;
+  --muted: #9e8a60;
+  --accent: #8a6418;
+  --accent-dim: rgba(138,100,24,0.25);
+  --accent-glow: rgba(138,100,24,0.08);
+  --danger: #b04428;
+  --success: #5a6a30;
+  --block-bg: #c8b484;
+  --block-border: #a89468;
+  --block-text: #2a1e0a;
+  --block-text-dim: rgba(42,30,10,0.6);
+}
+
+/* ── Carbon & Slate ── */
+[data-theme="carbon"] {
+  --bg: #f5f6f8;
+  --surface: #e4e6ea;
+  --surface2: #b0b6be;
+  --surface3: #ffffff;
+  --border: #98a0aa;
+  --border-subtle: #c4c8d0;
+  --text: #0f1318;
+  --text-secondary: #3a424c;
+  --muted: #70788a;
+  --accent: #4a5058;
+  --accent-dim: rgba(74,80,88,0.22);
+  --accent-glow: rgba(74,80,88,0.08);
+  --danger: #d42828;
+  --success: #3a8050;
+  --block-bg: #aab0ba;
+  --block-border: #8a909a;
+  --block-text: #0f1318;
+  --block-text-dim: rgba(15,19,24,0.6);
+}
+
+/* ── Forge ── */
+[data-theme="forge"] {
+  --bg: #f3efe8;
+  --surface: #e2ded4;
+  --surface2: #a8a098;
+  --surface3: #f8f5ee;
+  --border: #8c8478;
+  --border-subtle: #c0b8ac;
+  --text: #1a1410;
+  --text-secondary: #4a3e30;
+  --muted: #847a6c;
+  --accent: #6e6660;
+  --accent-dim: rgba(110,102,96,0.25);
+  --accent-glow: rgba(110,102,96,0.08);
+  --danger: #a83828;
+  --success: #5a7040;
+  --block-bg: #a8a098;
+  --block-border: #847c74;
+  --block-text: #1a1410;
+  --block-text-dim: rgba(26,20,16,0.6);
+}
+
+/* ── Alpine ── */
+[data-theme="alpine"] {
+  --bg: #f4f8f4;
+  --surface: #e2ece2;
+  --surface2: #a8c0a8;
+  --surface3: #ffffff;
+  --border: #90a890;
+  --border-subtle: #c0d0c0;
+  --text: #0c1a14;
+  --text-secondary: #2a483a;
+  --muted: #708878;
+  --accent: #2e6848;
+  --accent-dim: rgba(46,104,72,0.22);
+  --accent-glow: rgba(46,104,72,0.08);
+  --danger: #b04428;
+  --success: #2e6848;
+  --block-bg: #a8c4b0;
+  --block-border: #84a890;
+  --block-text: #0c1a14;
+  --block-text-dim: rgba(12,26,20,0.6);
+}
+
+/* ── Wes Anderson — diorama pastel, hotel lobby red ── */
+[data-theme="wes-anderson"] {
+  --bg: #FBEEDD;
+  --surface: #F5DDC8;
+  --surface2: #EFC4B0;
+  --surface3: #FDF5E8;
+  --border: #E0A998;
+  --border-subtle: #ECC4B4;
+  --text: #3A1818;
+  --text-secondary: #7A3838;
+  --muted: #B07868;
+  --accent: #D04A4A;
+  --accent-dim: rgba(208,74,74,0.22);
+  --accent-glow: rgba(208,74,74,0.08);
+  --danger: #D04A4A;
+  --success: #6B8E5A;
+  --block-bg: #EFC4B0;
+  --block-border: #E0A998;
+  --block-text: #3A1818;
+  --block-text-dim: rgba(58,24,24,0.6);
+}
+
+/* ── Windows Solitaire — felt table, 1997 ── */
+[data-theme="solitaire"] {
+  --bg: #0A2A15;
+  --surface: #0E381D;
+  --surface2: #154624;
+  --surface3: #0C2F16;
+  --border: #205A30;
+  --border-subtle: #154624;
+  --text: #FFFFFF;
+  --text-secondary: #B8D8BC;
+  --muted: #6A9878;
+  --accent: #E8202E;
+  --accent-dim: rgba(232,32,46,0.48);
+  --accent-glow: rgba(232,32,46,0.14);
+  --danger: #E8202E;
+  --success: #4AB058;
+  --block-bg: #154624;
+  --block-border: #205A30;
+}
+
+/* Solitaire: +Block button matches +Task (no red fill), and active day numbers stay white */
+[data-theme="solitaire"] .dash-today-actions .dash-block-btn {
+  background: var(--surface2);
+  border-color: var(--border);
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+[data-theme="solitaire"] .dash-today-actions .dash-block-btn:hover {
+  background: var(--surface2);
+  border-color: var(--accent);
+  color: var(--accent);
+  opacity: 1;
+}
+[data-theme="solitaire"] .dash-week-today .dash-week-num,
+[data-theme="solitaire"] .dash-week-selected .dash-week-num,
+[data-theme="solitaire"] .dash-week-num.accent,
+[data-theme="solitaire"] .dash-cal-today .dash-cal-num {
+  color: #FFFFFF;
+}
+
+/* ── Settlers of Catan — wheat & brick, hex tile warmth ── */
+[data-theme="catan"] {
+  --bg: #F8E8B8;
+  --surface: #EFD89C;
+  --surface2: #E0BC68;
+  --surface3: #FBF0CC;
+  --border: #B89058;
+  --border-subtle: #D4B070;
+  --text: #2A1A08;
+  --text-secondary: #5A3818;
+  --muted: #8A6838;
+  --accent: #B84A28;
+  --accent-dim: rgba(184,74,40,0.22);
+  --accent-glow: rgba(184,74,40,0.08);
+  --danger: #B84A28;
+  --success: #4A7028;
+  --block-bg: #E0BC68;
+  --block-border: #B89058;
+  --block-text: #2A1A08;
+  --block-text-dim: rgba(42,26,8,0.6);
+}
+
+/* ── Clue — Victorian parlor at midnight, candlelight gold ── */
+[data-theme="clue"] {
+  --bg: #150A12;
+  --surface: #251420;
+  --surface2: #38202E;
+  --surface3: #1C0E18;
+  --border: #4A2C3A;
+  --border-subtle: #38202E;
+  --text: #F0E0BC;
+  --text-secondary: #C8A878;
+  --muted: #806858;
+  --accent: #D8A038;
+  --accent-dim: rgba(216,160,56,0.22);
+  --accent-glow: rgba(216,160,56,0.08);
+  --danger: #B82838;
+  --success: #6A8838;
+  --block-bg: #38202E;
+  --block-border: #4A2C3A;
+}
+
+/* ── Chess — alternating walnut & ivory, bronze trim ── */
+[data-theme="chess"] {
+  --bg: #F4E4C2;
+  --surface: #E8CC95;
+  --surface2: #C8985A;
+  --surface3: #FAEFD2;
+  --border: #8C5A30;
+  --border-subtle: #B88B58;
+  --text: #1A0E04;
+  --text-secondary: #4A2810;
+  --muted: #7A5028;
+  --accent: #5C3018;
+  --accent-dim: rgba(92,48,24,0.22);
+  --accent-glow: rgba(92,48,24,0.08);
+  --danger: #A02020;
+  --success: #5A6A28;
+  --block-bg: #C8985A;
+  --block-border: #8C5A30;
+  --block-text: #FFFFFF;
+  --block-text-dim: rgba(255,255,255,0.7);
+}
+
+/* Chess: subtle grainy noise texture on container backgrounds */
+[data-theme="chess"] body {
+  background-color: var(--bg);
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='220' height='220'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.36 0 0 0 0 0.19 0 0 0 0 0.06 0 0 0 0.22 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+}
+[data-theme="chess"] .dash-card,
+[data-theme="chess"] .dash-today-card,
+[data-theme="chess"] .settings-popup,
+[data-theme="chess"] .add-form,
+[data-theme="chess"] .pomo-focus-overlay {
+  background-color: var(--surface);
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='220' height='220'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.95' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.36 0 0 0 0 0.19 0 0 0 0 0.06 0 0 0 0.28 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+}
+
+/* Chess: solid rich dark brown fill for block + active day/calendar containers */
+[data-theme="chess"] {
+  --block-bg: #452310;
+  --block-border: #2E1608;
+}
+[data-theme="chess"] .dash-week-today,
+[data-theme="chess"] .dash-week-selected,
+[data-theme="chess"] .dash-cal-today,
+[data-theme="chess"] .dash-tl-block {
+  background: #452310 !important;
+  background-image: none !important;
+  border-color: #2E1608 !important;
+  box-shadow: none !important;
+  color: #FAEFD2;
+}
+[data-theme="chess"] .dash-tl-block .dash-tl-title,
+[data-theme="chess"] .dash-tl-block .dash-tl-time,
+[data-theme="chess"] .dash-tl-block .dash-tl-drag-handle {
+  color: #FAEFD2;
+}
+[data-theme="chess"] .dash-week-today .dash-week-num,
+[data-theme="chess"] .dash-week-selected .dash-week-num,
+[data-theme="chess"] .dash-week-num.accent,
+[data-theme="chess"] .dash-cal-today .dash-cal-num {
+  color: #FAEFD2;
+}
+
+/* ── Das Boot — submarine cockpit, amber instrument glow ── */
+[data-theme="das-boot"] {
+  --bg: #0E1208;
+  --surface: #1A1E0E;
+  --surface2: #28301A;
+  --surface3: #131810;
+  --border: #4A5028;
+  --border-subtle: #2E3418;
+  --text: #F4D078;
+  --text-secondary: #C8A858;
+  --muted: #806838;
+  --accent: #FF8A1C;
+  --accent-dim: rgba(255,138,28,0.22);
+  --accent-glow: rgba(255,138,28,0.08);
+  --danger: #D44820;
+  --success: #88A038;
+  --block-bg: #28301A;
+  --block-border: #4A5028;
+}
+
+/* ── National Parks — vintage poster, ranger green & terracotta ── */
+[data-theme="nat-parks"] {
+  --bg: #F4EAD0;
+  --surface: #E8D4A8;
+  --surface2: #C8B078;
+  --surface3: #FAF3E0;
+  --border: #8A6E38;
+  --border-subtle: #B89858;
+  --text: #1F2818;
+  --text-secondary: #3A4A28;
+  --muted: #6A6A48;
+  --accent: #C04818;
+  --accent-dim: rgba(192,72,24,0.22);
+  --accent-glow: rgba(192,72,24,0.08);
+  --danger: #C04818;
+  --success: #386830;
+  --block-bg: #C8B078;
+  --block-border: #8A6E38;
+  --block-text: #1F2818;
+  --block-text-dim: rgba(31,40,24,0.6);
+}
+
+/* ── Commodore 64 — putty case, phosphor blue cursor ── */
+[data-theme="c64"] {
+  --bg: #DCD2BE;
+  --surface: #C8BEA8;
+  --surface2: #B0A88E;
+  --surface3: #E4DCC8;
+  --border: #948A70;
+  --border-subtle: #B0A88E;
+  --text: #1A1828;
+  --text-secondary: #2A2858;
+  --muted: #5A5878;
+  --accent: #4848C8;
+  --accent-dim: rgba(72,72,200,0.22);
+  --accent-glow: rgba(72,72,200,0.08);
+  --danger: #C04030;
+  --success: #4A8048;
+  --block-bg: #B0A88E;
+  --block-border: #948A70;
+  --block-text: #1A1828;
+  --block-text-dim: rgba(26,24,40,0.6);
+}
+
+/* ── Risograph — fluoro coral on cream paper, ink black ── */
+[data-theme="risograph"] {
+  --bg: #FBF8E4;
+  --surface: #F5EFC8;
+  --surface2: #EFE4B0;
+  --surface3: #FDFAEA;
+  --border: #C8B070;
+  --border-subtle: #DCC890;
+  --text: #181810;
+  --text-secondary: #383830;
+  --muted: #707068;
+  --accent: #FB4570;
+  --accent-dim: rgba(251,69,112,0.22);
+  --accent-glow: rgba(251,69,112,0.08);
+  --danger: #FB4570;
+  --success: #5A8A48;
+  --block-bg: #EFE4B0;
+  --block-border: #C8B070;
+  --block-text: #181810;
+  --block-text-dim: rgba(24,24,16,0.6);
+}
+
+/* ── Deep Aquarium — bioluminescent calm, clownfish coral pop ── */
+[data-theme="aquarium"] {
+  --bg: #DFF2EE;
+  --surface: #C0E4DC;
+  --surface2: #88C8BE;
+  --surface3: #ECF7F3;
+  --border: #4A9486;
+  --border-subtle: #80B8AE;
+  --text: #061E24;
+  --text-secondary: #1A4248;
+  --muted: #487472;
+  --accent: #FF6E54;
+  --accent-dim: rgba(255,110,84,0.22);
+  --accent-glow: rgba(255,110,84,0.08);
+  --danger: #FF6E54;
+  --success: #2EAE9A;
+  --block-bg: #88C8BE;
+  --block-border: #4A9486;
+  --block-text: #061E24;
+  --block-text-dim: rgba(6,30,36,0.6);
+}
+
 /* ── 70s Warm Retro ── */
 [data-theme="seventies-warm-retro"] {
   --bg: #F5F0E8;
@@ -772,22 +1157,22 @@
 
 /* ── Midnight Scholar ── */
 [data-theme="midnight-scholar"] {
-  --bg: #0E0E12;
-  --surface: #16161E;
-  --surface2: #1E1E2A;
-  --surface3: #141418;
-  --border: #2A2A3E;
-  --border-subtle: #222234;
-  --text: #E0DCF0;
-  --text-secondary: #A098C0;
-  --muted: #605880;
-  --accent: #7C6AF7;
-  --accent-dim: rgba(124,106,247,0.15);
-  --accent-glow: rgba(124,106,247,0.08);
+  --bg: #07080E;
+  --surface: #0C0D19;
+  --surface2: #111222;
+  --surface3: #0B0C17;
+  --border: #17192B;
+  --border-subtle: #121424;
+  --text: #DCDEF0;
+  --text-secondary: #98A0C8;
+  --muted: #586078;
+  --accent: #5E6BE6;
+  --accent-dim: rgba(94,107,230,0.15);
+  --accent-glow: rgba(94,107,230,0.08);
   --danger: #C75050;
   --success: #5EA88A;
-  --block-bg: #3A3068;
-  --block-border: #2E2858;
+  --block-bg: #1C1E43;
+  --block-border: #171938;
 }
 
 body {
@@ -876,10 +1261,7 @@ body {
   font-size: 10px; text-transform: uppercase;
   letter-spacing: 1px; color: var(--muted); font-weight: 600;
 }
-.settings-theme-options { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; max-height: 360px; overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; padding-right: 4px; }
-@media (max-width: 768px) {
-  .settings-theme-options { max-height: none; overflow: visible; padding-right: 0; }
-}
+.settings-theme-options { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; }
 .settings-theme-btn {
   display: flex; flex-direction: column; align-items: center; gap: 5px;
   background: var(--surface2); border: 1px solid var(--border);
@@ -931,7 +1313,22 @@ body {
 .settings-theme-swatch.soviet-poster { background: linear-gradient(135deg, #FF3333, #0A0A0A); }
 .settings-theme-swatch.mucha-violet { background: linear-gradient(135deg, #F0EBF4, #7B4F9E); }
 .settings-theme-swatch.great-wave { background: linear-gradient(135deg, #2E86C1, #0B1215); }
-.settings-theme-swatch.midnight-scholar { background: linear-gradient(135deg, #7C6AF7, #0E0E12); }
+.settings-theme-swatch.midnight-scholar { background: linear-gradient(135deg, #5E6BE6, #07080E); }
+.settings-theme-swatch.blueprint { background: linear-gradient(135deg, #f5f8fc, #64748b); }
+.settings-theme-swatch.field-tan { background: linear-gradient(135deg, #f4ede0, #8a6418); }
+.settings-theme-swatch.carbon { background: linear-gradient(135deg, #f5f6f8, #4a5058); }
+.settings-theme-swatch.forge { background: linear-gradient(135deg, #f3efe8, #6e6660); }
+.settings-theme-swatch.alpine { background: linear-gradient(135deg, #f4f8f4, #2e6848); }
+.settings-theme-swatch.wes-anderson { background: linear-gradient(135deg, #FBEEDD, #D04A4A); }
+.settings-theme-swatch.solitaire { background: linear-gradient(135deg, #15502A, #E8202E); }
+.settings-theme-swatch.catan { background: linear-gradient(135deg, #F8E8B8, #B84A28); }
+.settings-theme-swatch.clue { background: linear-gradient(135deg, #251420, #D8A038); }
+.settings-theme-swatch.chess { background: linear-gradient(135deg, #F4E4C2, #5C3018); }
+.settings-theme-swatch.das-boot { background: linear-gradient(135deg, #1A1E0E, #FF8A1C); }
+.settings-theme-swatch.nat-parks { background: linear-gradient(135deg, #F4EAD0, #C04818); }
+.settings-theme-swatch.c64 { background: linear-gradient(135deg, #DCD2BE, #4848C8); }
+.settings-theme-swatch.risograph { background: linear-gradient(135deg, #FBF8E4, #FB4570); }
+.settings-theme-swatch.aquarium { background: linear-gradient(135deg, #DFF2EE, #FF6E54); }
 
 .logout-btn {
   background: none;
@@ -1372,6 +1769,72 @@ h1 {
 }
 .nav-btn:hover { border-color: var(--accent); color: var(--accent); }
 
+/* Recent light themes: transparent weather button and week-nav arrows */
+[data-theme="carbon"] .dash-wx-btn,
+[data-theme="carbon"] .dash-week-nav .nav-btn,
+[data-theme="blueprint"] .dash-wx-btn,
+[data-theme="blueprint"] .dash-week-nav .nav-btn,
+[data-theme="field-tan"] .dash-wx-btn,
+[data-theme="field-tan"] .dash-week-nav .nav-btn,
+[data-theme="forge"] .dash-wx-btn,
+[data-theme="forge"] .dash-week-nav .nav-btn,
+[data-theme="alpine"] .dash-wx-btn,
+[data-theme="alpine"] .dash-week-nav .nav-btn,
+[data-theme="wes-anderson"] .dash-wx-btn,
+[data-theme="wes-anderson"] .dash-week-nav .nav-btn,
+[data-theme="catan"] .dash-wx-btn,
+[data-theme="catan"] .dash-week-nav .nav-btn,
+[data-theme="chess"] .dash-wx-btn,
+[data-theme="chess"] .dash-week-nav .nav-btn,
+[data-theme="nat-parks"] .dash-wx-btn,
+[data-theme="nat-parks"] .dash-week-nav .nav-btn,
+[data-theme="c64"] .dash-wx-btn,
+[data-theme="c64"] .dash-week-nav .nav-btn,
+[data-theme="risograph"] .dash-wx-btn,
+[data-theme="risograph"] .dash-week-nav .nav-btn,
+[data-theme="aquarium"] .dash-wx-btn,
+[data-theme="aquarium"] .dash-week-nav .nav-btn {
+  background: transparent;
+}
+[data-theme="carbon"] .dash-wx-btn:hover,
+[data-theme="carbon"] .dash-wx-btn.active,
+[data-theme="carbon"] .dash-week-nav .nav-btn:hover,
+[data-theme="blueprint"] .dash-wx-btn:hover,
+[data-theme="blueprint"] .dash-wx-btn.active,
+[data-theme="blueprint"] .dash-week-nav .nav-btn:hover,
+[data-theme="field-tan"] .dash-wx-btn:hover,
+[data-theme="field-tan"] .dash-wx-btn.active,
+[data-theme="field-tan"] .dash-week-nav .nav-btn:hover,
+[data-theme="forge"] .dash-wx-btn:hover,
+[data-theme="forge"] .dash-wx-btn.active,
+[data-theme="forge"] .dash-week-nav .nav-btn:hover,
+[data-theme="alpine"] .dash-wx-btn:hover,
+[data-theme="alpine"] .dash-wx-btn.active,
+[data-theme="alpine"] .dash-week-nav .nav-btn:hover,
+[data-theme="wes-anderson"] .dash-wx-btn:hover,
+[data-theme="wes-anderson"] .dash-wx-btn.active,
+[data-theme="wes-anderson"] .dash-week-nav .nav-btn:hover,
+[data-theme="catan"] .dash-wx-btn:hover,
+[data-theme="catan"] .dash-wx-btn.active,
+[data-theme="catan"] .dash-week-nav .nav-btn:hover,
+[data-theme="chess"] .dash-wx-btn:hover,
+[data-theme="chess"] .dash-wx-btn.active,
+[data-theme="chess"] .dash-week-nav .nav-btn:hover,
+[data-theme="nat-parks"] .dash-wx-btn:hover,
+[data-theme="nat-parks"] .dash-wx-btn.active,
+[data-theme="nat-parks"] .dash-week-nav .nav-btn:hover,
+[data-theme="c64"] .dash-wx-btn:hover,
+[data-theme="c64"] .dash-wx-btn.active,
+[data-theme="c64"] .dash-week-nav .nav-btn:hover,
+[data-theme="risograph"] .dash-wx-btn:hover,
+[data-theme="risograph"] .dash-wx-btn.active,
+[data-theme="risograph"] .dash-week-nav .nav-btn:hover,
+[data-theme="aquarium"] .dash-wx-btn:hover,
+[data-theme="aquarium"] .dash-wx-btn.active,
+[data-theme="aquarium"] .dash-week-nav .nav-btn:hover {
+  background: transparent;
+}
+
 /* ══ Dashboard bento grid ══ */
 .dash {
   display: grid;
@@ -1393,7 +1856,7 @@ h1 {
 .dash .dash-rest {
   grid-area: rest;
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
+  grid-template-columns: repeat(3, 1fr);
   grid-auto-flow: dense;
   gap: 16px;
   position: relative;
@@ -2001,7 +2464,19 @@ body.pomo-focus-active .dash-card {
 [data-theme="neon-ice-light"] .pomo-focus-overlay,
 [data-theme="parchment-amber"] .pomo-focus-overlay,
 [data-theme="golden-hour"] .pomo-focus-overlay,
-[data-theme="mucha-violet"] .pomo-focus-overlay {
+[data-theme="mucha-violet"] .pomo-focus-overlay,
+[data-theme="blueprint"] .pomo-focus-overlay,
+[data-theme="field-tan"] .pomo-focus-overlay,
+[data-theme="carbon"] .pomo-focus-overlay,
+[data-theme="forge"] .pomo-focus-overlay,
+[data-theme="alpine"] .pomo-focus-overlay,
+[data-theme="wes-anderson"] .pomo-focus-overlay,
+[data-theme="catan"] .pomo-focus-overlay,
+[data-theme="chess"] .pomo-focus-overlay,
+[data-theme="nat-parks"] .pomo-focus-overlay,
+[data-theme="c64"] .pomo-focus-overlay,
+[data-theme="risograph"] .pomo-focus-overlay,
+[data-theme="aquarium"] .pomo-focus-overlay {
   color: #fff;
 }
 [data-theme="william-morris"] .pomo-focus-overlay .pomo-focus-label,
@@ -2045,7 +2520,43 @@ body.pomo-focus-active .dash-card {
 [data-theme="neon-ice-light"] .pomo-focus-overlay .pomo-focus-percent,
 [data-theme="parchment-amber"] .pomo-focus-overlay .pomo-focus-percent,
 [data-theme="golden-hour"] .pomo-focus-overlay .pomo-focus-percent,
-[data-theme="mucha-violet"] .pomo-focus-overlay .pomo-focus-percent {
+[data-theme="mucha-violet"] .pomo-focus-overlay .pomo-focus-percent,
+[data-theme="blueprint"] .pomo-focus-overlay .pomo-focus-label,
+[data-theme="field-tan"] .pomo-focus-overlay .pomo-focus-label,
+[data-theme="carbon"] .pomo-focus-overlay .pomo-focus-label,
+[data-theme="forge"] .pomo-focus-overlay .pomo-focus-label,
+[data-theme="alpine"] .pomo-focus-overlay .pomo-focus-label,
+[data-theme="blueprint"] .pomo-focus-overlay .pomo-focus-time,
+[data-theme="field-tan"] .pomo-focus-overlay .pomo-focus-time,
+[data-theme="carbon"] .pomo-focus-overlay .pomo-focus-time,
+[data-theme="forge"] .pomo-focus-overlay .pomo-focus-time,
+[data-theme="alpine"] .pomo-focus-overlay .pomo-focus-time,
+[data-theme="blueprint"] .pomo-focus-overlay .pomo-focus-percent,
+[data-theme="field-tan"] .pomo-focus-overlay .pomo-focus-percent,
+[data-theme="carbon"] .pomo-focus-overlay .pomo-focus-percent,
+[data-theme="forge"] .pomo-focus-overlay .pomo-focus-percent,
+[data-theme="alpine"] .pomo-focus-overlay .pomo-focus-percent,
+[data-theme="wes-anderson"] .pomo-focus-overlay .pomo-focus-label,
+[data-theme="catan"] .pomo-focus-overlay .pomo-focus-label,
+[data-theme="chess"] .pomo-focus-overlay .pomo-focus-label,
+[data-theme="nat-parks"] .pomo-focus-overlay .pomo-focus-label,
+[data-theme="c64"] .pomo-focus-overlay .pomo-focus-label,
+[data-theme="risograph"] .pomo-focus-overlay .pomo-focus-label,
+[data-theme="aquarium"] .pomo-focus-overlay .pomo-focus-label,
+[data-theme="wes-anderson"] .pomo-focus-overlay .pomo-focus-time,
+[data-theme="catan"] .pomo-focus-overlay .pomo-focus-time,
+[data-theme="chess"] .pomo-focus-overlay .pomo-focus-time,
+[data-theme="nat-parks"] .pomo-focus-overlay .pomo-focus-time,
+[data-theme="c64"] .pomo-focus-overlay .pomo-focus-time,
+[data-theme="risograph"] .pomo-focus-overlay .pomo-focus-time,
+[data-theme="aquarium"] .pomo-focus-overlay .pomo-focus-time,
+[data-theme="wes-anderson"] .pomo-focus-overlay .pomo-focus-percent,
+[data-theme="catan"] .pomo-focus-overlay .pomo-focus-percent,
+[data-theme="chess"] .pomo-focus-overlay .pomo-focus-percent,
+[data-theme="nat-parks"] .pomo-focus-overlay .pomo-focus-percent,
+[data-theme="c64"] .pomo-focus-overlay .pomo-focus-percent,
+[data-theme="risograph"] .pomo-focus-overlay .pomo-focus-percent,
+[data-theme="aquarium"] .pomo-focus-overlay .pomo-focus-percent {
   color: #fff;
 }
 
@@ -2063,7 +2574,19 @@ body.pomo-focus-active .dash-card {
 [data-theme="neon-ice-light"] .pomo-focus-overlay .pomo-btn,
 [data-theme="parchment-amber"] .pomo-focus-overlay .pomo-btn,
 [data-theme="golden-hour"] .pomo-focus-overlay .pomo-btn,
-[data-theme="mucha-violet"] .pomo-focus-overlay .pomo-btn {
+[data-theme="mucha-violet"] .pomo-focus-overlay .pomo-btn,
+[data-theme="blueprint"] .pomo-focus-overlay .pomo-btn,
+[data-theme="field-tan"] .pomo-focus-overlay .pomo-btn,
+[data-theme="carbon"] .pomo-focus-overlay .pomo-btn,
+[data-theme="forge"] .pomo-focus-overlay .pomo-btn,
+[data-theme="alpine"] .pomo-focus-overlay .pomo-btn,
+[data-theme="wes-anderson"] .pomo-focus-overlay .pomo-btn,
+[data-theme="catan"] .pomo-focus-overlay .pomo-btn,
+[data-theme="chess"] .pomo-focus-overlay .pomo-btn,
+[data-theme="nat-parks"] .pomo-focus-overlay .pomo-btn,
+[data-theme="c64"] .pomo-focus-overlay .pomo-btn,
+[data-theme="risograph"] .pomo-focus-overlay .pomo-btn,
+[data-theme="aquarium"] .pomo-focus-overlay .pomo-btn {
   color: #fff;
 }
 /* Light themes: darken Reset (non-active) button fill for white-text contrast */
@@ -2080,7 +2603,19 @@ body.pomo-focus-active .dash-card {
 [data-theme="neon-ice-light"] .pomo-focus-overlay .pomo-btn:not(.pomo-active),
 [data-theme="parchment-amber"] .pomo-focus-overlay .pomo-btn:not(.pomo-active),
 [data-theme="golden-hour"] .pomo-focus-overlay .pomo-btn:not(.pomo-active),
-[data-theme="mucha-violet"] .pomo-focus-overlay .pomo-btn:not(.pomo-active) {
+[data-theme="mucha-violet"] .pomo-focus-overlay .pomo-btn:not(.pomo-active),
+[data-theme="blueprint"] .pomo-focus-overlay .pomo-btn:not(.pomo-active),
+[data-theme="field-tan"] .pomo-focus-overlay .pomo-btn:not(.pomo-active),
+[data-theme="carbon"] .pomo-focus-overlay .pomo-btn:not(.pomo-active),
+[data-theme="forge"] .pomo-focus-overlay .pomo-btn:not(.pomo-active),
+[data-theme="alpine"] .pomo-focus-overlay .pomo-btn:not(.pomo-active),
+[data-theme="wes-anderson"] .pomo-focus-overlay .pomo-btn:not(.pomo-active),
+[data-theme="catan"] .pomo-focus-overlay .pomo-btn:not(.pomo-active),
+[data-theme="chess"] .pomo-focus-overlay .pomo-btn:not(.pomo-active),
+[data-theme="nat-parks"] .pomo-focus-overlay .pomo-btn:not(.pomo-active),
+[data-theme="c64"] .pomo-focus-overlay .pomo-btn:not(.pomo-active),
+[data-theme="risograph"] .pomo-focus-overlay .pomo-btn:not(.pomo-active),
+[data-theme="aquarium"] .pomo-focus-overlay .pomo-btn:not(.pomo-active) {
   background: rgba(0, 0, 0, 0.35);
   border-color: rgba(0, 0, 0, 0.45);
 }
@@ -2915,12 +3450,13 @@ body.pomo-focus-active .dash-card {
   }
 
   /* ── Schedule block: left-accent bar + title left, time right ── */
-  .dash-sublabel { margin-bottom: 10px; }
+  .dash-sublabel { margin-bottom: 10px; font-size: 12px; }
+  .dash-timeline .dash-sublabel { margin-top: 16px; }
   .dash-timeline-list { gap: 10px; }
   .dash-tl-block {
-    padding: 12px 14px;
+    padding: 7px 14px;
     border-left: 3px solid var(--accent);
-    border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+    border-radius: 0 9999px 9999px 0;
     flex-wrap: wrap;
     position: relative;
   }

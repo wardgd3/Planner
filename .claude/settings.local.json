@@ -17,7 +17,9 @@
       "Bash(node revert_fonts.js)",
       "Bash(mv revert_fonts.js revert_fonts.cjs)",
       "Bash(node revert_fonts.cjs)",
-      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:5173)"
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:5173)",
+      "Bash(node -e \"const fs=require\\('fs'\\);let s=fs.readFileSync\\('src/App.css','utf8'\\);s=s.replace\\(/\\\\[data-theme=\\\\\"carbon-slate\\\\\"\\\\]/g,'[data-theme=\\\\\"carbon\\\\\"]'\\);s=s.split\\('\\\\n'\\).filter\\(l=>!l.includes\\('\\\\\"silver-white\\\\\"]'\\)&&!l.includes\\('\\\\\"naval-ivory\\\\\"]'\\)\\).join\\('\\\\n'\\);fs.writeFileSync\\('src/App.css',s\\);console.log\\('done'\\);\")",
+      "Bash(node -e \"const fs=require\\('fs'\\);let s=fs.readFileSync\\('src/App.css','utf8'\\);s=s.split\\('\\\\n'\\).filter\\(l=>!l.includes\\('\\\\\"clue\\\\\"]'\\)\\).join\\('\\\\n'\\);fs.writeFileSync\\('src/App.css',s\\);console.log\\('removed clue lines'\\);\")"
     ]
   }
 }
