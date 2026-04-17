@@ -1,21 +1,50 @@
-import { useState, useRef, useMemo } from 'react'
+import { useState, useMemo } from 'react'
 import { timeToMinutes, computeEndTime, timeRangesOverlap } from '../utils'
 
-export default function BlockForm({ block, date, startTime, projects, tasks, habits, glossaryItems = [], existingBlocks = [], onSave, onCancel, centered = false }) {
+export default function BlockForm({
+  block, date, startTime, projects, tasks, habits,
+  glossaryItems = [], existingBlocks = [],
+  linkedTaskIds = [],
+  onSave, onCancel, centered = false,
+}) {
   const [title, setTitle] = useState(block?.title || '')
   const [blockDate, setBlockDate] = useState(block?.date || date || '')
   const [noTime, setNoTime] = useState(block ? (!block.start_time && !block.end_time) : false)
   const [start, setStart] = useState(block?.start_time?.slice(0, 5) || startTime || '09:00')
   const [end, setEnd] = useState(block?.end_time?.slice(0, 5) || '')
   const [projectId, setProjectId] = useState(block?.project_id || '')
-  const [taskId, setTaskId] = useState(block?.task_id || '')
   const [habitId, setHabitId] = useState(block?.habit_id || '')
   const [notes, setNotes] = useState(block?.notes || '')
   const [glossarySearch, setGlossarySearch] = useState('')
   const [showGlossary, setShowGlossary] = useState(false)
   const [saving, setSaving] = useState(false)
 
-  const filteredTasks = projectId ? tasks.filter(t => t.project_id === projectId) : tasks
+  // Linked tasks state: existing task IDs + draft new tasks (strings)
+  const [selectedTaskIds, setSelectedTaskIds] = useState(linkedTaskIds)
+  const [newTaskDrafts, setNewTaskDrafts] = useState([])
+  const [newTaskInput, setNewTaskInput] = useState('')
+  const [pickerOpen, setPickerOpen] = useState(false)
+
+  const activeProjects = useMemo(() => projects.filter(p => p.status !== 'completed'), [projects])
+
+  const selectableTasks = useMemo(() => {
+    // Prefer tasks from active projects; if projectId set, filter further
+    const base = projectId
+      ? tasks.filter(t => t.project_id === projectId)
+      : tasks.filter(t => {
+          if (!t.project_id) return true
+          const p = activeProjects.find(p => p.id === t.project_id)
+          return !!p
+        })
+    return base
+      .filter(t => t.status !== 'done')
+      .filter(t => !selectedTaskIds.includes(t.id))
+  }, [tasks, projectId, activeProjects, selectedTaskIds])
+
+  const selectedTaskObjs = useMemo(
+    () => selectedTaskIds.map(id => tasks.find(t => t.id === id)).filter(Boolean),
+    [selectedTaskIds, tasks]
+  )
 
   const glossaryResults = useMemo(
     () => glossarySearch.length > 0
@@ -29,7 +58,6 @@ export default function BlockForm({ block, date, startTime, projects, tasks, hab
     if (noTime) return null
     if (!start || !end) return null
     if (timeToMinutes(end) <= timeToMinutes(start)) return 'End time must be after start time'
-    // Check for conflicts with timed blocks only (exclude current block if editing)
     const otherBlocks = existingBlocks.filter(b => (!block || b.id !== block.id) && b.start_time && b.end_time)
     const conflict = otherBlocks.find(b => timeRangesOverlap(start, end, b.start_time.slice(0, 5), b.end_time.slice(0, 5)))
     if (conflict) return `Overlaps with "${conflict.title}" (${conflict.start_time.slice(0, 5)}–${conflict.end_time.slice(0, 5)})`
@@ -40,26 +68,60 @@ export default function BlockForm({ block, date, startTime, projects, tasks, hab
     setTitle(item.name)
     const baseStart = item.default_time ? item.default_time.slice(0, 5) : start
     if (item.default_time) setStart(baseStart)
-    if (item.default_duration_minutes) {
-      setEnd(computeEndTime(baseStart, item.default_duration_minutes))
-    }
+    if (item.default_duration_minutes) setEnd(computeEndTime(baseStart, item.default_duration_minutes))
     if (item.source === 'habit' && item.habit_id) setHabitId(item.habit_id)
     if (item.description) setNotes(item.description)
     setGlossarySearch('')
     setShowGlossary(false)
   }
 
+  function addExistingTask(tid) {
+    if (!tid) return
+    setSelectedTaskIds(prev => prev.includes(tid) ? prev : [...prev, tid])
+    setPickerOpen(false)
+  }
+
+  function removeSelectedTask(tid) {
+    setSelectedTaskIds(prev => prev.filter(id => id !== tid))
+  }
+
+  function addNewDraft() {
+    const t = newTaskInput.trim()
+    if (!t) return
+    setNewTaskDrafts(prev => [...prev, t])
+    setNewTaskInput('')
+  }
+
+  function removeNewDraft(i) {
+    setNewTaskDrafts(prev => prev.filter((_, idx) => idx !== i))
+  }
+
+  function handleProjectChange(id) {
+    setProjectId(id)
+    if (id) {
+      const proj = projects.find(p => p.id === id)
+      if (proj) setTitle(proj.name)
+    }
+  }
+
   async function handleSave() {
     if (!title.trim() || !blockDate || timeError || saving) return
     if (!noTime && (!start || !end)) return
+    // Commit any pending typed draft
+    const pendingDrafts = newTaskInput.trim() ? [...newTaskDrafts, newTaskInput.trim()] : newTaskDrafts
     setSaving(true)
     try {
       await onSave({
         title: title.trim(), date: blockDate,
         start_time: noTime ? null : start,
         end_time: noTime ? null : end,
-        project_id: projectId || null, task_id: taskId || null, habit_id: habitId || null,
-        color: getComputedStyle(document.documentElement).getPropertyValue('--accent').trim() || '#d4981a', notes
+        project_id: projectId || null,
+        task_id: null, // legacy single-task field — cleared in favor of join table
+        habit_id: habitId || null,
+        color: getComputedStyle(document.documentElement).getPropertyValue('--accent').trim() || '#d4981a',
+        notes,
+        block_task_ids: selectedTaskIds,
+        new_task_titles: pendingDrafts,
       })
     } finally {
       setSaving(false)
@@ -102,6 +164,12 @@ export default function BlockForm({ block, date, startTime, projects, tasks, hab
             </div>
           )}
 
+          <label className="field-label">Project</label>
+          <select className="input select-input" value={projectId} onChange={e => handleProjectChange(e.target.value)}>
+            <option value="">No project</option>
+            {projects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+          </select>
+
           <input className="input" placeholder="Block title (required)" value={title} onChange={e => setTitle(e.target.value)} autoFocus={!!block} maxLength={200} />
 
           <label className="field-label">Date</label>
@@ -125,17 +193,72 @@ export default function BlockForm({ block, date, startTime, projects, tasks, hab
           )}
           {timeError && <p className="field-hint" style={{ color: '#fb7185' }}>{timeError}</p>}
 
-          <label className="field-label">Project</label>
-          <select className="input select-input" value={projectId} onChange={e => { setProjectId(e.target.value); setTaskId('') }}>
-            <option value="">No project</option>
-            {projects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-          </select>
+          {/* ── Tasks within block ── */}
+          <label className="field-label">Tasks in this block</label>
+          <div className="bf-tasks">
+            {selectedTaskObjs.length === 0 && newTaskDrafts.length === 0 && (
+              <p className="empty-msg" style={{ padding: '4px 0', fontSize: 12 }}>No tasks linked yet</p>
+            )}
+            {selectedTaskObjs.map(t => {
+              const proj = projects.find(p => p.id === t.project_id)
+              return (
+                <div key={t.id} className="bf-task-chip">
+                  <span className="bf-task-title">{t.title}</span>
+                  {proj && <span className="bf-task-proj" style={{ color: proj.color }}>● {proj.name}</span>}
+                  <button type="button" className="bf-task-remove" onClick={() => removeSelectedTask(t.id)} aria-label="Remove task">✕</button>
+                </div>
+              )
+            })}
+            {newTaskDrafts.map((t, i) => (
+              <div key={`draft-${i}`} className="bf-task-chip bf-task-chip-new">
+                <span className="bf-task-title">{t}</span>
+                <span className="bf-task-proj">new</span>
+                <button type="button" className="bf-task-remove" onClick={() => removeNewDraft(i)} aria-label="Remove new task">✕</button>
+              </div>
+            ))}
 
-          <label className="field-label">Task</label>
-          <select className="input select-input" value={taskId} onChange={e => setTaskId(e.target.value)}>
-            <option value="">No task</option>
-            {filteredTasks.map(t => <option key={t.id} value={t.id}>{t.title}</option>)}
-          </select>
+            {/* New task inline input */}
+            <div className="bf-task-add-row">
+              <input
+                className="input bf-task-input"
+                placeholder="Type a new task and press Enter…"
+                value={newTaskInput}
+                onChange={e => setNewTaskInput(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addNewDraft() } }}
+                maxLength={200}
+              />
+              <button type="button" className="add-btn bf-task-add-btn" onClick={addNewDraft} disabled={!newTaskInput.trim()}>+ Add</button>
+            </div>
+
+            {/* Pick from existing tasks */}
+            <div className="bf-task-pick-row">
+              {!pickerOpen ? (
+                <button type="button" className="bf-task-pick-btn" onClick={() => setPickerOpen(true)}>
+                  + Pick from existing tasks
+                </button>
+              ) : (
+                <select
+                  className="input select-input"
+                  value=""
+                  onChange={e => addExistingTask(e.target.value)}
+                  onBlur={() => setPickerOpen(false)}
+                  autoFocus
+                >
+                  <option value="">
+                    {selectableTasks.length === 0 ? 'No eligible tasks' : 'Select a task to add…'}
+                  </option>
+                  {selectableTasks.map(t => {
+                    const proj = projects.find(p => p.id === t.project_id)
+                    return (
+                      <option key={t.id} value={t.id}>
+                        {t.title}{proj ? ` — ${proj.name}` : ''}
+                      </option>
+                    )
+                  })}
+                </select>
+              )}
+            </div>
+          </div>
 
           <label className="field-label">Habit</label>
           <select className="input select-input" value={habitId} onChange={e => setHabitId(e.target.value)}>

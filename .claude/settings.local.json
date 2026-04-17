@@ -19,7 +19,11 @@
       "Bash(node revert_fonts.cjs)",
       "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:5173)",
       "Bash(node -e \"const fs=require\\('fs'\\);let s=fs.readFileSync\\('src/App.css','utf8'\\);s=s.replace\\(/\\\\[data-theme=\\\\\"carbon-slate\\\\\"\\\\]/g,'[data-theme=\\\\\"carbon\\\\\"]'\\);s=s.split\\('\\\\n'\\).filter\\(l=>!l.includes\\('\\\\\"silver-white\\\\\"]'\\)&&!l.includes\\('\\\\\"naval-ivory\\\\\"]'\\)\\).join\\('\\\\n'\\);fs.writeFileSync\\('src/App.css',s\\);console.log\\('done'\\);\")",
-      "Bash(node -e \"const fs=require\\('fs'\\);let s=fs.readFileSync\\('src/App.css','utf8'\\);s=s.split\\('\\\\n'\\).filter\\(l=>!l.includes\\('\\\\\"clue\\\\\"]'\\)\\).join\\('\\\\n'\\);fs.writeFileSync\\('src/App.css',s\\);console.log\\('removed clue lines'\\);\")"
+      "Bash(node -e \"const fs=require\\('fs'\\);let s=fs.readFileSync\\('src/App.css','utf8'\\);s=s.split\\('\\\\n'\\).filter\\(l=>!l.includes\\('\\\\\"clue\\\\\"]'\\)\\).join\\('\\\\n'\\);fs.writeFileSync\\('src/App.css',s\\);console.log\\('removed clue lines'\\);\")",
+      "mcp__ba8af099-3825-48c0-8b1c-1752d68b11ee__list_projects",
+      "mcp__ba8af099-3825-48c0-8b1c-1752d68b11ee__list_tables",
+      "mcp__ba8af099-3825-48c0-8b1c-1752d68b11ee__execute_sql",
+      "mcp__ba8af099-3825-48c0-8b1c-1752d68b11ee__apply_migration"
     ]
   }
 }

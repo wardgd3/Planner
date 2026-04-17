@@ -40,6 +40,7 @@ export default function Planner({ habits }) {
   const [projects, setProjects] = useState([])
   const [tasks, setTasks] = useState([])
   const [blocks, setBlocks] = useState([])
+  const [blockTaskLinks, setBlockTaskLinks] = useState([]) // {block_id, task_id, sort_order}
   const [glossaryItems, setGlossaryItems] = useState([])
   const [loading, setLoading] = useState(true)
 
@@ -48,17 +49,25 @@ export default function Planner({ habits }) {
   async function fetchAll() {
     setLoading(true)
     try {
-      const [{ data: proj, error: e1 }, { data: tsk, error: e2 }, { data: blk, error: e3 }, { data: gloss, error: e4 }] = await Promise.all([
+      const [
+        { data: proj, error: e1 },
+        { data: tsk, error: e2 },
+        { data: blk, error: e3 },
+        { data: gloss, error: e4 },
+        { data: btl, error: e5 },
+      ] = await Promise.all([
         supabase.from('planner_projects').select('*').order('sort_order'),
         supabase.from('planner_tasks').select('*').order('sort_order'),
         supabase.from('planner_blocks').select('*').order('date').order('start_time'),
-        supabase.from('glossary_items').select('*').order('name')
+        supabase.from('glossary_items').select('*').order('name'),
+        supabase.from('planner_block_tasks').select('*').order('sort_order'),
       ])
-      if (e1 || e2 || e3 || e4) toast.error('Failed to load some planner data')
+      if (e1 || e2 || e3 || e4 || e5) toast.error('Failed to load some planner data')
       if (proj) setProjects(proj)
       if (tsk) setTasks(tsk)
       if (blk) setBlocks(blk)
       if (gloss) setGlossaryItems(gloss)
+      if (btl) setBlockTaskLinks(btl)
     } catch {
       toast.error('Network error loading planner')
     }
@@ -106,28 +115,87 @@ export default function Planner({ habits }) {
     } catch { toast.error('Network error') }
   }, [toast])
 
+  // ---- Block ↔ Tasks link reconciliation ----
+  // Replaces the set of linked tasks for a block with `taskIds` (array of existing task IDs).
+  // Also accepts `newTaskTitles` (array of strings) that get created as tasks and linked.
+  const reconcileBlockTasks = useCallback(async (blockId, taskIds, newTaskTitles = [], meta = {}) => {
+    try {
+      // 1. Create any brand-new tasks first
+      let createdTasks = []
+      if (newTaskTitles.length > 0) {
+        const baseSort = tasks.reduce((m, t) => Math.max(m, t.sort_order || 0), 0)
+        const rows = newTaskTitles.map((title, i) => ({
+          title: title.trim(),
+          project_id: meta.project_id || null,
+          due_date: meta.due_date || null,
+          sort_order: baseSort + i + 1,
+          status: 'todo',
+          priority: 'medium',
+        })).filter(r => r.title)
+        if (rows.length > 0) {
+          const { data, error } = await supabase.from('planner_tasks').insert(rows).select()
+          if (error) { toast.error('Failed to create tasks'); return }
+          createdTasks = data || []
+          setTasks(prev => [...prev, ...createdTasks])
+        }
+      }
+
+      const finalTaskIds = [...taskIds, ...createdTasks.map(t => t.id)]
+
+      // 2. Delete existing links for this block
+      const { error: delErr } = await supabase.from('planner_block_tasks').delete().eq('block_id', blockId)
+      if (delErr) { toast.error('Failed to update block tasks'); return }
+
+      // 3. Insert new links
+      if (finalTaskIds.length > 0) {
+        const linkRows = finalTaskIds.map((task_id, i) => ({ block_id: blockId, task_id, sort_order: i }))
+        const { data: newLinks, error: insErr } = await supabase.from('planner_block_tasks').insert(linkRows).select()
+        if (insErr) { toast.error('Failed to link tasks to block'); return }
+        setBlockTaskLinks(prev => [...prev.filter(l => l.block_id !== blockId), ...(newLinks || [])])
+      } else {
+        setBlockTaskLinks(prev => prev.filter(l => l.block_id !== blockId))
+      }
+    } catch { toast.error('Network error') }
+  }, [tasks, toast])
+
   // ---- Blocks ----
   const addBlock = useCallback(async (data) => {
     try {
-      const { data: b, error } = await supabase.from('planner_blocks').insert(data).select().single()
-      if (error) { toast.error('Failed to add block'); return }
+      const { block_task_ids = [], new_task_titles = [], ...blockFields } = data
+      const { data: b, error } = await supabase.from('planner_blocks').insert(blockFields).select().single()
+      if (error) { toast.error('Failed to add block'); return null }
       setBlocks(prev => [...prev, b])
-    } catch { toast.error('Network error') }
-  }, [toast])
+      if (block_task_ids.length > 0 || new_task_titles.length > 0) {
+        await reconcileBlockTasks(b.id, block_task_ids, new_task_titles, {
+          project_id: blockFields.project_id,
+          due_date: blockFields.date,
+        })
+      }
+      return b
+    } catch { toast.error('Network error'); return null }
+  }, [toast, reconcileBlockTasks])
 
   const editBlock = useCallback(async (id, data) => {
     try {
-      const { data: b, error } = await supabase.from('planner_blocks').update(data).eq('id', id).select().single()
+      const { block_task_ids, new_task_titles, ...blockFields } = data
+      const { data: b, error } = await supabase.from('planner_blocks').update(blockFields).eq('id', id).select().single()
       if (error) { toast.error('Failed to update block'); return }
       setBlocks(prev => prev.map(x => x.id === id ? b : x))
+      if (block_task_ids !== undefined || new_task_titles !== undefined) {
+        await reconcileBlockTasks(id, block_task_ids || [], new_task_titles || [], {
+          project_id: blockFields.project_id,
+          due_date: blockFields.date,
+        })
+      }
     } catch { toast.error('Network error') }
-  }, [toast])
+  }, [toast, reconcileBlockTasks])
 
   const deleteBlock = useCallback(async (id) => {
     try {
       const { error } = await supabase.from('planner_blocks').delete().eq('id', id)
       if (error) { toast.error('Failed to delete block'); return }
       setBlocks(prev => prev.filter(b => b.id !== id))
+      setBlockTaskLinks(prev => prev.filter(l => l.block_id !== id))
     } catch { toast.error('Network error') }
   }, [toast])
 
@@ -239,6 +307,7 @@ export default function Planner({ habits }) {
         <div className="planner-content">
           <DashboardView
             tasks={tasks} blocks={blocks} projects={projects} habits={habits}
+            blockTaskLinks={blockTaskLinks}
             glossaryItems={allGlossary}
             onAddBlock={addBlock} onEditBlock={editBlock} onDeleteBlock={deleteBlock} onCompleteBlock={completeBlock}
             onAddTask={addTask} onEditTask={editTask} onDeleteTask={deleteTask} onCompleteTask={completeTask}
@@ -254,6 +323,7 @@ export default function Planner({ habits }) {
     <MobilePlanner
       tab={tab} setTab={setTab}
       tasks={tasks} blocks={blocks} projects={projects} habits={habits}
+      blockTaskLinks={blockTaskLinks}
       allGlossary={allGlossary}
       addBlock={addBlock} editBlock={editBlock} deleteBlock={deleteBlock} completeBlock={completeBlock}
       addTask={addTask} editTask={editTask} deleteTask={deleteTask} completeTask={completeTask}
@@ -264,7 +334,7 @@ export default function Planner({ habits }) {
 
 function MobilePlanner({
   tab, setTab,
-  tasks, blocks, projects, habits, allGlossary,
+  tasks, blocks, projects, habits, blockTaskLinks, allGlossary,
   addBlock, editBlock, deleteBlock, completeBlock,
   addTask, editTask, deleteTask, completeTask,
   addProject, editProject, deleteProject,
@@ -425,6 +495,7 @@ function MobilePlanner({
         {tab === 'Today' && (
           <DashboardView
             tasks={tasks} blocks={blocks} projects={projects} habits={habits}
+            blockTaskLinks={blockTaskLinks}
             glossaryItems={allGlossary}
             onAddBlock={addBlock} onEditBlock={editBlock} onDeleteBlock={deleteBlock} onCompleteBlock={completeBlock}
             onAddTask={addTask} onEditTask={editTask} onDeleteTask={deleteTask} onCompleteTask={completeTask}
@@ -605,6 +676,7 @@ function MobilePlanner({
             habits={habits}
             glossaryItems={allGlossary}
             existingBlocks={blocks.filter(b => b.date === (blockForm.date || blockForm.block?.date))}
+            linkedTaskIds={blockForm.block ? blockTaskLinks.filter(l => l.block_id === blockForm.block.id).sort((a, b) => a.sort_order - b.sort_order).map(l => l.task_id) : []}
             onSave={async (data) => {
               if (blockForm.block) await editBlock(blockForm.block.id, data)
               else await addBlock(data)

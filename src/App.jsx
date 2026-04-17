@@ -5,6 +5,7 @@ import { DndContext, closestCenter, PointerSensor, useSensor, useSensors, DragOv
 import { SortableContext, verticalListSortingStrategy, useSortable, arrayMove } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import Planner from './planner/Planner.jsx'
+import ProjectsDashboard from './planner/ProjectsDashboard.jsx'
 import { ToastProvider, useToast } from './Toast.jsx'
 import { PRESET_COLORS, PERIODS } from './constants'
 import { getPeriodLabel, getPeriodRange } from './utils'
@@ -333,10 +334,11 @@ function AppInner({ onLogout }) {
   const selectedCatLabel = selectedCategoryId === 'all' ? 'All Categories' : (categories.find(c => c.id === selectedCategoryId)?.name || 'All Categories')
 
   return (
-    <div className={`app ${activeTab === "planner" ? "app-wide" : ""}`}>
+    <div className={`app ${activeTab === "planner" || activeTab === "projects" ? "app-wide" : ""}`}>
       <div className="app-tabs">
         <button className={`app-tab ${activeTab === 'planner' ? 'active' : ''}`} onClick={() => setActiveTab('planner')}>Planner</button>
         <button className={`app-tab ${activeTab === 'tracker' ? 'active' : ''}`} onClick={() => setActiveTab('tracker')}>Habits</button>
+        <button className={`app-tab desktop-only ${activeTab === 'projects' ? 'active' : ''}`} onClick={() => setActiveTab('projects')}>Projects</button>
         <div className="settings-wrap">
           <button className="settings-btn settings-btn-text" onClick={() => setShowSettings(s => !s)} title="Themes">Themes</button>
           {showSettings && (
@@ -366,6 +368,7 @@ function AppInner({ onLogout }) {
                     ['void-crimson', 'Void Crimson'],
                     ['charcoal-citron', 'Charcoal Citron'],
                     ['ink-jade', 'Ink Jade'],
+                    ['forest-dark', 'Forest Dark'],
                   ],
                 },
                 {
@@ -387,6 +390,7 @@ function AppInner({ onLogout }) {
                     ['carbon', 'Carbon'],
                     ['forge', 'Forge'],
                     ['alpine', 'Alpine'],
+                    ['forest-light', 'Forest Light'],
                   ],
                 },
                 {
@@ -425,6 +429,8 @@ function AppInner({ onLogout }) {
       </div>
 
       {activeTab === 'planner' && <Planner habits={habits} />}
+
+      {activeTab === 'projects' && <ProjectsDashboard habits={habits} />}
 
       {activeTab === 'tracker' && (
         <div className="tracker-wrap">

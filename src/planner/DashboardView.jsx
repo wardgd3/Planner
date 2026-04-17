@@ -30,33 +30,83 @@ function getMoonPhase(date = new Date()) {
 }
 
 
-// ── Sortable block row ──
-function SortableBlock({ block, isActive, onEdit, onComplete, onDelete, today }) {
+// ── Sortable block row (with expand-to-show-tasks) ──
+function SortableBlock({ block, isActive, onEdit, onComplete, onDelete, today, linkedTasks = [], onCompleteTask, onEditTask }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: block.id })
+  const [expanded, setExpanded] = useState(false)
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
     background: 'var(--accent-dim)',
   }
+  const hasTasks = linkedTasks.length > 0
   return (
     <div
       ref={setNodeRef}
-      className={`dash-tl-block ${isActive ? 'dash-tl-active' : ''} ${block.completed ? 'dash-tl-done' : ''} ${isDragging ? 'dragging' : ''}`}
+      className={`dash-tl-block ${isActive ? 'dash-tl-active' : ''} ${block.completed ? 'dash-tl-done' : ''} ${isDragging ? 'dragging' : ''} ${expanded ? 'dash-tl-expanded' : ''}`}
       style={style}
-      onClick={() => onEdit({ block, date: today })}
     >
-      <span className="dash-tl-drag-handle" {...attributes} {...listeners}>⠿</span>
-      <button
-        className={`task-check small ${block.completed ? 'done' : ''}`}
-        onClick={e => { e.stopPropagation(); onComplete(block) }}
-        aria-label={block.completed ? 'Uncheck block' : 'Complete block'}
-      >{block.completed ? '✓' : ''}</button>
-      <span className="dash-tl-title">{block.title}</span>
-      {block.start_time && block.end_time
-        ? <span className="dash-tl-time">{block.start_time.slice(0, 5)} – {block.end_time.slice(0, 5)}</span>
-        : <span className="dash-tl-time">N/A</span>}
-      {isActive && !block.completed && <span className="dash-tl-live">NOW</span>}
-      <button className="dash-tl-delete" onClick={e => { e.stopPropagation(); onDelete(block.id) }} aria-label="Delete block">✕</button>
+      <div className="dash-tl-row" onClick={() => setExpanded(v => !v)}>
+        <span className="dash-tl-drag-handle" {...attributes} {...listeners} onClick={e => e.stopPropagation()}>⠿</span>
+        <button
+          className={`task-check small ${block.completed ? 'done' : ''}`}
+          onClick={e => { e.stopPropagation(); onComplete(block) }}
+          aria-label={block.completed ? 'Uncheck block' : 'Complete block'}
+        >{block.completed ? '✓' : ''}</button>
+        <span className="dash-tl-title">{block.title}</span>
+        {hasTasks && (
+          <span className="dash-tl-task-count" aria-label={`${linkedTasks.length} tasks`}>
+            {linkedTasks.filter(t => t.status === 'done').length}/{linkedTasks.length}
+          </span>
+        )}
+        {block.start_time && block.end_time
+          ? <span className="dash-tl-time">{block.start_time.slice(0, 5)} – {block.end_time.slice(0, 5)}</span>
+          : <span className="dash-tl-time">N/A</span>}
+        {isActive && !block.completed && <span className="dash-tl-live">NOW</span>}
+        <button
+          className="dash-tl-edit"
+          onClick={e => { e.stopPropagation(); onEdit({ block, date: today }) }}
+          aria-label="Edit block"
+        >✏️</button>
+        <button
+          className="dash-tl-delete"
+          onClick={e => { e.stopPropagation(); onDelete(block.id) }}
+          aria-label="Delete block"
+        >✕</button>
+        <span
+          className={`dash-tl-caret ${expanded ? 'open' : ''}`}
+          aria-hidden="true"
+        >▾</span>
+      </div>
+
+      {expanded && (
+        <div className="dash-tl-tasks" onClick={e => e.stopPropagation()}>
+          {linkedTasks.length === 0 ? (
+            <p className="dash-tl-empty" onClick={() => onEdit({ block, date: today })}>
+              No tasks yet — tap to edit block and add some
+            </p>
+          ) : (
+            <ul className="dash-tl-task-list">
+              {linkedTasks.map(t => (
+                <li key={t.id} className={`dash-tl-task-row ${t.status === 'done' ? 'done' : ''}`}>
+                  <button
+                    className={`task-check small ${t.status === 'done' ? 'done' : ''}`}
+                    onClick={() => onCompleteTask && onCompleteTask(t)}
+                    aria-label={t.status === 'done' ? 'Task done' : 'Complete task'}
+                  >{t.status === 'done' ? '✓' : ''}</button>
+                  <span className="dash-tl-task-title" onClick={() => onEditTask && onEditTask(t)}>
+                    {t.title}
+                  </span>
+                  {t.priority && (
+                    <span className="priority-dot" style={{ background: priorityColor(t.priority) }} />
+                  )}
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
+
       {isActive && !block.completed && block.start_time && block.end_time && (() => {
         const now = new Date()
         const [sh, sm] = block.start_time.split(':').map(Number)
@@ -141,6 +191,7 @@ function Sparkline({ data, color }) {
 
 export default function DashboardView({
   tasks, blocks, projects, habits,
+  blockTaskLinks = [],
   glossaryItems,
   onAddBlock, onEditBlock, onDeleteBlock, onCompleteBlock,
   onAddTask, onEditTask, onDeleteTask, onCompleteTask,
@@ -503,6 +554,18 @@ export default function DashboardView({
     [blocks, today]
   )
 
+  // Lookup: block_id → [task objects] (sorted by link sort_order)
+  const tasksByBlock = useMemo(() => {
+    const map = {}
+    blockTaskLinks.forEach(link => {
+      if (!map[link.block_id]) map[link.block_id] = []
+      const task = tasks.find(t => t.id === link.task_id)
+      if (task) map[link.block_id].push({ ...task, _linkOrder: link.sort_order })
+    })
+    Object.keys(map).forEach(k => map[k].sort((a, b) => (a._linkOrder || 0) - (b._linkOrder || 0)))
+    return map
+  }, [blockTaskLinks, tasks])
+
   const handleBlockDragEnd = useCallback(async (event) => {
     setDragActiveBlock(null)
     const { active, over } = event
@@ -690,6 +753,9 @@ export default function DashboardView({
                         onComplete={onCompleteBlock}
                         onDelete={onDeleteBlock}
                         today={today}
+                        linkedTasks={tasksByBlock[block.id] || []}
+                        onCompleteTask={onCompleteTask}
+                        onEditTask={(t) => setTaskForm({ task: t })}
                       />
                     ))}
                   </div>
@@ -955,25 +1021,32 @@ export default function DashboardView({
                 <p className="empty-msg">No blocks</p>
               ) : (
                 <div className="dash-week-detail-list">
-                  {selectedBlocks.map(block => (
-                    <div
-                      key={block.id}
-                      className={`dash-tl-block ${block.completed ? 'dash-tl-done' : ''}`}
-                      style={{ background: 'var(--accent-dim)' }}
-                      onClick={() => setBlockForm({ block, date: selectedDay })}
-                    >
-                      <button
-                        className={`task-check small ${block.completed ? 'done' : ''}`}
-                        onClick={e => { e.stopPropagation(); onCompleteBlock(block) }}
-                        aria-label={block.completed ? 'Uncheck block' : 'Complete block'}
-                      >{block.completed ? '✓' : ''}</button>
-                      {block.start_time && block.end_time
-                        ? <span className="dash-tl-time">{block.start_time.slice(0, 5)} – {block.end_time.slice(0, 5)}</span>
-                        : <span className="dash-tl-time">N/A</span>}
-                      <span className="dash-tl-title">{block.title}</span>
-                      <button className="dash-tl-delete" onClick={e => { e.stopPropagation(); onDeleteBlock(block.id) }} aria-label="Delete block">✕</button>
-                    </div>
-                  ))}
+                  {selectedBlocks.map(block => {
+                    const bTasks = tasksByBlock[block.id] || []
+                    return (
+                      <div
+                        key={block.id}
+                        className={`dash-tl-block ${block.completed ? 'dash-tl-done' : ''}`}
+                        style={{ background: 'var(--accent-dim)' }}
+                      >
+                        <div className="dash-tl-row" onClick={() => setBlockForm({ block, date: selectedDay })}>
+                          <button
+                            className={`task-check small ${block.completed ? 'done' : ''}`}
+                            onClick={e => { e.stopPropagation(); onCompleteBlock(block) }}
+                            aria-label={block.completed ? 'Uncheck block' : 'Complete block'}
+                          >{block.completed ? '✓' : ''}</button>
+                          {block.start_time && block.end_time
+                            ? <span className="dash-tl-time">{block.start_time.slice(0, 5)} – {block.end_time.slice(0, 5)}</span>
+                            : <span className="dash-tl-time">N/A</span>}
+                          <span className="dash-tl-title">{block.title}</span>
+                          {bTasks.length > 0 && (
+                            <span className="dash-tl-task-count">{bTasks.filter(t => t.status === 'done').length}/{bTasks.length}</span>
+                          )}
+                          <button className="dash-tl-delete" onClick={e => { e.stopPropagation(); onDeleteBlock(block.id) }} aria-label="Delete block">✕</button>
+                        </div>
+                      </div>
+                    )
+                  })}
                 </div>
               )}
             </div>
@@ -1309,6 +1382,7 @@ export default function DashboardView({
           habits={habits}
           glossaryItems={glossaryItems}
           existingBlocks={blocks.filter(b => b.date === (blockForm.date || blockForm.block?.date))}
+          linkedTaskIds={blockForm.block ? (tasksByBlock[blockForm.block.id] || []).map(t => t.id) : []}
           onSave={async (data) => { blockForm.block ? await onEditBlock(blockForm.block.id, data) : await onAddBlock(data); setBlockForm(null) }}
           onCancel={() => setBlockForm(null)}
         />
