@@ -1,9 +1,11 @@
-import { StrictMode, useState, Component } from 'react'
+import { StrictMode, useState, useEffect, Component } from 'react'
 import { createRoot } from 'react-dom/client'
 import './index.css'
 import App from './App.jsx'
 import Login from './Login.jsx'
-import { AUTH_TOKEN_KEY } from './constants'
+import { supabase } from './supabase'
+
+document.documentElement.setAttribute('data-theme', localStorage.getItem('app-theme') || 'slate-arrow')
 
 class ErrorBoundary extends Component {
   constructor(props) {
@@ -37,15 +39,24 @@ class ErrorBoundary extends Component {
 }
 
 function Root() {
-  const [authed, setAuthed] = useState(() => !!localStorage.getItem(AUTH_TOKEN_KEY))
-  // DEV: login bypass — set to false to restore gate
-  const BYPASS_LOGIN = true
-  if (BYPASS_LOGIN) {
-    return <App onLogout={() => { localStorage.removeItem(AUTH_TOKEN_KEY); setAuthed(false) }} />
-  }
-  return authed
-    ? <App onLogout={() => { localStorage.removeItem(AUTH_TOKEN_KEY); setAuthed(false) }} />
-    : <Login onLogin={() => setAuthed(true)} />
+  const [session, setSession] = useState(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data }) => {
+      setSession(data.session)
+      setLoading(false)
+    })
+    const { data: sub } = supabase.auth.onAuthStateChange((_event, s) => {
+      setSession(s)
+    })
+    return () => sub.subscription.unsubscribe()
+  }, [])
+
+  if (loading) return null
+  return session
+    ? <App onLogout={() => supabase.auth.signOut()} />
+    : <Login />
 }
 
 createRoot(document.getElementById('root')).render(

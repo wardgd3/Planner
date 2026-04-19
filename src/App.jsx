@@ -118,7 +118,7 @@ function AppInner({ onLogout }) {
   const toast = useToast()
   const [activeTab, setActiveTab] = useState('planner')
   const [showSettings, setShowSettings] = useState(false)
-  const [theme, setTheme] = useState(() => localStorage.getItem('app-theme') || 'warm')
+  const [theme, setTheme] = useState(() => localStorage.getItem('app-theme') || 'slate-arrow')
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme)
@@ -388,7 +388,7 @@ function AppInner({ onLogout }) {
                     ['blueprint', 'Blueprint'],
                     ['field-tan', 'Field Tan'],
                     ['carbon', 'Carbon'],
-                    ['forge', 'Forge'],
+                    ['newspaper', 'Newspaper'],
                     ['alpine', 'Alpine'],
                     ['forest-light', 'Forest Light'],
                   ],
