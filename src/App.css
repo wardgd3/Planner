@@ -412,10 +412,10 @@
 
 /* ── Chalk Violet (light) ── */
 [data-theme="chalk-violet"] {
-  --bg: #f7f8fc;
+  --bg: #ecedf1;
   --surface: #eceef8;
   --surface2: #dbd8f0;
-  --surface3: #ffffff;
+  --surface3: #f4f5f9;
   --border: #c8c4e8;
   --border-subtle: #d8d5f0;
   --text: #1a1340;
@@ -432,10 +432,10 @@
 
 /* ── Linen Jade (light) ── */
 [data-theme="linen-jade"] {
-  --bg: #f4faf7;
+  --bg: #e9efec;
   --surface: #e2f2e0;
   --surface2: #c8dfd0;
-  --surface3: #ffffff;
+  --surface3: #f4f9f6;
   --border: #b0d0c8;
   --border-subtle: #c4e0d8;
   --text: #0a2a18;
@@ -452,10 +452,10 @@
 
 /* ── Studio White (light) ── */
 [data-theme="studio-white"] {
-  --bg: #f8f9fb;
+  --bg: #edeef0;
   --surface: #eef0f4;
   --surface2: #dde1e8;
-  --surface3: #ffffff;
+  --surface3: #f5f6f8;
   --border: #c8cdd6;
   --border-subtle: #d8dce4;
   --text: #1a1e28;
@@ -474,10 +474,10 @@
 
 /* ── Sand Coral (light) ── */
 [data-theme="sand-coral"] {
-  --bg: #fdfef0;
+  --bg: #f2f3e5;
   --surface: #f5e8d8;
   --surface2: #e8ceb0;
-  --surface3: #fffaf6;
+  --surface3: #f5f0ec;
   --border: #e0c0a8;
   --border-subtle: #ead5c0;
   --text: #2a0e0a;
@@ -494,10 +494,10 @@
 
 /* ── Pastel Ice ── */
 [data-theme="neon-ice-light"] {
-  --bg: #f4f9fc;
+  --bg: #e9eef1;
   --surface: #e4f0f8;
   --surface2: #c8e0f0;
-  --surface3: #ffffff;
+  --surface3: #f2f7fa;
   --border: #a8d0e8;
   --border-subtle: #c0ddf0;
   --text: #0a1820;
@@ -516,10 +516,10 @@
 
 /* ── Pastel Cyan ── */
 [data-theme="neon-cyan-light"] {
-  --bg: #f2fafa;
+  --bg: #e7efef;
   --surface: #e0f2f2;
   --surface2: #c0e4e4;
-  --surface3: #ffffff;
+  --surface3: #f0f5f5;
   --border: #a0d4d4;
   --border-subtle: #b8e0e0;
   --text: #0a2020;
@@ -538,10 +538,10 @@
 
 /* ── Pastel Lime ── */
 [data-theme="neon-lime-light"] {
-  --bg: #f6f9f2;
+  --bg: #ebeee7;
   --surface: #e8f0d8;
   --surface2: #d0e4b8;
-  --surface3: #ffffff;
+  --surface3: #f1f4ed;
   --border: #b8d4a0;
   --border-subtle: #c8dfb0;
   --text: #141c0a;
@@ -560,10 +560,10 @@
 
 /* ── Pastel Rose ── */
 [data-theme="neon-rose-light"] {
-  --bg: #fcf4f6;
+  --bg: #f1e9eb;
   --surface: #f8e4ea;
   --surface2: #f0c8d4;
-  --surface3: #ffffff;
+  --surface3: #f7eff1;
   --border: #e4a8b8;
   --border-subtle: #ecc0cc;
   --text: #280a14;
@@ -582,10 +582,10 @@
 
 /* ── Pastel Magenta ── */
 [data-theme="neon-magenta-light"] {
-  --bg: #faf4fa;
+  --bg: #efe9ef;
   --surface: #f4e4f4;
   --surface2: #e8c8e8;
-  --surface3: #ffffff;
+  --surface3: #f6f0f6;
   --border: #d8a8d8;
   --border-subtle: #e4bce4;
   --text: #201020;
@@ -604,10 +604,10 @@
 
 /* ── Blueprint ── */
 [data-theme="blueprint"] {
-  --bg: #f5f8fc;
+  --bg: #eaedf1;
   --surface: #e4edf6;
   --surface2: #b8cce2;
-  --surface3: #ffffff;
+  --surface3: #f2f5f9;
   --border: #8faac6;
   --border-subtle: #b8cce2;
   --text: #0a1a2e;
@@ -626,10 +626,10 @@
 
 /* ── Field Tan ── */
 [data-theme="field-tan"] {
-  --bg: #f4ede0;
+  --bg: #e9e2d5;
   --surface: #e8ddc4;
   --surface2: #c8b488;
-  --surface3: #fbf5e8;
+  --surface3: #f0eadd;
   --border: #b49c70;
   --border-subtle: #ccb88c;
   --text: #2a1e0a;
@@ -648,10 +648,10 @@
 
 /* ── Carbon & Slate ── */
 [data-theme="carbon"] {
-  --bg: #f5f6f8;
+  --bg: #eaebed;
   --surface: #e4e6ea;
   --surface2: #b0b6be;
-  --surface3: #ffffff;
+  --surface3: #f2f3f5;
   --border: #98a0aa;
   --border-subtle: #c4c8d0;
   --text: #0f1318;
@@ -670,10 +670,10 @@
 
 /* ── Newspaper ── */
 [data-theme="newspaper"] {
-  --bg: #f1ebde;
+  --bg: #e6e0d3;
   --surface: #ebe4d3;
   --surface2: #c6bca6;
-  --surface3: #f7f1e4;
+  --surface3: #ece6d9;
   --border: #7a6f5e;
   --border-subtle: #c0b4a0;
   --text: #1b1511;
@@ -730,10 +730,10 @@
 
 /* ── Forest Light — snowline + fern, gold accent ── */
 [data-theme="forest-light"] {
-  --bg: #F5FAF6;
+  --bg: #EAEFEB;
   --surface: #EDF2EE;
   --surface2: #C8D4CF;
-  --surface3: #FFFFFF;
+  --surface3: #F2F7F3;
   --border: #8AA095;
   --border-subtle: #C8D4CF;
   --text: #0D1F17;
@@ -751,10 +751,10 @@
 }
 
 [data-theme="alpine"] {
-  --bg: #f4f8f4;
+  --bg: #e9ede9;
   --surface: #e2ece2;
   --surface2: #a8c0a8;
-  --surface3: #ffffff;
+  --surface3: #f1f5f1;
   --border: #90a890;
   --border-subtle: #c0d0c0;
   --text: #0c1a14;
@@ -1048,10 +1048,10 @@
 
 /* ── 70s Warm Retro ── */
 [data-theme="seventies-warm-retro"] {
-  --bg: #F5F0E8;
+  --bg: #EAE5DD;
   --surface: #EDE5D8;
   --surface2: #E0D0B8;
-  --surface3: #FFFFFF;
+  --surface3: #F5F0E8;
   --border: #D4C0A0;
   --border-subtle: #E0D0B8;
   --text: #2E1A0E;
@@ -1090,10 +1090,10 @@
 
 /* ── William Morris Garden ── */
 [data-theme="william-morris"] {
-  --bg: #FAFAF7;
+  --bg: #EFEFEC;
   --surface: #F0EDE4;
   --surface2: #E0DAC8;
-  --surface3: #FFFFFF;
+  --surface3: #F5F5F2;
   --border: #C8C0A8;
   --border-subtle: #D8D2C0;
   --text: #344E41;
@@ -3303,6 +3303,36 @@ body.pomo-focus-active .dash-card {
 .dash-note-edit .textarea { min-height: 48px; font-size: 13px; }
 .dash-note-edit-actions { display: flex; gap: 6px; }
 .dash-note-cancel { background: var(--surface2) !important; color: var(--muted) !important; border-color: var(--border) !important; }
+
+/* Not To Do — mirrors notes styling */
+.dash-notodo-add { display: flex; gap: 8px; margin-top: 10px; margin-bottom: 12px; }
+.dash-notodo-add .input { flex: 1; }
+.dash-notodo-add .add-btn { flex-shrink: 0; padding: 8px 14px; }
+.dash-notodo-list { display: flex; flex-direction: column; gap: 2px; max-height: 320px; overflow-y: auto; }
+.dash-notodo-item {
+  display: flex; align-items: flex-start; justify-content: space-between; gap: 8px;
+  padding: 10px 8px;
+  border-radius: var(--radius-sm);
+  border-bottom: 1px solid var(--border-subtle);
+  transition: background 0.15s;
+}
+.dash-notodo-item:last-child { border-bottom: none; }
+.dash-notodo-item:hover { background: var(--surface2); }
+.dash-notodo-text {
+  font-size: 13px; font-weight: 400;
+  color: var(--text-secondary);
+  line-height: 1.5; flex: 1; min-width: 0;
+  white-space: pre-wrap; word-break: break-word;
+  text-decoration: line-through;
+  text-decoration-color: var(--danger);
+  text-decoration-thickness: 1px;
+}
+.dash-notodo-actions { display: flex; gap: 2px; flex-shrink: 0; opacity: 0; transition: opacity 0.15s; }
+.dash-notodo-item:hover .dash-notodo-actions { opacity: 1; }
+.dash-notodo-edit { flex: 1; display: flex; flex-direction: column; gap: 8px; }
+.dash-notodo-edit .textarea { min-height: 48px; font-size: 13px; }
+.dash-notodo-edit-actions { display: flex; gap: 6px; }
+.dash-notodo-cancel { background: var(--surface2) !important; color: var(--muted) !important; border-color: var(--border) !important; }
 
 /* ══ Weekly view ══ */
 .weekly-view { padding-top: 28px; }

@@ -244,6 +244,7 @@ export default function DashboardView({
     { key: 'calendar', name: 'Calendar' },
     { key: 'projects', name: 'Projects' },
     { key: 'notes', name: 'Notes' },
+    { key: 'not_to_do', name: 'Not To Do' },
     { key: 'timer', name: 'Timer' },
     { key: 'ai_chat', name: 'Assistant' },
     { key: 'inspiration', name: 'Inspiration' },
@@ -269,7 +270,7 @@ export default function DashboardView({
   }
 
   // Widget ordering (drag-to-reorder)
-  const DEFAULT_WIDGET_ORDER = ['week', 'calendar', 'projects', 'notes', 'timer', 'ai_chat', 'inspiration']
+  const DEFAULT_WIDGET_ORDER = ['week', 'calendar', 'projects', 'notes', 'not_to_do', 'timer', 'ai_chat', 'inspiration']
   const [widgetOrder, setWidgetOrder] = useState(() => {
     try {
       const stored = localStorage.getItem('dashboard_widget_order')
@@ -434,6 +435,10 @@ export default function DashboardView({
   const [noteInput, setNoteInput] = useState('')
   const [editingNote, setEditingNote] = useState(null)
   const [editingText, setEditingText] = useState('')
+  const [notToDos, setNotToDos] = useState([])
+  const [notToDoInput, setNotToDoInput] = useState('')
+  const [editingNotToDo, setEditingNotToDo] = useState(null)
+  const [editingNotToDoText, setEditingNotToDoText] = useState('')
   const [dailyInspiration, setDailyInspiration] = useState({ quote: null, tip: null })
   const [favoriteIds, setFavoriteIds] = useState(new Set())
   const [favorites, setFavorites] = useState([])
@@ -463,6 +468,18 @@ export default function DashboardView({
       if (data) setNotes(data)
     }
     fetchNotes()
+  }, [])
+
+  // Fetch not-to-dos
+  useEffect(() => {
+    async function fetchNotToDos() {
+      const { data } = await supabase
+        .from('planner_not_to_dos')
+        .select('*')
+        .order('created_at', { ascending: false })
+      if (data) setNotToDos(data)
+    }
+    fetchNotToDos()
   }, [])
 
   // Fetch daily inspiration (one random quote + one random tip)
@@ -545,6 +562,42 @@ export default function DashboardView({
       const { error } = await supabase.from('planner_notes').delete().eq('id', id)
       if (error) { toast.error('Failed to delete note'); return }
       setNotes(prev => prev.filter(n => n.id !== id))
+    } catch { toast.error('Network error') }
+  }, [toast])
+
+  // Not To Do CRUD
+  const addNotToDo = useCallback(async () => {
+    if (!notToDoInput.trim()) return
+    try {
+      const { data, error } = await supabase
+        .from('planner_not_to_dos')
+        .insert({ content: notToDoInput.trim() })
+        .select().single()
+      if (error) { toast.error('Failed to add item'); return }
+      setNotToDos(prev => [data, ...prev])
+      setNotToDoInput('')
+    } catch { toast.error('Network error') }
+  }, [notToDoInput, toast])
+
+  const updateNotToDo = useCallback(async (id) => {
+    if (!editingNotToDoText.trim()) return
+    try {
+      const { data, error } = await supabase
+        .from('planner_not_to_dos')
+        .update({ content: editingNotToDoText.trim(), updated_at: new Date().toISOString() })
+        .eq('id', id).select().single()
+      if (error) { toast.error('Failed to update item'); return }
+      setNotToDos(prev => prev.map(n => n.id === id ? data : n))
+      setEditingNotToDo(null)
+      setEditingNotToDoText('')
+    } catch { toast.error('Network error') }
+  }, [editingNotToDoText, toast])
+
+  const deleteNotToDo = useCallback(async (id) => {
+    try {
+      const { error } = await supabase.from('planner_not_to_dos').delete().eq('id', id)
+      if (error) { toast.error('Failed to delete item'); return }
+      setNotToDos(prev => prev.filter(n => n.id !== id))
     } catch { toast.error('Network error') }
   }, [toast])
 
@@ -1170,6 +1223,62 @@ export default function DashboardView({
                       className="icon-btn"
                       onClick={() => deleteNote(note.id)}
                       aria-label="Delete note"
+                    >🗑</button>
+                  </div>
+                </>
+              )}
+            </div>
+          ))}
+        </div>
+      </SortableCard>}
+
+      {enabledWidgets.includes('not_to_do') && <SortableCard id="not_to_do" span={widgetSpans.not_to_do} order={widgetOrder.indexOf('not_to_do')} className="dash-notodo">
+        <h2 className="dash-card-title">Not To Do</h2>
+        <div className="dash-notodo-add">
+          <input
+            className="input"
+            placeholder="Add a bad habit to avoid…"
+            value={notToDoInput}
+            onChange={e => setNotToDoInput(e.target.value)}
+            onKeyDown={e => { if (e.key === 'Enter') addNotToDo() }}
+            maxLength={1000}
+          />
+          <button className="add-btn" onClick={addNotToDo} disabled={!notToDoInput.trim()}>+</button>
+        </div>
+        <div className="dash-notodo-list">
+          {notToDos.length === 0 && (
+            <p className="empty-msg" style={{ padding: '12px 0' }}>Nothing on the avoid list yet</p>
+          )}
+          {notToDos.map(item => (
+            <div key={item.id} className="dash-notodo-item">
+              {editingNotToDo === item.id ? (
+                <div className="dash-notodo-edit">
+                  <textarea
+                    className="input textarea"
+                    value={editingNotToDoText}
+                    onChange={e => setEditingNotToDoText(e.target.value)}
+                    rows={2}
+                    maxLength={1000}
+                    autoFocus
+                  />
+                  <div className="dash-notodo-edit-actions">
+                    <button className="add-btn" onClick={() => updateNotToDo(item.id)}>Save</button>
+                    <button className="add-btn dash-notodo-cancel" onClick={() => { setEditingNotToDo(null); setEditingNotToDoText('') }}>Cancel</button>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <p className="dash-notodo-text">{item.content}</p>
+                  <div className="dash-notodo-actions">
+                    <button
+                      className="icon-btn"
+                      onClick={() => { setEditingNotToDo(item.id); setEditingNotToDoText(item.content) }}
+                      aria-label="Edit item"
+                    >✏️</button>
+                    <button
+                      className="icon-btn"
+                      onClick={() => deleteNotToDo(item.id)}
+                      aria-label="Delete item"
                     >🗑</button>
                   </div>
                 </>

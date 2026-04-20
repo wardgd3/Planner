@@ -12,5 +12,3 @@ export const DAY_SHORT = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun']
 
 // 6 AM to 10 PM (17 hours)
 export const HOURS = Array.from({ length: 17 }, (_, i) => i + 6)
-
-export const AUTH_TOKEN_KEY = 'studio_token'
