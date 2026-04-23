@@ -31,7 +31,7 @@ function getMoonPhase(date = new Date()) {
 
 
 // ── Sortable block row (with expand-to-show-tasks) ──
-function SortableBlock({ block, isActive, onEdit, onComplete, onDelete, today, linkedTasks = [], onCompleteTask, onEditTask }) {
+function SortableBlock({ block, isActive, onEdit, onComplete, onDelete, today, linkedTasks = [], onCompleteTask, onEditTask, onDeleteTask }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: block.id })
   const [expanded, setExpanded] = useState(false)
   const style = {
@@ -100,6 +100,11 @@ function SortableBlock({ block, isActive, onEdit, onComplete, onDelete, today, l
                   {t.priority && (
                     <span className="priority-dot" style={{ background: priorityColor(t.priority) }} />
                   )}
+                  <button
+                    className="dash-tl-task-delete"
+                    onClick={e => { e.stopPropagation(); onDeleteTask && onDeleteTask(t.id) }}
+                    aria-label="Delete task"
+                  >🗑</button>
                 </li>
               ))}
             </ul>
@@ -193,6 +198,8 @@ export default function DashboardView({
   tasks, blocks, projects, habits,
   blockTaskLinks = [],
   glossaryItems,
+  taskTemplates = [],
+  taskSeries = [],
   onAddBlock, onEditBlock, onDeleteBlock, onCompleteBlock,
   onAddTask, onEditTask, onDeleteTask, onCompleteTask,
   onAddProject, onEditProject, onDeleteProject,
@@ -204,6 +211,7 @@ export default function DashboardView({
   const [blockForm, setBlockForm] = useState(null)
   const [taskForm, setTaskForm] = useState(null)
   const [expanded, setExpanded] = useState(false)
+  const [expandedTaskId, setExpandedTaskId] = useState(null)
 
   // Spacebar toggles expanded state, scroll-down expands
   useEffect(() => {
@@ -634,14 +642,18 @@ export default function DashboardView({
       }
     }
   }, [todayBlocks, onEditBlock])
+  const linkedTaskIdSet = useMemo(
+    () => new Set(blockTaskLinks.map(l => l.task_id)),
+    [blockTaskLinks]
+  )
   const todayTasks = useMemo(
-    () => tasks.filter(t => t.due_date === today && t.status !== 'done')
+    () => tasks.filter(t => t.due_date === today && t.status !== 'done' && !linkedTaskIdSet.has(t.id))
       .sort((a, b) => { const o = { high: 0, medium: 1, low: 2 }; return o[a.priority] - o[b.priority] }),
-    [tasks, today]
+    [tasks, today, linkedTaskIdSet]
   )
   const doneTasks = useMemo(
-    () => tasks.filter(t => t.due_date === today && t.status === 'done'),
-    [tasks, today]
+    () => tasks.filter(t => t.due_date === today && t.status === 'done' && !linkedTaskIdSet.has(t.id)),
+    [tasks, today, linkedTaskIdSet]
   )
 
   // ── Week data ──
@@ -661,9 +673,9 @@ export default function DashboardView({
     [blocks, selectedDay]
   )
   const selectedTasks = useMemo(
-    () => tasks.filter(t => t.due_date === selectedDay && t.status !== 'done')
+    () => tasks.filter(t => t.due_date === selectedDay && t.status !== 'done' && !linkedTaskIdSet.has(t.id))
       .sort((a, b) => { const o = { high: 0, medium: 1, low: 2 }; return o[a.priority] - o[b.priority] }),
-    [tasks, selectedDay]
+    [tasks, selectedDay, linkedTaskIdSet]
   )
 
   // ── Next-up block with live countdown ──
@@ -772,7 +784,7 @@ export default function DashboardView({
   return (
     <div className={`dash ${expanded ? 'dash-expanded' : 'dash-focused'} ${mobileWeekFocus ? 'dash-mobile-week-focus' : ''}`}>
       {/* ══ Row 1 — Today's Focus (full-width hero banner) ══ */}
-      <div className="dash-card dash-today" onClick={() => { if (!expanded) setExpanded(true) }}>
+      <div className="dash-card dash-today">
         <div className="dash-card-header">
           <div>
             <h2 className="dash-card-title"><span className="dash-title-desktop">{dateLabel}</span><span className="dash-title-mobile">{`${DAY_NAMES[now.getDay()]}, ${MONTHS_FULL[now.getMonth()].slice(0, 3)} ${now.getDate()}`}</span></h2>
@@ -809,6 +821,7 @@ export default function DashboardView({
                         linkedTasks={tasksByBlock[block.id] || []}
                         onCompleteTask={onCompleteTask}
                         onEditTask={(t) => setTaskForm({ task: t })}
+                        onDeleteTask={onDeleteTask}
                       />
                     ))}
                   </div>
@@ -836,20 +849,38 @@ export default function DashboardView({
               <p className="empty-msg" style={{ padding: '12px 0' }}>No tasks due today</p>
             )}
             <ul className="task-list">
-              {todayTasks.map(task => (
-                <li key={task.id} className="task-row compact">
-                  <button className="task-check small" onClick={() => onCompleteTask(task)} aria-label="Complete task" />
-                  <div className="task-info">
-                    <p className="task-title">{task.title}</p>
-                  </div>
-                  {task.due_time && <span className="task-time">{task.due_time.slice(0, 5)}</span>}
-                  <span className="priority-dot" style={{ background: priorityColor(task.priority) }} />
-                </li>
-              ))}
+              {todayTasks.map(task => {
+                const isTaskExpanded = expandedTaskId === task.id
+                const hasNotes = !!(task.notes && task.notes.trim())
+                return (
+                  <li key={task.id} className={`task-row compact ${isTaskExpanded ? 'expanded' : ''}`}>
+                    <button className="task-check small" onClick={() => onCompleteTask(task)} aria-label="Complete task" />
+                    <div className="task-info" onClick={() => setExpandedTaskId(isTaskExpanded ? null : task.id)} style={{ cursor: 'pointer' }}>
+                      <p className="task-title">
+                        {task.title}
+                        {hasNotes && <span className="task-notes-indicator" aria-label="Has notes">📝</span>}
+                      </p>
+                      {isTaskExpanded && hasNotes && (
+                        <p className="task-notes-expanded">{task.notes}</p>
+                      )}
+                    </div>
+                    {task.due_time && <span className="task-time">{task.due_time.slice(0, 5)}</span>}
+                    <span className="priority-dot" style={{ background: priorityColor(task.priority) }} />
+                    <div className="task-actions">
+                      <button className="icon-btn" onClick={e => { e.stopPropagation(); setTaskForm({ task }) }} aria-label="Edit task">✏️</button>
+                      <button className="icon-btn" onClick={e => { e.stopPropagation(); onDeleteTask(task.id) }} aria-label="Delete task">🗑</button>
+                    </div>
+                  </li>
+                )
+              })}
               {doneTasks.map(task => (
                 <li key={task.id} className="task-row compact done">
                   <span className="task-check small done">✓</span>
                   <p className="task-title done-title">{task.title}</p>
+                  <div className="task-actions">
+                    <button className="icon-btn" onClick={() => setTaskForm({ task })} aria-label="Edit task">✏️</button>
+                    <button className="icon-btn" onClick={() => onDeleteTask(task.id)} aria-label="Delete task">🗑</button>
+                  </div>
                 </li>
               ))}
             </ul>
@@ -1499,8 +1530,10 @@ export default function DashboardView({
       {taskForm !== null && (
         <TaskForm
           task={taskForm.task}
+          series={taskForm.task?.series_id ? taskSeries.find(s => s.id === taskForm.task.series_id) : null}
           projects={projects}
           habits={habits}
+          templates={taskTemplates}
           onSave={async (data) => {
             const saveData = { ...data, due_date: data.due_date || taskForm.prefillDate || today }
             taskForm.task ? await onEditTask(taskForm.task.id, saveData) : await onAddTask(saveData)

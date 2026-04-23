@@ -9,6 +9,7 @@ import ProjectsView from './ProjectsView'
 import WeatherWidget from './WeatherWidget'
 import BlockForm from './BlockForm'
 import TaskForm from './TaskForm'
+import { createSeries, updateSeriesRule, ensureSeriesScheduled, upsertTemplate } from './taskRecurrence'
 
 const PLANNER_TABS = ['Today', 'Week', 'Month', 'Projects']
 const WEEK_HEADERS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
@@ -42,6 +43,8 @@ export default function Planner({ habits }) {
   const [blocks, setBlocks] = useState([])
   const [blockTaskLinks, setBlockTaskLinks] = useState([]) // {block_id, task_id, sort_order}
   const [glossaryItems, setGlossaryItems] = useState([])
+  const [taskTemplates, setTaskTemplates] = useState([])
+  const [taskSeries, setTaskSeries] = useState([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => { fetchAll() }, [])
@@ -49,25 +52,33 @@ export default function Planner({ habits }) {
   async function fetchAll() {
     setLoading(true)
     try {
+      // Roll forward any missed recurring occurrences before loading tasks so the user sees today's instances.
+      await ensureSeriesScheduled({})
       const [
         { data: proj, error: e1 },
         { data: tsk, error: e2 },
         { data: blk, error: e3 },
         { data: gloss, error: e4 },
         { data: btl, error: e5 },
+        { data: tpl, error: e6 },
+        { data: ser, error: e7 },
       ] = await Promise.all([
         supabase.from('planner_projects').select('*').order('sort_order'),
         supabase.from('planner_tasks').select('*').order('sort_order'),
         supabase.from('planner_blocks').select('*').order('date').order('start_time'),
         supabase.from('glossary_items').select('*').order('name'),
         supabase.from('planner_block_tasks').select('*').order('sort_order'),
+        supabase.from('planner_task_templates').select('*').order('usage_count', { ascending: false }).order('title'),
+        supabase.from('planner_task_series').select('*').eq('is_active', true),
       ])
-      if (e1 || e2 || e3 || e4 || e5) toast.error('Failed to load some planner data')
+      if (e1 || e2 || e3 || e4 || e5 || e6 || e7) toast.error('Failed to load some planner data')
       if (proj) setProjects(proj)
       if (tsk) setTasks(tsk)
       if (blk) setBlocks(blk)
       if (gloss) setGlossaryItems(gloss)
       if (btl) setBlockTaskLinks(btl)
+      if (tpl) setTaskTemplates(tpl)
+      if (ser) setTaskSeries(ser)
     } catch {
       toast.error('Network error loading planner')
     }
@@ -75,18 +86,64 @@ export default function Planner({ habits }) {
   }
 
   // ---- Tasks ----
+  // Saves a new task. If `data.recurrence` is set, creates a series instead; the series
+  // scheduler then materializes individual planner_tasks rows for the horizon.
   const addTask = useCallback(async (data) => {
     try {
+      const { recurrence, ...taskFields } = data
+      // Remember the title for autocomplete
+      if (taskFields.title) upsertTemplate(taskFields.title)
+
+      if (recurrence) {
+        const { series, error } = await createSeries(taskFields, recurrence)
+        if (error) { toast.error('Failed to create recurring task'); return }
+        setTaskSeries(prev => [...prev, series])
+        // Reload tasks to pick up generated instances
+        const { data: tsk } = await supabase.from('planner_tasks').select('*').order('sort_order')
+        if (tsk) setTasks(tsk)
+        toast.success('Recurring task scheduled')
+        return
+      }
+
       const maxOrder = tasks.reduce((m, t) => Math.max(m, t.sort_order || 0), 0)
-      const { data: t, error } = await supabase.from('planner_tasks').insert({ ...data, sort_order: maxOrder + 1, status: 'todo' }).select().single()
+      const { data: t, error } = await supabase.from('planner_tasks').insert({ ...taskFields, sort_order: maxOrder + 1, status: 'todo' }).select().single()
       if (error) { toast.error('Failed to add task'); return }
       setTasks(prev => [...prev, t])
     } catch { toast.error('Network error') }
   }, [tasks, toast])
 
+  // Edit a task. If caller passes `seriesUpdate` + `seriesId`, the recurrence rule
+  // is updated and future occurrences are regenerated.
   const editTask = useCallback(async (id, data) => {
     try {
-      const { data: t, error } = await supabase.from('planner_tasks').update(data).eq('id', id).select().single()
+      const { seriesUpdate, seriesId, recurrence, ...fields } = data
+      if (fields.title) upsertTemplate(fields.title)
+
+      if (seriesUpdate && seriesId) {
+        // Also propagate the non-recurrence fields to the series (title, notes, priority, project, habit, due_time)
+        const seriesFields = {
+          title: fields.title,
+          notes: fields.notes,
+          priority: fields.priority,
+          project_id: fields.project_id,
+          habit_id: fields.habit_id,
+          due_time: fields.due_time,
+          ...seriesUpdate,
+        }
+        const { error } = await updateSeriesRule(seriesId, seriesFields)
+        if (error) { toast.error('Failed to update series'); return }
+        // Reload everything touched by the series
+        const [{ data: tsk }, { data: ser }] = await Promise.all([
+          supabase.from('planner_tasks').select('*').order('sort_order'),
+          supabase.from('planner_task_series').select('*').eq('is_active', true),
+        ])
+        if (tsk) setTasks(tsk)
+        if (ser) setTaskSeries(ser)
+        toast.success('Recurring series updated')
+        return
+      }
+
+      const { data: t, error } = await supabase.from('planner_tasks').update(fields).eq('id', id).select().single()
       if (error) { toast.error('Failed to update task'); return }
       setTasks(prev => prev.map(x => x.id === id ? t : x))
     } catch { toast.error('Network error') }
@@ -309,6 +366,8 @@ export default function Planner({ habits }) {
             tasks={tasks} blocks={blocks} projects={projects} habits={habits}
             blockTaskLinks={blockTaskLinks}
             glossaryItems={allGlossary}
+            taskTemplates={taskTemplates}
+            taskSeries={taskSeries}
             onAddBlock={addBlock} onEditBlock={editBlock} onDeleteBlock={deleteBlock} onCompleteBlock={completeBlock}
             onAddTask={addTask} onEditTask={editTask} onDeleteTask={deleteTask} onCompleteTask={completeTask}
             onAddProject={addProject} onEditProject={editProject} onDeleteProject={deleteProject}
@@ -325,6 +384,7 @@ export default function Planner({ habits }) {
       tasks={tasks} blocks={blocks} projects={projects} habits={habits}
       blockTaskLinks={blockTaskLinks}
       allGlossary={allGlossary}
+      taskTemplates={taskTemplates} taskSeries={taskSeries}
       addBlock={addBlock} editBlock={editBlock} deleteBlock={deleteBlock} completeBlock={completeBlock}
       addTask={addTask} editTask={editTask} deleteTask={deleteTask} completeTask={completeTask}
       addProject={addProject} editProject={editProject} deleteProject={deleteProject}
@@ -335,6 +395,7 @@ export default function Planner({ habits }) {
 function MobilePlanner({
   tab, setTab,
   tasks, blocks, projects, habits, blockTaskLinks, allGlossary,
+  taskTemplates = [], taskSeries = [],
   addBlock, editBlock, deleteBlock, completeBlock,
   addTask, editTask, deleteTask, completeTask,
   addProject, editProject, deleteProject,
@@ -497,6 +558,8 @@ function MobilePlanner({
             tasks={tasks} blocks={blocks} projects={projects} habits={habits}
             blockTaskLinks={blockTaskLinks}
             glossaryItems={allGlossary}
+            taskTemplates={taskTemplates}
+            taskSeries={taskSeries}
             onAddBlock={addBlock} onEditBlock={editBlock} onDeleteBlock={deleteBlock} onCompleteBlock={completeBlock}
             onAddTask={addTask} onEditTask={editTask} onDeleteTask={deleteTask} onCompleteTask={completeTask}
             onAddProject={addProject} onEditProject={editProject} onDeleteProject={deleteProject}
@@ -507,6 +570,8 @@ function MobilePlanner({
             mobileWeekFocus
             tasks={tasks} blocks={blocks} projects={projects} habits={habits}
             glossaryItems={allGlossary}
+            taskTemplates={taskTemplates}
+            taskSeries={taskSeries}
             onAddBlock={addBlock} onEditBlock={editBlock} onDeleteBlock={deleteBlock} onCompleteBlock={completeBlock}
             onAddTask={addTask} onEditTask={editTask} onDeleteTask={deleteTask} onCompleteTask={completeTask}
           />
@@ -514,6 +579,8 @@ function MobilePlanner({
         {tab === 'Projects' && (
           <ProjectsView
             projects={projects} tasks={tasks} habits={habits}
+            taskTemplates={taskTemplates}
+            taskSeries={taskSeries}
             onAddProject={addProject} onEditProject={editProject} onDeleteProject={deleteProject}
             onAddTask={addTask} onEditTask={editTask} onDeleteTask={deleteTask} onCompleteTask={completeTask}
           />
@@ -690,8 +757,10 @@ function MobilePlanner({
         {taskForm !== null && (
           <TaskForm
             task={taskForm.task}
+            series={taskForm.task?.series_id ? taskSeries.find(s => s.id === taskForm.task.series_id) : null}
             projects={projects}
             habits={habits}
+            templates={taskTemplates}
             onSave={async (data) => {
               const payload = { ...data, due_date: data.due_date || taskForm.date || null }
               if (taskForm.task) await editTask(taskForm.task.id, payload)

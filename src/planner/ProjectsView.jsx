@@ -3,10 +3,11 @@ import ProjectForm from './ProjectForm'
 import TaskForm from './TaskForm'
 import { statusColor, priorityColor } from '../utils'
 
-export default function ProjectsView({ projects, tasks, habits, onAddProject, onEditProject, onDeleteProject, onAddTask, onEditTask, onDeleteTask, onCompleteTask }) {
+export default function ProjectsView({ projects, tasks, habits, taskTemplates = [], taskSeries = [], onAddProject, onEditProject, onDeleteProject, onAddTask, onEditTask, onDeleteTask, onCompleteTask }) {
   const [projectForm, setProjectForm] = useState(null)
   const [taskForm, setTaskForm] = useState(null)
   const [expandedId, setExpandedId] = useState(null)
+  const [expandedTaskId, setExpandedTaskId] = useState(null)
   const [showCompleted, setShowCompleted] = useState(false)
 
   const activeProjects = useMemo(() => projects.filter(p => p.status !== 'completed'), [projects])
@@ -66,22 +67,32 @@ export default function ProjectsView({ projects, tasks, habits, onAddProject, on
             </div>
             {projectTasks.length === 0 && counts.done === 0 && <p className="empty-msg">No tasks yet</p>}
             <ul className="task-list">
-              {projectTasks.map(task => (
-                <li key={task.id} className="task-row">
-                  <button className="task-check" onClick={() => onCompleteTask(task)} aria-label="Complete task" />
-                  <div className="task-info">
-                    <p className="task-title">{task.title}</p>
-                    <div className="task-meta">
-                      <span className="priority-badge" style={{ color: priorityColor(task.priority) }}>● {task.priority}</span>
-                      {task.due_date && <span className="task-time">{task.due_date}</span>}
+              {projectTasks.map(task => {
+                const isTaskExpanded = expandedTaskId === task.id
+                const hasNotes = !!(task.notes && task.notes.trim())
+                return (
+                  <li key={task.id} className={`task-row ${isTaskExpanded ? 'expanded' : ''}`}>
+                    <button className="task-check" onClick={() => onCompleteTask(task)} aria-label="Complete task" />
+                    <div className="task-info" onClick={() => setExpandedTaskId(isTaskExpanded ? null : task.id)} style={{ cursor: 'pointer' }}>
+                      <p className="task-title">
+                        {task.title}
+                        {hasNotes && <span className="task-notes-indicator" aria-label="Has notes">📝</span>}
+                      </p>
+                      <div className="task-meta">
+                        <span className="priority-badge" style={{ color: priorityColor(task.priority) }}>● {task.priority}</span>
+                        {task.due_date && <span className="task-time">{task.due_date}</span>}
+                      </div>
+                      {isTaskExpanded && hasNotes && (
+                        <p className="task-notes-expanded">{task.notes}</p>
+                      )}
                     </div>
-                  </div>
-                  <div className="task-actions">
-                    <button className="icon-btn" onClick={() => setTaskForm({ task })} aria-label="Edit task">✏️</button>
-                    <button className="icon-btn" onClick={() => onDeleteTask(task.id)} aria-label="Delete task">🗑</button>
-                  </div>
-                </li>
-              ))}
+                    <div className="task-actions">
+                      <button className="icon-btn" onClick={() => setTaskForm({ task })} aria-label="Edit task">✏️</button>
+                      <button className="icon-btn" onClick={() => onDeleteTask(task.id)} aria-label="Delete task">🗑</button>
+                    </div>
+                  </li>
+                )
+              })}
             </ul>
             {doneTasks.length > 0 && (
               <details className="done-tasks">
@@ -135,8 +146,10 @@ export default function ProjectsView({ projects, tasks, habits, onAddProject, on
       {taskForm !== null && (
         <TaskForm
           task={taskForm.task}
+          series={taskForm.task?.series_id ? taskSeries.find(s => s.id === taskForm.task.series_id) : null}
           projects={projects}
           habits={habits}
+          templates={taskTemplates}
           onSave={async (data) => {
             const payload = { ...data, project_id: data.project_id || taskForm.projectId || null }
             taskForm.task ? await onEditTask(taskForm.task.id, payload) : await onAddTask(payload)

@@ -38,11 +38,19 @@ class ErrorBoundary extends Component {
   }
 }
 
+const DEV_PREVIEW = import.meta.env.DEV && new URLSearchParams(window.location.search).get('devPreview') === '1'
+const DEV_USER = {
+  id: 'dev-preview-user',
+  email: 'dev-preview@example.com',
+  user_metadata: { full_name: 'Dev Preview', name: 'Dev Preview' },
+}
+
 function Root() {
   const [session, setSession] = useState(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
+    if (DEV_PREVIEW) { setLoading(false); return }
     supabase.auth.getSession().then(({ data }) => {
       setSession(data.session)
       setLoading(false)
@@ -54,8 +62,9 @@ function Root() {
   }, [])
 
   if (loading) return null
+  if (DEV_PREVIEW) return <App user={DEV_USER} onLogout={() => { const u = new URL(window.location.href); u.searchParams.delete('devPreview'); window.location.href = u.toString() }} />
   return session
-    ? <App onLogout={() => supabase.auth.signOut()} />
+    ? <App user={session.user} onLogout={() => supabase.auth.signOut()} />
     : <Login />
 }
 

@@ -6,28 +6,29 @@ import { SortableContext, verticalListSortingStrategy, useSortable, arrayMove } 
 import { CSS } from '@dnd-kit/utilities'
 import Planner from './planner/Planner.jsx'
 import ProjectsDashboard from './planner/ProjectsDashboard.jsx'
+import HabitStats from './HabitStats.jsx'
 import { ToastProvider, useToast } from './Toast.jsx'
 import { PRESET_COLORS, PERIODS } from './constants'
 import { getPeriodLabel, getPeriodRange } from './utils'
 import './App.css'
 
 // ── Sortable Habit Row ──
-const SortableHabitRow = memo(function SortableHabitRow({ habit, count, bumping, editingId, habitCategoryIds, categories, onIncrement, onDecrement, onEdit, onDelete, mutating }) {
+const SortableHabitRow = memo(function SortableHabitRow({ habit, count, bumping, editingId, habitCategoryIds, categories, onIncrement, onDecrement, onEdit, onDelete, onSelect, selected, mutating }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: habit.id })
   const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.3 : 1 }
   const catIds = habitCategoryIds[habit.id] || []
   const catNames = categories.filter(c => catIds.includes(c.id)).map(c => c.name)
   const isMutating = mutating === habit.id
   return (
-    <li ref={setNodeRef} style={style} className={`habit-row ${editingId === habit.id ? 'editing' : ''} ${isDragging ? 'dragging' : ''}`}>
+    <li ref={setNodeRef} style={style} className={`habit-row ${editingId === habit.id ? 'editing' : ''} ${isDragging ? 'dragging' : ''} ${selected ? 'selected' : ''}`}>
       <div className="drag-handle" {...attributes} {...listeners} aria-label="Drag to reorder"><span className="drag-dots">⠿</span></div>
-      <div className="habit-info">
+      <button type="button" className="habit-info habit-info-btn" onClick={() => onSelect?.(habit.id)} aria-label={`View stats for ${habit.name}`}>
         <span className="habit-dot" style={{ background: habit.color || '#60a5fa' }} />
         <div>
           <p className="habit-name">{habit.name}</p>
           {catNames.length > 0 && <div className="habit-cats">{catNames.map(n => <span key={n} className="habit-cat-tag">{n}</span>)}</div>}
         </div>
-      </div>
+      </button>
       <div className="habit-controls">
         <button className="ctrl-btn minus" onClick={() => onDecrement(habit)} disabled={isMutating || count <= 0} aria-label="Decrement">−</button>
         <span className={`habit-count ${bumping === habit.id ? 'bump' : ''}`}>{count}</span>
@@ -114,10 +115,10 @@ function HabitForm({ editingId, newName, setNewName, newCategoryIds, categories,
 }
 
 // ── Main App ──
-function AppInner({ onLogout }) {
+function AppInner({ user, onLogout }) {
   const toast = useToast()
   const [activeTab, setActiveTab] = useState('planner')
-  const [showSettings, setShowSettings] = useState(false)
+  const [showAccount, setShowAccount] = useState(false)
   const [theme, setTheme] = useState(() => localStorage.getItem('app-theme') || 'slate-arrow')
 
   useEffect(() => {
@@ -128,7 +129,7 @@ function AppInner({ onLogout }) {
   const [logs, setLogs] = useState([])
   const [categories, setCategories] = useState([])
   const [habitCategoryIds, setHabitCategoryIds] = useState({})
-  const [selectedCategoryId, setSelectedCategoryId] = useState('all')
+  const [selectedCategoryId, setSelectedCategoryId] = useState('')
   const [loading, setLoading] = useState(true)
   const [period, setPeriod] = useState('Month')
   const [adding, setAdding] = useState(false)
@@ -140,6 +141,7 @@ function AppInner({ onLogout }) {
   const [showCatManager, setShowCatManager] = useState(false)
   const [bumping, setBumping] = useState(null)
   const [activeId, setActiveId] = useState(null)
+  const [selectedHabitId, setSelectedHabitId] = useState(null)
   const [mutating, setMutating] = useState(null)
   const [saving, setSaving] = useState(false)
   const colorRef = useRef(null)
@@ -155,17 +157,19 @@ function AppInner({ onLogout }) {
   async function fetchAll() {
     setLoading(true)
     try {
-      const { start, end } = getPeriodRange(period)
       const [{ data: habitsData, error: e1 }, { data: logsData, error: e2 }, { data: catsData, error: e3 }, { data: hcData, error: e4 }] = await Promise.all([
         supabase.from('habits').select('*').order('sort_order', { ascending: true }),
-        supabase.from('habit_logs').select('id, habit_id').gte('logged_at', start).lte('logged_at', end),
+        supabase.from('habit_logs').select('id, habit_id, logged_at'),
         supabase.from('categories').select('*').order('name', { ascending: true }),
         supabase.from('habit_categories').select('habit_id, category_id')
       ])
       if (e1 || e2 || e3 || e4) toast.error('Failed to load some data')
       if (habitsData) setHabits(habitsData)
       if (logsData) setLogs(logsData)
-      if (catsData) setCategories(catsData)
+      if (catsData) {
+        setCategories(catsData)
+        setSelectedCategoryId(prev => prev || catsData[0]?.id || '')
+      }
       if (hcData) {
         const map = {}
         hcData.forEach(({ habit_id, category_id }) => { if (!map[habit_id]) map[habit_id] = []; map[habit_id].push(category_id) })
@@ -177,11 +181,12 @@ function AppInner({ onLogout }) {
     setLoading(false)
   }
 
-  const getCount = useCallback((habitId) => logs.filter(l => l.habit_id === habitId).length, [logs])
+  const periodRange = useMemo(() => getPeriodRange(period), [period])
+  const getCount = useCallback((habitId) => logs.filter(l => l.habit_id === habitId && l.logged_at >= periodRange.start && l.logged_at <= periodRange.end).length, [logs, periodRange])
   const toggleNewCategory = useCallback((catId) => setNewCategoryIds(prev => prev.includes(catId) ? prev.filter(id => id !== catId) : [...prev, catId]), [])
 
   const filteredHabits = useMemo(
-    () => selectedCategoryId === 'all' ? habits : habits.filter(h => (habitCategoryIds[h.id] || []).includes(selectedCategoryId)),
+    () => selectedCategoryId ? habits.filter(h => (habitCategoryIds[h.id] || []).includes(selectedCategoryId)) : habits,
     [selectedCategoryId, habits, habitCategoryIds]
   )
 
@@ -189,6 +194,17 @@ function AppInner({ onLogout }) {
     () => filteredHabits.map(h => ({ name: h.name, count: getCount(h.id), color: h.color || '#60a5fa' })),
     [filteredHabits, getCount]
   )
+
+  const selectedHabit = useMemo(
+    () => selectedHabitId ? habits.find(h => h.id === selectedHabitId) : null,
+    [selectedHabitId, habits]
+  )
+  // Clear selection if the habit was deleted
+  useEffect(() => {
+    if (selectedHabitId && habits.length > 0 && !habits.some(h => h.id === selectedHabitId)) {
+      setSelectedHabitId(null)
+    }
+  }, [habits, selectedHabitId])
 
   const increment = useCallback(async (habit) => {
     if (mutating) return
@@ -321,9 +337,14 @@ function AppInner({ onLogout }) {
     try {
       const { error } = await supabase.from('categories').delete().eq('id', id)
       if (error) { toast.error('Failed to delete category'); return }
-      setCategories(prev => prev.filter(c => c.id !== id))
+      let nextFallback = ''
+      setCategories(prev => {
+        const next = prev.filter(c => c.id !== id)
+        nextFallback = next[0]?.id || ''
+        return next
+      })
       setHabitCategoryIds(prev => { const n = {}; Object.keys(prev).forEach(hid => { n[hid] = prev[hid].filter(cid => cid !== id) }); return n })
-      if (selectedCategoryId === id) setSelectedCategoryId('all')
+      if (selectedCategoryId === id) setSelectedCategoryId(nextFallback)
     } catch {
       toast.error('Network error')
     }
@@ -331,7 +352,7 @@ function AppInner({ onLogout }) {
 
   const activeHabit = activeId ? filteredHabits.find(h => h.id === activeId) : null
   const isFormOpen = adding || !!editingId
-  const selectedCatLabel = selectedCategoryId === 'all' ? 'All Categories' : (categories.find(c => c.id === selectedCategoryId)?.name || 'All Categories')
+  const selectedCatLabel = categories.find(c => c.id === selectedCategoryId)?.name || 'Habits'
 
   return (
     <div className={`app ${activeTab === "planner" || activeTab === "projects" ? "app-wide" : ""}`}>
@@ -340,13 +361,33 @@ function AppInner({ onLogout }) {
         <button className={`app-tab ${activeTab === 'tracker' ? 'active' : ''}`} onClick={() => setActiveTab('tracker')}>Habits</button>
         <button className={`app-tab desktop-only ${activeTab === 'projects' ? 'active' : ''}`} onClick={() => setActiveTab('projects')}>Projects</button>
         <div className="settings-wrap">
-          <button className="settings-btn settings-btn-text" onClick={() => setShowSettings(s => !s)} title="Themes">Themes</button>
-          {showSettings && (
-            <div className="settings-popup">
-              <div className="settings-popup-header">
-                <span>Themes</span>
-                <button className="settings-popup-close" onClick={() => setShowSettings(false)}>&times;</button>
+          <button className="settings-btn settings-btn-text account-btn" onClick={() => setShowAccount(s => !s)} title="Account">
+            {user?.user_metadata?.avatar_url ? (
+              <img src={user.user_metadata.avatar_url} alt="" className="account-btn-avatar" />
+            ) : (
+              <span className="account-btn-initial">{(user?.email?.[0] || 'A').toUpperCase()}</span>
+            )}
+            <span className="account-btn-label">Account</span>
+          </button>
+          {showAccount && (
+            <div className="settings-popup account-popup">
+              <div className="account-popup-profile">
+                {user?.user_metadata?.avatar_url ? (
+                  <img src={user.user_metadata.avatar_url} alt="" className="account-popup-avatar" />
+                ) : (
+                  <div className="account-popup-avatar account-popup-avatar-fallback">
+                    {(user?.email?.[0] || 'A').toUpperCase()}
+                  </div>
+                )}
+                <div className="account-popup-profile-info">
+                  <p className="account-popup-name">
+                    {user?.user_metadata?.full_name || user?.user_metadata?.name || 'Signed in'}
+                  </p>
+                  {user?.email && <p className="account-popup-email">{user.email}</p>}
+                </div>
+                <button className="logout-btn account-popup-signout" onClick={onLogout}>Sign out</button>
               </div>
+              <div className="account-popup-section-title">Themes</div>
               {[
                 {
                   label: 'Dark',
@@ -421,11 +462,9 @@ function AppInner({ onLogout }) {
                   </div>
                 </div>
               ))}
-              <button className="logout-btn settings-logout" onClick={onLogout}>Sign out</button>
             </div>
           )}
         </div>
-        <button className="logout-btn desktop-only" onClick={onLogout}>Sign out</button>
       </div>
 
       {activeTab === 'planner' && <Planner habits={habits} />}
@@ -446,21 +485,30 @@ function AppInner({ onLogout }) {
               </div>
             </div>
 
-            {/* Chart tile */}
+            {/* Chart / Stats tile */}
             <div className="bento-tile bento-chart">
-              <h2 className="section-label">Overview — {selectedCatLabel}</h2>
-              {!loading && filteredHabits.length > 0 ? (
-                <ResponsiveContainer width="100%" height={260}>
-                  <BarChart data={chartData} margin={{ top: 8, right: 8, left: -20, bottom: 70 }}>
-                    <XAxis dataKey="name" tick={{ fill: '#8a8578', fontSize: 11, fontFamily: 'Outfit' }} axisLine={false} tickLine={false} angle={-45} textAnchor="end" height={80} interval={0} />
-                    <YAxis tick={{ fill: '#8a8578', fontSize: 11, fontFamily: 'DM Mono' }} axisLine={false} tickLine={false} allowDecimals={false} />
-                    <Tooltip contentStyle={{ background: '#1c1b19', border: '1px solid #2e2c28', borderRadius: 10, color: '#f5f0e8', fontFamily: 'Outfit' }} cursor={{ fill: 'rgba(212,175,55,0.06)' }} />
-                    <Bar dataKey="count" radius={[6, 6, 0, 0]}>{chartData.map((entry, i) => <Cell key={i} fill={entry.color} />)}</Bar>
-                  </BarChart>
-                </ResponsiveContainer>
-              ) : !loading ? (
-                <div className="empty-chart">No habits{selectedCategoryId !== 'all' ? ' in this category' : ''}</div>
-              ) : <div className="empty-chart">Loading…</div>}
+              {selectedHabit ? (
+                <HabitStats habit={selectedHabit} logs={logs} onClose={() => setSelectedHabitId(null)} />
+              ) : (
+                <>
+                  <h2 className="section-label">Overview — {selectedCatLabel}</h2>
+                  {!loading && filteredHabits.length > 0 ? (
+                    <ResponsiveContainer width="100%" height={260}>
+                      <BarChart data={chartData} margin={{ top: 8, right: 8, left: -20, bottom: 70 }}>
+                        <XAxis dataKey="name" tick={{ fill: '#8a8578', fontSize: 11, fontFamily: 'Outfit' }} axisLine={false} tickLine={false} angle={-45} textAnchor="end" height={80} interval={0} />
+                        <YAxis tick={{ fill: '#8a8578', fontSize: 11, fontFamily: 'DM Mono' }} axisLine={false} tickLine={false} allowDecimals={false} />
+                        <Tooltip contentStyle={{ background: '#1c1b19', border: '1px solid #2e2c28', borderRadius: 10, color: '#f5f0e8', fontFamily: 'Outfit' }} cursor={{ fill: 'rgba(212,175,55,0.06)' }} />
+                        <Bar dataKey="count" radius={[6, 6, 0, 0]}>{chartData.map((entry, i) => <Cell key={i} fill={entry.color} />)}</Bar>
+                      </BarChart>
+                    </ResponsiveContainer>
+                  ) : !loading ? (
+                    <div className="empty-chart">No habits{selectedCategoryId ? ' in this category' : ''}</div>
+                  ) : <div className="empty-chart">Loading…</div>}
+                  {!loading && filteredHabits.length > 0 && (
+                    <p className="chart-hint">Tap a habit below for detailed stats</p>
+                  )}
+                </>
+              )}
             </div>
 
             {/* Category filter tile */}
@@ -469,7 +517,7 @@ function AppInner({ onLogout }) {
               <div className="cat-bar">
                 <div className="cat-dropdown-wrap">
                   <select className="cat-dropdown" value={selectedCategoryId} onChange={e => setSelectedCategoryId(e.target.value)} aria-label="Filter by category">
-                    <option value="all">All Categories</option>
+                    {categories.length === 0 && <option value="">No categories</option>}
                     {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                   </select>
                   <span className="cat-dropdown-arrow">▾</span>
@@ -507,6 +555,8 @@ function AppInner({ onLogout }) {
                           onIncrement={increment} onDecrement={decrement}
                           onEdit={(h) => editingId === h.id ? cancelForm() : startEdit(h)}
                           onDelete={deleteHabit}
+                          onSelect={id => setSelectedHabitId(curr => curr === id ? null : id)}
+                          selected={selectedHabitId === habit.id}
                           mutating={mutating}
                         />
                       ))}
@@ -535,10 +585,10 @@ function AppInner({ onLogout }) {
   )
 }
 
-export default function App({ onLogout }) {
+export default function App({ user, onLogout }) {
   return (
     <ToastProvider>
-      <AppInner onLogout={onLogout} />
+      <AppInner user={user} onLogout={onLogout} />
     </ToastProvider>
   )
 }

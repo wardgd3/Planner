@@ -237,25 +237,29 @@ export default function BlockForm({
                   + Pick from existing tasks
                 </button>
               ) : (
-                <select
-                  className="input select-input"
-                  value=""
-                  onChange={e => addExistingTask(e.target.value)}
-                  onBlur={() => setPickerOpen(false)}
-                  autoFocus
-                >
-                  <option value="">
-                    {selectableTasks.length === 0 ? 'No eligible tasks' : 'Select a task to add…'}
-                  </option>
-                  {selectableTasks.map(t => {
-                    const proj = projects.find(p => p.id === t.project_id)
-                    return (
-                      <option key={t.id} value={t.id}>
-                        {t.title}{proj ? ` — ${proj.name}` : ''}
-                      </option>
-                    )
-                  })}
-                </select>
+                <div className="bf-task-picker">
+                  <div className="bf-task-picker-header">
+                    <span className="bf-task-picker-title">
+                      {selectableTasks.length === 0 ? 'No eligible tasks' : 'Select a task to add'}
+                    </span>
+                    <button type="button" className="icon-btn" onClick={() => setPickerOpen(false)} aria-label="Close picker">✕</button>
+                  </div>
+                  {selectableTasks.length > 0 && (
+                    <ul className="bf-task-picker-list">
+                      {selectableTasks.map(t => {
+                        const proj = projects.find(p => p.id === t.project_id)
+                        return (
+                          <li key={t.id}>
+                            <button type="button" className="bf-task-picker-item" onClick={() => addExistingTask(t.id)}>
+                              <span className="bf-task-picker-item-title">{t.title}</span>
+                              {proj && <span className="bf-task-picker-item-proj" style={{ color: proj.color }}>● {proj.name}</span>}
+                            </button>
+                          </li>
+                        )
+                      })}
+                    </ul>
+                  )}
+                </div>
               )}
             </div>
           </div>

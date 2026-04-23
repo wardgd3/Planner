@@ -4,6 +4,7 @@ import { useToast } from '../Toast'
 import { todayStr } from '../utils'
 import ProjectForm from './ProjectForm'
 import TaskForm from './TaskForm'
+import { createSeries, updateSeriesRule, ensureSeriesScheduled, upsertTemplate } from './taskRecurrence'
 
 const STATUS_COLUMNS = [
   { key: 'todo', label: 'To Do' },
@@ -27,6 +28,8 @@ export default function ProjectsDashboard({ habits }) {
   const toast = useToast()
   const [projects, setProjects] = useState([])
   const [tasks, setTasks] = useState([])
+  const [taskTemplates, setTaskTemplates] = useState([])
+  const [taskSeries, setTaskSeries] = useState([])
   const [loading, setLoading] = useState(true)
   const [selectedId, setSelectedId] = useState(null)
   const [filter, setFilter] = useState('active')
@@ -38,13 +41,24 @@ export default function ProjectsDashboard({ habits }) {
   useEffect(() => {
     ;(async () => {
       setLoading(true)
-      const [{ data: p, error: e1 }, { data: t, error: e2 }] = await Promise.all([
+      // Roll forward recurring occurrences before listing tasks
+      await ensureSeriesScheduled({})
+      const [
+        { data: p, error: e1 },
+        { data: t, error: e2 },
+        { data: tpl, error: e3 },
+        { data: ser, error: e4 },
+      ] = await Promise.all([
         supabase.from('planner_projects').select('*').order('sort_order'),
         supabase.from('planner_tasks').select('*').order('sort_order'),
+        supabase.from('planner_task_templates').select('*').order('usage_count', { ascending: false }).order('title'),
+        supabase.from('planner_task_series').select('*').eq('is_active', true),
       ])
-      if (e1 || e2) toast.error('Failed to load projects')
+      if (e1 || e2 || e3 || e4) toast.error('Failed to load projects')
       if (p) setProjects(p)
       if (t) setTasks(t)
+      if (tpl) setTaskTemplates(tpl)
+      if (ser) setTaskSeries(ser)
       setLoading(false)
     })()
   }, [toast])
@@ -87,16 +101,50 @@ export default function ProjectsDashboard({ habits }) {
 
   // ── Task CRUD ──
   const addTask = useCallback(async (data) => {
+    const { recurrence, ...taskFields } = data
+    if (taskFields.title) upsertTemplate(taskFields.title)
+    if (recurrence) {
+      const { series, error } = await createSeries(taskFields, recurrence)
+      if (error) { toast.error('Failed to create recurring task'); return }
+      setTaskSeries(prev => [...prev, series])
+      const { data: tsk } = await supabase.from('planner_tasks').select('*').order('sort_order')
+      if (tsk) setTasks(tsk)
+      toast.success('Recurring task scheduled')
+      return
+    }
     const maxOrder = tasks.reduce((m, t) => Math.max(m, t.sort_order || 0), 0)
     const { data: t, error } = await supabase.from('planner_tasks')
-      .insert({ ...data, sort_order: maxOrder + 1, status: data.status || 'todo' }).select().single()
+      .insert({ ...taskFields, sort_order: maxOrder + 1, status: taskFields.status || 'todo' }).select().single()
     if (error) { toast.error('Failed to add task'); return }
     setTasks(prev => [...prev, t])
   }, [tasks, toast])
 
   const editTask = useCallback(async (id, data) => {
+    const { seriesUpdate, seriesId, recurrence, ...fields } = data
+    if (fields.title) upsertTemplate(fields.title)
+    if (seriesUpdate && seriesId) {
+      const seriesFields = {
+        title: fields.title,
+        notes: fields.notes,
+        priority: fields.priority,
+        project_id: fields.project_id,
+        habit_id: fields.habit_id,
+        due_time: fields.due_time,
+        ...seriesUpdate,
+      }
+      const { error } = await updateSeriesRule(seriesId, seriesFields)
+      if (error) { toast.error('Failed to update series'); return }
+      const [{ data: tsk }, { data: ser }] = await Promise.all([
+        supabase.from('planner_tasks').select('*').order('sort_order'),
+        supabase.from('planner_task_series').select('*').eq('is_active', true),
+      ])
+      if (tsk) setTasks(tsk)
+      if (ser) setTaskSeries(ser)
+      toast.success('Recurring series updated')
+      return
+    }
     const { data: t, error } = await supabase.from('planner_tasks')
-      .update(data).eq('id', id).select().single()
+      .update(fields).eq('id', id).select().single()
     if (error) { toast.error('Failed to update task'); return }
     setTasks(prev => prev.map(x => x.id === id ? t : x))
   }, [toast])
@@ -296,8 +344,10 @@ export default function ProjectsDashboard({ habits }) {
       {taskForm !== null && (
         <TaskForm
           task={taskForm.task}
+          series={taskForm.task?.series_id ? taskSeries.find(s => s.id === taskForm.task.series_id) : null}
           projects={projects}
           habits={habits}
+          templates={taskTemplates}
           onSave={async (data) => {
             const payload = {
               ...data,

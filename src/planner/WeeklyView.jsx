@@ -8,6 +8,7 @@ export default function WeeklyView({ tasks, blocks, projects, habits, glossaryIt
   const [weekOffset, setWeekOffset] = useState(0)
   const [blockForm, setBlockForm] = useState(null)
   const [taskForm, setTaskForm] = useState(null)
+  const [expandedTaskId, setExpandedTaskId] = useState(null)
   const days = useMemo(() => getWeekDays(weekOffset), [weekOffset])
   const todayString = toDateStr(new Date())
 
@@ -86,15 +87,23 @@ export default function WeeklyView({ tasks, blocks, projects, habits, glossaryIt
           <ul className="task-list unscheduled-list">
             {unscheduled.map(task => {
               const proj = projects.find(p => p.id === task.project_id)
+              const isExpanded = expandedTaskId === task.id
+              const hasNotes = !!(task.notes && task.notes.trim())
               return (
-                <li key={task.id} className="task-row">
+                <li key={task.id} className={`task-row ${isExpanded ? 'expanded' : ''}`}>
                   <button className="task-check" onClick={() => onCompleteTask(task)} aria-label="Complete task" />
-                  <div className="task-info">
-                    <p className="task-title">{task.title}</p>
+                  <div className="task-info" onClick={() => setExpandedTaskId(isExpanded ? null : task.id)} style={{ cursor: 'pointer' }}>
+                    <p className="task-title">
+                      {task.title}
+                      {hasNotes && <span className="task-notes-indicator" aria-label="Has notes">📝</span>}
+                    </p>
                     <div className="task-meta">
                       <span className="priority-badge" style={{ color: priorityColor(task.priority) }}>● {task.priority}</span>
                       {proj && <span className="task-proj-tag">{proj.name}</span>}
                     </div>
+                    {isExpanded && hasNotes && (
+                      <p className="task-notes-expanded">{task.notes}</p>
+                    )}
                   </div>
                   <div className="task-actions">
                     <button className="icon-btn" onClick={() => setTaskForm({ task })} aria-label="Edit task">✏️</button>
