@@ -12,6 +12,7 @@ import { fetchWeather, weatherEmoji, parseCondition } from './weatherService'
 import { DndContext, closestCenter, PointerSensor, TouchSensor, useSensor, useSensors, DragOverlay } from '@dnd-kit/core'
 import { SortableContext, verticalListSortingStrategy, rectSortingStrategy, useSortable, arrayMove } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
+import { EditIcon } from '../icons'
 
 // ── Moon phase calculator ──
 function getMoonPhase(date = new Date()) {
@@ -67,7 +68,7 @@ function SortableBlock({ block, isActive, onEdit, onComplete, onDelete, today, l
           className="dash-tl-edit"
           onClick={e => { e.stopPropagation(); onEdit({ block, date: today }) }}
           aria-label="Edit block"
-        >✏️</button>
+        ><EditIcon /></button>
         <button
           className="dash-tl-delete"
           onClick={e => { e.stopPropagation(); onDelete(block.id) }}
@@ -126,10 +127,109 @@ function SortableBlock({ block, isActive, onEdit, onComplete, onDelete, today, l
   )
 }
 
-function SortableCard({ id, span, order, className = '', children }) {
+// Non-draggable expandable block row for the week-detail section
+function WeekDetailBlock({ block, date, linkedTasks = [], onEdit, onDelete, onComplete, onCompleteTask, onEditTask, onDeleteTask }) {
+  const [expanded, setExpanded] = useState(false)
+  const hasTasks = linkedTasks.length > 0
+  return (
+    <div
+      className={`dash-tl-block ${block.completed ? 'dash-tl-done' : ''} ${expanded ? 'dash-tl-expanded' : ''}`}
+      style={{ background: 'var(--accent-dim)' }}
+    >
+      <div className="dash-tl-row" onClick={() => setExpanded(v => !v)}>
+        <button
+          className={`task-check small ${block.completed ? 'done' : ''}`}
+          onClick={e => { e.stopPropagation(); onComplete(block) }}
+          aria-label={block.completed ? 'Uncheck block' : 'Complete block'}
+        >{block.completed ? '✓' : ''}</button>
+        {block.start_time && block.end_time
+          ? <span className="dash-tl-time">{block.start_time.slice(0, 5)} – {block.end_time.slice(0, 5)}</span>
+          : <span className="dash-tl-time">N/A</span>}
+        <span className="dash-tl-title">{block.title}</span>
+        {hasTasks && (
+          <span className="dash-tl-task-count" aria-label={`${linkedTasks.length} tasks`}>
+            {linkedTasks.filter(t => t.status === 'done').length}/{linkedTasks.length}
+          </span>
+        )}
+        <button
+          className="dash-tl-edit"
+          onClick={e => { e.stopPropagation(); onEdit({ block, date }) }}
+          aria-label="Edit block"
+        ><EditIcon /></button>
+        <button
+          className="dash-tl-delete"
+          onClick={e => { e.stopPropagation(); onDelete(block.id) }}
+          aria-label="Delete block"
+        >✕</button>
+        <span className={`dash-tl-caret ${expanded ? 'open' : ''}`} aria-hidden="true">▾</span>
+      </div>
+
+      {expanded && (
+        <div className="dash-tl-tasks" onClick={e => e.stopPropagation()}>
+          {linkedTasks.length === 0 ? (
+            <p className="dash-tl-empty" onClick={() => onEdit({ block, date })}>
+              No tasks yet — tap to edit block and add some
+            </p>
+          ) : (
+            <ul className="dash-tl-task-list">
+              {linkedTasks.map(t => (
+                <li key={t.id} className={`dash-tl-task-row ${t.status === 'done' ? 'done' : ''}`}>
+                  <button
+                    className={`task-check small ${t.status === 'done' ? 'done' : ''}`}
+                    onClick={() => onCompleteTask && onCompleteTask(t)}
+                    aria-label={t.status === 'done' ? 'Task done' : 'Complete task'}
+                  >{t.status === 'done' ? '✓' : ''}</button>
+                  <span className="dash-tl-task-title" onClick={() => onEditTask && onEditTask(t)}>
+                    {t.title}
+                  </span>
+                  {t.priority && (
+                    <span className="priority-dot" style={{ background: priorityColor(t.priority) }} />
+                  )}
+                  <button
+                    className="dash-tl-task-delete"
+                    onClick={e => { e.stopPropagation(); onDeleteTask && onDeleteTask(t.id) }}
+                    aria-label="Delete task"
+                  >🗑</button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// Draggable widget picker chip — click toggles visibility, drag reorders cards
+function SortableWidgetChip({ widget, isEnabled, onToggle }) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: `widget-${widget.key}` })
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.4 : 1,
+    zIndex: isDragging ? 10 : 'auto',
+  }
+  return (
+    <button
+      ref={setNodeRef}
+      className={`dash-widget-chip ${isEnabled ? 'active' : ''}${isDragging ? ' dragging' : ''}`}
+      style={style}
+      onClick={() => onToggle(widget.key)}
+      {...attributes}
+      {...listeners}
+    >
+      {isEnabled && <span className="dash-widget-check">✓</span>}
+      {widget.name}
+    </button>
+  )
+}
+
+function SortableCard({ id, flexBasis, order, pairRightKey, onStartResize, className = '', children }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id })
   const style = {
-    gridColumn: `span ${span}`,
+    flexBasis,
+    flexGrow: 0,
+    flexShrink: 0,
     order,
     transform: CSS.Transform.toString(transform),
     transition,
@@ -140,6 +240,13 @@ function SortableCard({ id, span, order, className = '', children }) {
     <div ref={setNodeRef} className={`dash-card ${className} sortable-card${isDragging ? ' dragging' : ''}`} style={style}>
       <button className="dash-card-drag" {...attributes} {...listeners} aria-label="Drag to reorder" onClick={e => e.preventDefault()}>⠿</button>
       {children}
+      {pairRightKey && (
+        <div
+          className="dash-card-resize-handle"
+          onPointerDown={(e) => onStartResize(e, id, pairRightKey)}
+          aria-label="Resize cards"
+        />
+      )}
     </div>
   )
 }
@@ -245,6 +352,7 @@ export default function DashboardView({
   const [weekOffset, setWeekOffset] = useState(0)
   const [selectedDay, setSelectedDay] = useState(today)
   const [showWeatherPopup, setShowWeatherPopup] = useState(false)
+  const [weeklyQuickAdd, setWeeklyQuickAdd] = useState('')
 
   // ── Widget visibility ──
   const WIDGET_REGISTRY = [
@@ -301,9 +409,14 @@ export default function DashboardView({
   const handleWidgetDragEnd = useCallback((event) => {
     const { active, over } = event
     if (!over || active.id === over.id) return
+    // Widget-picker chip IDs are prefixed with "widget-" to disambiguate them
+    // from card IDs; strip the prefix before reordering.
+    const strip = (id) => typeof id === 'string' && id.startsWith('widget-') ? id.slice(7) : id
+    const activeId = strip(active.id)
+    const overId = strip(over.id)
     setWidgetOrder(prev => {
-      const oldIdx = prev.indexOf(active.id)
-      const newIdx = prev.indexOf(over.id)
+      const oldIdx = prev.indexOf(activeId)
+      const newIdx = prev.indexOf(overId)
       if (oldIdx === -1 || newIdx === -1) return prev
       const next = arrayMove(prev, oldIdx, newIdx)
       localStorage.setItem('dashboard_widget_order', JSON.stringify(next))
@@ -311,20 +424,81 @@ export default function DashboardView({
     })
   }, [])
 
-  // Fixed alternating 2:1 / 1:2 ratio — two widgets per row on a 3-col grid
-  const widgetSpans = useMemo(() => {
+  // Per-card width as a fraction (0-1) of its row. Paired cards store both sides;
+  // a card with no stored width falls back to a default based on pair position.
+  const [cardWidths, setCardWidths] = useState(() => {
+    try {
+      const stored = localStorage.getItem('dashboard_card_widths')
+      if (stored) {
+        const parsed = JSON.parse(stored)
+        if (parsed && typeof parsed === 'object') return parsed
+      }
+    } catch {}
+    return {}
+  })
+
+  // Build: ordered enabled keys, pair map (left→right), and per-card flex-basis.
+  const layout = useMemo(() => {
     const enabled = widgetOrder.filter(k => enabledWidgets.includes(k))
-    const spans = {}
+    const pairMap = {}
+    const widths = {}
     for (let i = 0; i < enabled.length; i += 2) {
-      const a = enabled[i]
-      const b = enabled[i + 1]
-      const rowIdx = i / 2
-      if (!b) { spans[a] = 3; continue }
-      if (rowIdx % 2 === 0) { spans[a] = 2; spans[b] = 1 }
-      else { spans[a] = 1; spans[b] = 2 }
+      const left = enabled[i]
+      const right = enabled[i + 1]
+      if (!right) {
+        widths[left] = 1
+        continue
+      }
+      pairMap[left] = right
+      const pairIdx = i / 2
+      const defaultLeft = pairIdx % 2 === 0 ? 2 / 3 : 1 / 3
+      const stored = cardWidths[left]
+      const leftFrac = (typeof stored === 'number' && stored > 0.1 && stored < 0.9)
+        ? stored
+        : defaultLeft
+      widths[left] = leftFrac
+      widths[right] = 1 - leftFrac
     }
-    return spans
-  }, [enabledWidgets, widgetOrder])
+    return { enabled, pairMap, widths }
+  }, [enabledWidgets, widgetOrder, cardWidths])
+
+  // Convert a row-fraction into a flex-basis that cooperates with the 16px gap.
+  function flexBasisFor(key) {
+    const w = layout.widths[key] ?? 1
+    if (w === 1) return '100%'
+    return `calc(${w * 100}% - 8px)`
+  }
+
+  const handleStartResize = useCallback((e, leftKey, rightKey) => {
+    e.preventDefault()
+    e.stopPropagation()
+    const container = e.currentTarget.closest('.dash-rest')
+    if (!container) return
+    const rowWidth = container.getBoundingClientRect().width
+    if (rowWidth <= 0) return
+    const startX = e.clientX
+    const initialLeft = layout.widths[leftKey] ?? 2 / 3
+
+    function onMove(ev) {
+      const dx = ev.clientX - startX
+      const deltaFrac = dx / rowWidth
+      const newLeft = Math.max(0.2, Math.min(0.8, initialLeft + deltaFrac))
+      setCardWidths(prev => {
+        const next = { ...prev, [leftKey]: newLeft, [rightKey]: 1 - newLeft }
+        return next
+      })
+    }
+    function onUp() {
+      document.removeEventListener('pointermove', onMove)
+      document.removeEventListener('pointerup', onUp)
+      setCardWidths(prev => {
+        localStorage.setItem('dashboard_card_widths', JSON.stringify(prev))
+        return prev
+      })
+    }
+    document.addEventListener('pointermove', onMove)
+    document.addEventListener('pointerup', onUp)
+  }, [layout.widths])
 
 
   // Weather glance for hero — refresh every 30 minutes
@@ -678,6 +852,26 @@ export default function DashboardView({
     [tasks, selectedDay, linkedTaskIdSet]
   )
 
+  // ── Weekly tasks (tasks due anywhere in the displayed week) ──
+  const weekRangeStart = toDateStr(weekDays[0])
+  const weekRangeEnd = toDateStr(weekDays[6])
+  const weeklyTasks = useMemo(
+    () => tasks
+      .filter(t => t.due_date && t.due_date >= weekRangeStart && t.due_date <= weekRangeEnd && t.status !== 'done')
+      .sort((a, b) => (a.due_date || '').localeCompare(b.due_date || '')),
+    [tasks, weekRangeStart, weekRangeEnd]
+  )
+  const weeklyDoneCount = useMemo(
+    () => tasks.filter(t => t.due_date && t.due_date >= weekRangeStart && t.due_date <= weekRangeEnd && t.status === 'done').length,
+    [tasks, weekRangeStart, weekRangeEnd]
+  )
+  async function handleWeeklyQuickAdd(e) {
+    if (e.key === 'Enter' && weeklyQuickAdd.trim()) {
+      await onAddTask({ title: weeklyQuickAdd.trim(), due_date: weekRangeEnd, priority: 'medium', status: 'todo' })
+      setWeeklyQuickAdd('')
+    }
+  }
+
   // ── Next-up block with live countdown ──
   const [nowTime, setNowTime] = useState(new Date())
   useEffect(() => {
@@ -867,7 +1061,7 @@ export default function DashboardView({
                     {task.due_time && <span className="task-time">{task.due_time.slice(0, 5)}</span>}
                     <span className="priority-dot" style={{ background: priorityColor(task.priority) }} />
                     <div className="task-actions">
-                      <button className="icon-btn" onClick={e => { e.stopPropagation(); setTaskForm({ task }) }} aria-label="Edit task">✏️</button>
+                      <button className="icon-btn" onClick={e => { e.stopPropagation(); setTaskForm({ task }) }} aria-label="Edit task"><EditIcon /></button>
                       <button className="icon-btn" onClick={e => { e.stopPropagation(); onDeleteTask(task.id) }} aria-label="Delete task">🗑</button>
                     </div>
                   </li>
@@ -878,7 +1072,7 @@ export default function DashboardView({
                   <span className="task-check small done">✓</span>
                   <p className="task-title done-title">{task.title}</p>
                   <div className="task-actions">
-                    <button className="icon-btn" onClick={() => setTaskForm({ task })} aria-label="Edit task">✏️</button>
+                    <button className="icon-btn" onClick={() => setTaskForm({ task })} aria-label="Edit task"><EditIcon /></button>
                     <button className="icon-btn" onClick={() => onDeleteTask(task.id)} aria-label="Delete task">🗑</button>
                   </div>
                 </li>
@@ -974,16 +1168,21 @@ export default function DashboardView({
         </button>
         {showWidgetPicker && (
           <div className="dash-widget-picker">
-            {WIDGET_REGISTRY.map(w => (
-              <button
-                key={w.key}
-                className={`dash-widget-chip ${enabledWidgets.includes(w.key) ? 'active' : ''}`}
-                onClick={() => toggleWidget(w.key)}
-              >
-                {enabledWidgets.includes(w.key) && <span className="dash-widget-check">✓</span>}
-                {w.name}
-              </button>
-            ))}
+            <DndContext sensors={widgetSensors} collisionDetection={closestCenter} onDragEnd={handleWidgetDragEnd}>
+              <SortableContext items={widgetOrder.map(k => `widget-${k}`)} strategy={rectSortingStrategy}>
+                {widgetOrder
+                  .map(k => WIDGET_REGISTRY.find(w => w.key === k))
+                  .filter(Boolean)
+                  .map(w => (
+                    <SortableWidgetChip
+                      key={w.key}
+                      widget={w}
+                      isEnabled={enabledWidgets.includes(w.key)}
+                      onToggle={toggleWidget}
+                    />
+                  ))}
+              </SortableContext>
+            </DndContext>
           </div>
         )}
       </div>
@@ -991,7 +1190,7 @@ export default function DashboardView({
       {/* ══ Row 2 — This Week (left) | Calendar (right) ══ */}
       <DndContext sensors={widgetSensors} collisionDetection={closestCenter} onDragEnd={handleWidgetDragEnd}>
         <SortableContext items={widgetOrder.filter(k => enabledWidgets.includes(k))} strategy={rectSortingStrategy}>
-      {enabledWidgets.includes('week') && <SortableCard id="week" span={widgetSpans.week} order={widgetOrder.indexOf('week')} className="dash-week">
+      {enabledWidgets.includes('week') && <SortableCard id="week" flexBasis={flexBasisFor('week')} order={widgetOrder.indexOf('week')} pairRightKey={layout.pairMap.week} onStartResize={handleStartResize} className="dash-week">
         <div className="dash-week-header">
           <div className="dash-week-header-left">
             <h2 className="dash-card-title">This Week</h2>
@@ -1105,32 +1304,20 @@ export default function DashboardView({
                 <p className="empty-msg">No blocks</p>
               ) : (
                 <div className="dash-week-detail-list">
-                  {selectedBlocks.map(block => {
-                    const bTasks = tasksByBlock[block.id] || []
-                    return (
-                      <div
-                        key={block.id}
-                        className={`dash-tl-block ${block.completed ? 'dash-tl-done' : ''}`}
-                        style={{ background: 'var(--accent-dim)' }}
-                      >
-                        <div className="dash-tl-row" onClick={() => setBlockForm({ block, date: selectedDay })}>
-                          <button
-                            className={`task-check small ${block.completed ? 'done' : ''}`}
-                            onClick={e => { e.stopPropagation(); onCompleteBlock(block) }}
-                            aria-label={block.completed ? 'Uncheck block' : 'Complete block'}
-                          >{block.completed ? '✓' : ''}</button>
-                          {block.start_time && block.end_time
-                            ? <span className="dash-tl-time">{block.start_time.slice(0, 5)} – {block.end_time.slice(0, 5)}</span>
-                            : <span className="dash-tl-time">N/A</span>}
-                          <span className="dash-tl-title">{block.title}</span>
-                          {bTasks.length > 0 && (
-                            <span className="dash-tl-task-count">{bTasks.filter(t => t.status === 'done').length}/{bTasks.length}</span>
-                          )}
-                          <button className="dash-tl-delete" onClick={e => { e.stopPropagation(); onDeleteBlock(block.id) }} aria-label="Delete block">✕</button>
-                        </div>
-                      </div>
-                    )
-                  })}
+                  {selectedBlocks.map(block => (
+                    <WeekDetailBlock
+                      key={block.id}
+                      block={block}
+                      date={selectedDay}
+                      linkedTasks={tasksByBlock[block.id] || []}
+                      onEdit={setBlockForm}
+                      onDelete={onDeleteBlock}
+                      onComplete={onCompleteBlock}
+                      onCompleteTask={onCompleteTask}
+                      onEditTask={(task) => setTaskForm({ task })}
+                      onDeleteTask={onDeleteTask}
+                    />
+                  ))}
                 </div>
               )}
             </div>
@@ -1150,10 +1337,63 @@ export default function DashboardView({
             </div>
           </div>
         </div>
+
+        {/* Weekly tasks — consolidated list for the displayed week */}
+        <div className="dash-weekly-tasks">
+          <div className="dash-weekly-tasks-header">
+            <p className="dash-week-detail-label">
+              Weekly Tasks
+              <span className="dash-weekly-tasks-count">
+                {weeklyDoneCount}/{weeklyDoneCount + weeklyTasks.length}
+              </span>
+            </p>
+            <button className="add-btn" onClick={() => setTaskForm({ prefillDate: weekRangeEnd })}>+ Task</button>
+          </div>
+          <input
+            className="input dash-weekly-quick-add"
+            placeholder="Add a task for this week…"
+            value={weeklyQuickAdd}
+            onChange={e => setWeeklyQuickAdd(e.target.value)}
+            onKeyDown={handleWeeklyQuickAdd}
+            maxLength={200}
+          />
+          {weeklyTasks.length === 0 ? (
+            <p className="empty-msg">No tasks for this week yet</p>
+          ) : (
+            <ul className="dash-weekly-task-list">
+              {weeklyTasks.map(task => {
+                const d = new Date(task.due_date + 'T00:00:00')
+                const dowShort = WEEK_HEADERS[(d.getDay() + 6) % 7]
+                return (
+                  <li key={task.id} className="dash-weekly-task-item">
+                    <button
+                      className="task-check small"
+                      onClick={() => onCompleteTask(task)}
+                      aria-label="Complete task"
+                    />
+                    <span className="priority-dot" style={{ background: priorityColor(task.priority) }} />
+                    <span
+                      className="dash-weekly-task-title"
+                      onClick={() => setTaskForm({ task })}
+                    >
+                      {task.title}
+                    </span>
+                    <span className="dash-weekly-task-due">{dowShort} {d.getDate()}</span>
+                    <button
+                      className="dash-tl-delete"
+                      onClick={() => onDeleteTask(task.id)}
+                      aria-label="Delete task"
+                    >✕</button>
+                  </li>
+                )
+              })}
+            </ul>
+          )}
+        </div>
       </SortableCard>}
 
       {/* Calendar (replaces Habit Streaks) */}
-      {enabledWidgets.includes('calendar') && <SortableCard id="calendar" span={widgetSpans.calendar} order={widgetOrder.indexOf('calendar')} className="dash-calendar">
+      {enabledWidgets.includes('calendar') && <SortableCard id="calendar" flexBasis={flexBasisFor('calendar')} order={widgetOrder.indexOf('calendar')} pairRightKey={layout.pairMap.calendar} onStartResize={handleStartResize} className="dash-calendar">
         <div className="dash-cal-header">
           <h2 className="dash-card-title">{MONTHS_FULL[calMonth]} {calYear}</h2>
           <div className="dash-cal-nav">
@@ -1196,7 +1436,7 @@ export default function DashboardView({
         </div>
       </SortableCard>}
 
-      {enabledWidgets.includes('projects') && <SortableCard id="projects" span={widgetSpans.projects} order={widgetOrder.indexOf('projects')} className="dash-projects-card">
+      {enabledWidgets.includes('projects') && <SortableCard id="projects" flexBasis={flexBasisFor('projects')} order={widgetOrder.indexOf('projects')} pairRightKey={layout.pairMap.projects} onStartResize={handleStartResize} className="dash-projects-card">
         <h2 className="dash-card-title">Projects</h2>
         <div className="dash-projects-body">
           <ProjectsView
@@ -1207,7 +1447,7 @@ export default function DashboardView({
         </div>
       </SortableCard>}
 
-      {enabledWidgets.includes('notes') && <SortableCard id="notes" span={widgetSpans.notes} order={widgetOrder.indexOf('notes')} className="dash-notes">
+      {enabledWidgets.includes('notes') && <SortableCard id="notes" flexBasis={flexBasisFor('notes')} order={widgetOrder.indexOf('notes')} pairRightKey={layout.pairMap.notes} onStartResize={handleStartResize} className="dash-notes">
         <h2 className="dash-card-title">Notes</h2>
         <div className="dash-notes-add">
           <input
@@ -1249,7 +1489,7 @@ export default function DashboardView({
                       className="icon-btn"
                       onClick={() => { setEditingNote(note.id); setEditingText(note.content) }}
                       aria-label="Edit note"
-                    >✏️</button>
+                    ><EditIcon /></button>
                     <button
                       className="icon-btn"
                       onClick={() => deleteNote(note.id)}
@@ -1263,7 +1503,7 @@ export default function DashboardView({
         </div>
       </SortableCard>}
 
-      {enabledWidgets.includes('not_to_do') && <SortableCard id="not_to_do" span={widgetSpans.not_to_do} order={widgetOrder.indexOf('not_to_do')} className="dash-notodo">
+      {enabledWidgets.includes('not_to_do') && <SortableCard id="not_to_do" flexBasis={flexBasisFor('not_to_do')} order={widgetOrder.indexOf('not_to_do')} pairRightKey={layout.pairMap.not_to_do} onStartResize={handleStartResize} className="dash-notodo">
         <h2 className="dash-card-title">Not To Do</h2>
         <div className="dash-notodo-add">
           <input
@@ -1305,7 +1545,7 @@ export default function DashboardView({
                       className="icon-btn"
                       onClick={() => { setEditingNotToDo(item.id); setEditingNotToDoText(item.content) }}
                       aria-label="Edit item"
-                    >✏️</button>
+                    ><EditIcon /></button>
                     <button
                       className="icon-btn"
                       onClick={() => deleteNotToDo(item.id)}
@@ -1319,7 +1559,7 @@ export default function DashboardView({
         </div>
       </SortableCard>}
 
-      {enabledWidgets.includes('timer') && <SortableCard id="timer" span={widgetSpans.timer} order={widgetOrder.indexOf('timer')} className="dash-timer-card">
+      {enabledWidgets.includes('timer') && <SortableCard id="timer" flexBasis={flexBasisFor('timer')} order={widgetOrder.indexOf('timer')} pairRightKey={layout.pairMap.timer} onStartResize={handleStartResize} className="dash-timer-card">
         <div className="dash-timer-head">
           <h2 className="dash-card-title">Timer</h2>
           <div className="dash-timer-tabs">
@@ -1438,13 +1678,13 @@ export default function DashboardView({
         )}
       </SortableCard>}
 
-      {enabledWidgets.includes('ai_chat') && <SortableCard id="ai_chat" span={widgetSpans.ai_chat} order={widgetOrder.indexOf('ai_chat')} className="dash-ai-chat">
+      {enabledWidgets.includes('ai_chat') && <SortableCard id="ai_chat" flexBasis={flexBasisFor('ai_chat')} order={widgetOrder.indexOf('ai_chat')} pairRightKey={layout.pairMap.ai_chat} onStartResize={handleStartResize} className="dash-ai-chat">
         <h2 className="dash-card-title">Assistant</h2>
         <AiChat todayBlocks={todayBlocks} todayTasks={[...todayTasks, ...doneTasks]} dateLabel={dateLabel} />
       </SortableCard>}
 
       {/* ── Daily Inspiration ── */}
-      {enabledWidgets.includes('inspiration') && <SortableCard id="inspiration" span={widgetSpans.inspiration} order={widgetOrder.indexOf('inspiration')} className="dash-inspiration">
+      {enabledWidgets.includes('inspiration') && <SortableCard id="inspiration" flexBasis={flexBasisFor('inspiration')} order={widgetOrder.indexOf('inspiration')} pairRightKey={layout.pairMap.inspiration} onStartResize={handleStartResize} className="dash-inspiration">
         <div className="dash-card-title-row">
           <h2 className="dash-card-title">Daily Inspiration</h2>
           <button className="inspiration-favs-btn" onClick={() => setShowFavorites(v => !v)}>&#9733; Favorites</button>

@@ -1668,8 +1668,10 @@ h1 {
   transition: transform 0.15s; color: var(--text);
 }
 .habit-count.bump { transform: scale(1.35); color: var(--accent); }
-.icon-btn { background: none; border: none; font-size: 14px; cursor: pointer; opacity: 0.25; transition: opacity 0.2s; padding: 4px; }
-.icon-btn:hover { opacity: 0.8; }
+.icon-btn { background: none; border: none; font-size: 14px; cursor: pointer; opacity: 0.35; transition: opacity 0.2s; padding: 4px; color: var(--text-secondary); display: inline-flex; align-items: center; justify-content: center; }
+.icon-btn:hover { opacity: 0.95; color: var(--text); }
+.icon-btn svg { display: block; }
+.dash-tl-edit svg, .dash-tl-delete svg { display: block; }
 
 /* ══ Category checkboxes ══ */
 .cat-checkboxes { display: flex; flex-wrap: wrap; gap: 6px; }
@@ -2073,9 +2075,8 @@ h1 {
 /* Rest container — always present, fades in/out */
 .dash .dash-rest {
   grid-area: rest;
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  grid-auto-flow: dense;
+  display: flex;
+  flex-wrap: wrap;
   gap: 16px;
   position: relative;
   transition: opacity 0.45s cubic-bezier(0.4, 0, 0.2, 1),
@@ -2084,7 +2085,7 @@ h1 {
 
 /* ── Widget picker ── */
 .dash-widget-picker-wrap {
-  grid-column: 1 / -1;
+  flex-basis: 100%;
   display: flex;
   justify-content: flex-end;
   align-items: center;
@@ -2134,8 +2135,15 @@ h1 {
   background: var(--surface);
   color: var(--text-muted);
   font-size: 0.82rem;
-  cursor: pointer;
-  transition: all 0.15s;
+  cursor: grab;
+  transition: border-color 0.15s, background 0.15s, color 0.15s, box-shadow 0.15s;
+  touch-action: none;
+  user-select: none;
+}
+.dash-widget-chip:active { cursor: grabbing; }
+.dash-widget-chip.dragging {
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
+  border-color: var(--accent);
 }
 .dash-widget-chip.active {
   background: var(--accent-dim);
@@ -2196,6 +2204,32 @@ h1 {
 .mobile-month-notes .dash-card-title { margin-bottom: 12px; }
 .sortable-card { position: relative; }
 .sortable-card.dragging { cursor: grabbing; }
+.dash-card-resize-handle {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  right: -14px;
+  width: 22px;
+  cursor: col-resize;
+  z-index: 3;
+  touch-action: none;
+  background: transparent;
+}
+.dash-card-resize-handle::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 18%;
+  bottom: 18%;
+  width: 3px;
+  border-radius: 2px;
+  background: var(--accent);
+  opacity: 0;
+  transform: translateX(-50%);
+  transition: opacity 0.15s;
+}
+.dash-card-resize-handle:hover::after,
+.dash-card-resize-handle:active::after { opacity: 0.6; }
 .dash-card-drag {
   position: absolute;
   top: 8px;
@@ -3423,6 +3457,51 @@ body.pomo-focus-active .dash-card {
   min-width: 24px; text-align: right;
 }
 
+/* Weekly tasks section — consolidated list inside the This Week card */
+.dash-weekly-tasks {
+  margin-top: 18px;
+  padding-top: 18px;
+  border-top: 1px solid var(--border-subtle);
+  display: flex; flex-direction: column;
+  gap: 10px;
+}
+.dash-weekly-tasks-header {
+  display: flex; align-items: center;
+  justify-content: space-between;
+}
+.dash-weekly-tasks-count {
+  margin-left: 8px;
+  font-family: var(--font-mono);
+  font-size: 13px; font-weight: 500;
+  color: var(--muted);
+}
+.dash-weekly-quick-add { width: 100%; }
+.dash-weekly-task-list {
+  list-style: none;
+  padding: 0; margin: 0;
+  display: flex; flex-direction: column; gap: 6px;
+}
+.dash-weekly-task-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-subtle);
+  background: transparent;
+  font-size: 15px;
+}
+.dash-weekly-task-item:hover { background: var(--surface2); }
+.dash-weekly-task-title {
+  flex: 1; min-width: 0;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  cursor: pointer;
+}
+.dash-weekly-task-due {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--muted);
+  flex-shrink: 0;
+}
+
 /* (old day-detail CSS removed — now integrated into dash-week-detail above) */
 
 /* Row 3 — Calendar + Notes (two columns) */
@@ -3767,12 +3846,13 @@ body.pomo-focus-active .dash-card {
     padding-top: 20px;
   }
   .dash .dash-rest {
-    grid-template-columns: 1fr !important;
+    flex-direction: column !important;
     gap: 16px;
   }
   .dash .dash-rest .dash-card {
-    grid-column: span 1 !important;
+    flex-basis: 100% !important;
   }
+  .dash .dash-rest .dash-card .dash-card-resize-handle { display: none !important; }
   .dash:not(.dash-mobile-week-focus) .dash-week,
   .dash:not(.dash-mobile-week-focus) .dash-calendar { display: none; }
   .dash-mobile-week-focus .dash-today,
@@ -3781,7 +3861,7 @@ body.pomo-focus-active .dash-card {
   .dash-mobile-week-focus .dash-rest { display: block !important; opacity: 1 !important; transform: none !important; pointer-events: auto !important; visibility: visible !important; }
   .dash-mobile-week-focus .dash-week { display: flex !important; flex-direction: column; }
   .dash-mobile-week-focus { min-height: 0 !important; align-content: start !important; padding-top: 16px; }
-  .dash-mobile-week-focus .dash-rest { grid-template-columns: 1fr !important; }
+  .dash-mobile-week-focus .dash-rest { flex-direction: column !important; }
   .dash-mobile-week-focus .dash-week-grid { gap: 3px; }
   .dash-mobile-week-focus .dash-week-day { padding: 8px 2px; min-height: 88px; gap: 4px; min-width: 0; }
   .dash-mobile-week-focus .dash-week-name { font-size: 9px; letter-spacing: 0.5px; }
@@ -4364,7 +4444,9 @@ body.pomo-focus-active .dash-card {
   border: 1px solid var(--border-subtle);
   border-radius: 14px;
   padding: 24px;
-  min-height: 70vh;
+  min-height: 59.5vh;
+  max-height: 85vh;
+  overflow-y: auto;
 }
 .pd-empty-main {
   display: flex;
@@ -4575,6 +4657,52 @@ body.pomo-focus-active .dash-card {
   font-family: inherit;
 }
 .pd-task-status:hover { border-color: var(--accent); color: var(--accent); }
+
+/* Schedule-as-block button on task cards */
+.pd-task-top {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+}
+.pd-task-top .pd-task-main { flex: 1; min-width: 0; }
+.pd-task-sched-btn {
+  flex: 0 0 auto;
+  width: 22px; height: 22px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: var(--surface2);
+  color: var(--accent);
+  font-size: 15px; font-weight: 500;
+  line-height: 1;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
+  padding: 0;
+  transition: all 0.15s;
+}
+.pd-task-sched-btn:hover {
+  background: var(--accent-dim);
+  border-color: var(--accent);
+}
+.pd-task-sched-popover {
+  display: flex; flex-direction: column; gap: 6px;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface2);
+}
+.pd-task-sched-label {
+  font-size: 10px; font-weight: 600;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.pd-task-sched-date { font-size: 12px; padding: 6px 8px; }
+.pd-task-sched-actions { display: flex; gap: 6px; }
+.pd-task-sched-confirm, .pd-task-sched-cancel {
+  flex: 1;
+  font-size: 11px;
+  padding: 6px 10px;
+}
 
 /* Responsive */
 @media (max-width: 900px) {

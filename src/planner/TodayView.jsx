@@ -3,6 +3,7 @@ import BlockForm from './BlockForm'
 import TaskForm from './TaskForm'
 import { HOURS, DAY_NAMES, MONTHS_FULL } from '../constants'
 import { fmt12, timeToMinutes, priorityColor } from '../utils'
+import { EditIcon } from '../icons'
 
 export default function TodayView({ tasks, blocks, projects, habits, glossaryItems = [], onAddBlock, onEditBlock, onDeleteBlock, onAddTask, onEditTask, onDeleteTask, onCompleteTask, todayStr }) {
   const [blockForm, setBlockForm] = useState(null)
@@ -106,7 +107,7 @@ export default function TodayView({ tasks, blocks, projects, habits, glossaryIte
                   )}
                 </div>
                 <div className="task-actions">
-                  <button className="icon-btn" onClick={() => setTaskForm({ task })} aria-label="Edit task">✏️</button>
+                  <button className="icon-btn" onClick={() => setTaskForm({ task })} aria-label="Edit task"><EditIcon /></button>
                   <button className="icon-btn" onClick={() => onDeleteTask(task.id)} aria-label="Delete task">🗑</button>
                 </div>
               </li>

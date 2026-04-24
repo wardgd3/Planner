@@ -10,6 +10,7 @@ import HabitStats from './HabitStats.jsx'
 import { ToastProvider, useToast } from './Toast.jsx'
 import { PRESET_COLORS, PERIODS } from './constants'
 import { getPeriodLabel, getPeriodRange } from './utils'
+import { EditIcon } from './icons'
 import './App.css'
 
 // ── Sortable Habit Row ──
@@ -33,7 +34,7 @@ const SortableHabitRow = memo(function SortableHabitRow({ habit, count, bumping,
         <button className="ctrl-btn minus" onClick={() => onDecrement(habit)} disabled={isMutating || count <= 0} aria-label="Decrement">−</button>
         <span className={`habit-count ${bumping === habit.id ? 'bump' : ''}`}>{count}</span>
         <button className="ctrl-btn plus" onClick={() => onIncrement(habit)} disabled={isMutating} aria-label="Increment">+</button>
-        <button className="icon-btn" onClick={() => onEdit(habit)} aria-label="Edit habit">✏️</button>
+        <button className="icon-btn" onClick={() => onEdit(habit)} aria-label="Edit habit"><EditIcon /></button>
         <button className="icon-btn" onClick={() => onDelete(habit.id)} aria-label="Delete habit">🗑</button>
       </div>
     </li>
@@ -61,7 +62,7 @@ function CategoryManager({ categories, onAdd, onSave, onDelete }) {
             ) : (
               <>
                 <span className="cat-name">{c.name}</span>
-                <button className="cat-action-btn" onClick={() => { setEditingCatId(c.id); setEditingCatName(c.name) }} aria-label="Edit category">✏️</button>
+                <button className="cat-action-btn" onClick={() => { setEditingCatId(c.id); setEditingCatName(c.name) }} aria-label="Edit category"><EditIcon /></button>
                 <button className="cat-action-btn" onClick={() => onDelete(c.id)} aria-label="Delete category">🗑</button>
               </>
             )}

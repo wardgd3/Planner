@@ -5,6 +5,7 @@ import { todayStr } from '../utils'
 import ProjectForm from './ProjectForm'
 import TaskForm from './TaskForm'
 import { createSeries, updateSeriesRule, ensureSeriesScheduled, upsertTemplate } from './taskRecurrence'
+import { EditIcon } from '../icons'
 
 const STATUS_COLUMNS = [
   { key: 'todo', label: 'To Do' },
@@ -167,6 +168,33 @@ export default function ProjectsDashboard({ habits }) {
     }
   }, [toast])
 
+  // Create a planner block linked to this task for a chosen date.
+  // Block title defaults to the project name so the planner card matches the
+  // "project block with task inside" pattern.
+  const scheduleTaskAsBlock = useCallback(async (task, project, date) => {
+    if (!date) return
+    try {
+      const title = project?.name || task.title
+      const { data: block, error } = await supabase.from('planner_blocks')
+        .insert({
+          title,
+          date,
+          start_time: null,
+          end_time: null,
+          project_id: task.project_id || null,
+          habit_id: null,
+          color: project?.color || null,
+          notes: null,
+        })
+        .select().single()
+      if (error) { toast.error('Failed to schedule block'); return }
+      const { error: linkErr } = await supabase.from('planner_block_tasks')
+        .insert({ block_id: block.id, task_id: task.id, sort_order: 0 })
+      if (linkErr) { toast.error('Failed to link task to block'); return }
+      toast.success(`Scheduled for ${date}`)
+    } catch { toast.error('Network error') }
+  }, [toast])
+
   // ── Derived ──
   const filteredProjects = useMemo(() => {
     return projects
@@ -325,6 +353,7 @@ export default function ProjectsDashboard({ habits }) {
               onEditTask={(task) => setTaskForm({ task })}
               onDeleteTask={deleteTask}
               onSetTaskStatus={setTaskStatus}
+              onScheduleBlock={(task, date) => scheduleTaskAsBlock(task, selectedProject, date)}
             />
           )}
         </main>
@@ -368,7 +397,7 @@ export default function ProjectsDashboard({ habits }) {
 function ProjectBoard({
   project, tasksByStatus, progress, habitMap,
   onEditProject, onDeleteProject, onNewTask,
-  onEditTask, onDeleteTask, onSetTaskStatus,
+  onEditTask, onDeleteTask, onSetTaskStatus, onScheduleBlock,
 }) {
   const today = todayStr()
   const dueLabel = project.due_date
@@ -403,7 +432,7 @@ function ProjectBoard({
             </span>
           )}
           <div className="pd-board-actions">
-            <button className="icon-btn" onClick={onEditProject} aria-label="Edit project">✏️</button>
+            <button className="icon-btn" onClick={onEditProject} aria-label="Edit project"><EditIcon /></button>
             <button className="icon-btn" onClick={onDeleteProject} aria-label="Delete project">🗑</button>
           </div>
         </div>
@@ -432,6 +461,7 @@ function ProjectBoard({
                     onEdit={() => onEditTask(task)}
                     onDelete={() => onDeleteTask(task.id)}
                     onSetStatus={(s) => onSetTaskStatus(task, s)}
+                    onScheduleBlock={col.key !== 'done' ? (date) => onScheduleBlock(task, date) : null}
                   />
                 ))}
               </div>
@@ -443,24 +473,72 @@ function ProjectBoard({
   )
 }
 
-function TaskCard({ task, habit, onEdit, onDelete, onSetStatus }) {
+function TaskCard({ task, habit, onEdit, onDelete, onSetStatus, onScheduleBlock }) {
   const today = todayStr()
   const overdue = task.due_date && task.due_date < today && task.status !== 'done'
   const prioLabel = task.priority || 'medium'
+  const [schedOpen, setSchedOpen] = useState(false)
+  const [schedDate, setSchedDate] = useState(today)
+  const [scheduling, setScheduling] = useState(false)
+
+  async function handleSchedule(e) {
+    e?.stopPropagation()
+    if (!schedDate || scheduling) return
+    setScheduling(true)
+    try {
+      await onScheduleBlock(schedDate)
+      setSchedOpen(false)
+    } finally {
+      setScheduling(false)
+    }
+  }
 
   return (
     <div className={`pd-task ${task.status === 'done' ? 'done' : ''} ${overdue ? 'overdue' : ''}`}>
-      <div className="pd-task-main" onClick={onEdit}>
-        <p className="pd-task-title">{task.title}</p>
-        {task.notes && <p className="pd-task-notes">{task.notes.split('\n')[0]}</p>}
-        <div className="pd-task-meta">
-          <span className={`pd-prio pd-prio-${prioLabel}`}>{prioLabel}</span>
-          {task.due_date && <span className="pd-task-due">{task.due_date}</span>}
-          {habit && (
-            <span className="pd-task-habit" style={{ color: habit.color }}>● {habit.name}</span>
-          )}
+      <div className="pd-task-top">
+        <div className="pd-task-main" onClick={onEdit}>
+          <p className="pd-task-title">{task.title}</p>
+          {task.notes && <p className="pd-task-notes">{task.notes.split('\n')[0]}</p>}
+          <div className="pd-task-meta">
+            <span className={`pd-prio pd-prio-${prioLabel}`}>{prioLabel}</span>
+            {task.due_date && <span className="pd-task-due">{task.due_date}</span>}
+            {habit && (
+              <span className="pd-task-habit" style={{ color: habit.color }}>● {habit.name}</span>
+            )}
+          </div>
         </div>
+        {onScheduleBlock && (
+          <button
+            className="pd-task-sched-btn"
+            onClick={(e) => { e.stopPropagation(); setSchedOpen(o => !o) }}
+            aria-label="Schedule as block"
+            title="Schedule as block"
+          >+</button>
+        )}
       </div>
+      {schedOpen && (
+        <div className="pd-task-sched-popover" onClick={e => e.stopPropagation()}>
+          <label className="pd-task-sched-label">Schedule for</label>
+          <input
+            className="input pd-task-sched-date"
+            type="date"
+            value={schedDate}
+            onChange={e => setSchedDate(e.target.value)}
+            autoFocus
+          />
+          <div className="pd-task-sched-actions">
+            <button
+              className="confirm-btn pd-task-sched-confirm"
+              onClick={handleSchedule}
+              disabled={!schedDate || scheduling}
+            >{scheduling ? 'Scheduling…' : 'Schedule'}</button>
+            <button
+              className="cancel-btn pd-task-sched-cancel"
+              onClick={(e) => { e.stopPropagation(); setSchedOpen(false) }}
+            >Cancel</button>
+          </div>
+        </div>
+      )}
       <div className="pd-task-footer">
         <select
           className="pd-task-status"

@@ -53,16 +53,18 @@ export default function BlockForm({
     [glossarySearch, glossaryItems]
   )
 
+  // Empty times count as "no specific time" so users can submit without ticking the checkbox
+  const effectiveNoTime = noTime || !start || !end
+
   // Validation
   const timeError = useMemo(() => {
-    if (noTime) return null
-    if (!start || !end) return null
+    if (effectiveNoTime) return null
     if (timeToMinutes(end) <= timeToMinutes(start)) return 'End time must be after start time'
     const otherBlocks = existingBlocks.filter(b => (!block || b.id !== block.id) && b.start_time && b.end_time)
     const conflict = otherBlocks.find(b => timeRangesOverlap(start, end, b.start_time.slice(0, 5), b.end_time.slice(0, 5)))
     if (conflict) return `Overlaps with "${conflict.title}" (${conflict.start_time.slice(0, 5)}–${conflict.end_time.slice(0, 5)})`
     return null
-  }, [noTime, start, end, existingBlocks, block])
+  }, [effectiveNoTime, start, end, existingBlocks, block])
 
   function applyGlossaryItem(item) {
     setTitle(item.name)
@@ -106,15 +108,14 @@ export default function BlockForm({
 
   async function handleSave() {
     if (!title.trim() || !blockDate || timeError || saving) return
-    if (!noTime && (!start || !end)) return
     // Commit any pending typed draft
     const pendingDrafts = newTaskInput.trim() ? [...newTaskDrafts, newTaskInput.trim()] : newTaskDrafts
     setSaving(true)
     try {
       await onSave({
         title: title.trim(), date: blockDate,
-        start_time: noTime ? null : start,
-        end_time: noTime ? null : end,
+        start_time: effectiveNoTime ? null : start,
+        end_time: effectiveNoTime ? null : end,
         project_id: projectId || null,
         task_id: null, // legacy single-task field — cleared in favor of join table
         habit_id: habitId || null,
@@ -128,7 +129,7 @@ export default function BlockForm({
     }
   }
 
-  const canSave = title.trim() && blockDate && (noTime || (start && end)) && !timeError && !saving
+  const canSave = title.trim() && blockDate && !timeError && !saving
 
   return (
     <div className={`drawer-overlay${centered ? ' drawer-overlay-centered' : ''}`} onClick={e => e.target === e.currentTarget && onCancel()}>

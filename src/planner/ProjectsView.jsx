@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react'
 import ProjectForm from './ProjectForm'
 import TaskForm from './TaskForm'
 import { statusColor, priorityColor } from '../utils'
+import { EditIcon } from '../icons'
 
 export default function ProjectsView({ projects, tasks, habits, taskTemplates = [], taskSeries = [], onAddProject, onEditProject, onDeleteProject, onAddTask, onEditTask, onDeleteTask, onCompleteTask }) {
   const [projectForm, setProjectForm] = useState(null)
@@ -46,7 +47,7 @@ export default function ProjectsView({ projects, tasks, habits, taskTemplates = 
             <span className="status-badge" style={{ color: statusColor(project.status) }}>● {project.status}</span>
             {project.due_date && <span className="project-due">Due {project.due_date}</span>}
             <div className="project-card-actions">
-              <button className="icon-btn" onClick={e => { e.stopPropagation(); setProjectForm({ project }) }} aria-label="Edit project">✏️</button>
+              <button className="icon-btn" onClick={e => { e.stopPropagation(); setProjectForm({ project }) }} aria-label="Edit project"><EditIcon /></button>
               <button className="icon-btn" onClick={e => { e.stopPropagation(); onDeleteProject(project.id) }} aria-label="Delete project">🗑</button>
             </div>
           </div>
@@ -87,7 +88,7 @@ export default function ProjectsView({ projects, tasks, habits, taskTemplates = 
                       )}
                     </div>
                     <div className="task-actions">
-                      <button className="icon-btn" onClick={() => setTaskForm({ task })} aria-label="Edit task">✏️</button>
+                      <button className="icon-btn" onClick={() => setTaskForm({ task })} aria-label="Edit task"><EditIcon /></button>
                       <button className="icon-btn" onClick={() => onDeleteTask(task.id)} aria-label="Delete task">🗑</button>
                     </div>
                   </li>

@@ -10,6 +10,7 @@ import WeatherWidget from './WeatherWidget'
 import BlockForm from './BlockForm'
 import TaskForm from './TaskForm'
 import { createSeries, updateSeriesRule, ensureSeriesScheduled, upsertTemplate } from './taskRecurrence'
+import { EditIcon } from '../icons'
 
 const PLANNER_TABS = ['Today', 'Week', 'Month', 'Projects']
 const WEEK_HEADERS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
@@ -669,7 +670,7 @@ function MobilePlanner({
                             className="icon-btn"
                             onClick={() => { setEditingNote(note.id); setEditingText(note.content) }}
                             aria-label="Edit note"
-                          >✏️</button>
+                          ><EditIcon /></button>
                           <button
                             className="icon-btn"
                             onClick={() => deleteNote(note.id)}

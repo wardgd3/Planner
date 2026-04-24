@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react'
 import { computeEndTime } from '../utils'
+import { EditIcon } from '../icons'
 
 function GlossaryForm({ item, onSave, onCancel }) {
   const [name, setName] = useState(item?.name || '')
@@ -210,7 +211,7 @@ export default function GlossaryView({ glossaryItems, habits, onAddItem, onEditI
               <button className="glossary-schedule-btn" title="Schedule" onClick={() => setScheduling(item)} aria-label="Schedule item">+</button>
               {item.source === 'custom' && (
                 <>
-                  <button className="icon-btn" onClick={() => setForm({ item })} aria-label="Edit item">✏️</button>
+                  <button className="icon-btn" onClick={() => setForm({ item })} aria-label="Edit item"><EditIcon /></button>
                   <button className="icon-btn" onClick={() => onDeleteItem(item.id)} aria-label="Delete item">🗑</button>
                 </>
               )}

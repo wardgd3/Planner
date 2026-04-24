@@ -3,6 +3,7 @@ import BlockForm from './BlockForm'
 import TaskForm from './TaskForm'
 import { DAY_SHORT, MONTHS } from '../constants'
 import { getWeekDays, toDateStr, priorityColor } from '../utils'
+import { EditIcon } from '../icons'
 
 export default function WeeklyView({ tasks, blocks, projects, habits, glossaryItems = [], onAddBlock, onEditBlock, onDeleteBlock, onAddTask, onEditTask, onDeleteTask, onCompleteTask }) {
   const [weekOffset, setWeekOffset] = useState(0)
@@ -106,7 +107,7 @@ export default function WeeklyView({ tasks, blocks, projects, habits, glossaryIt
                     )}
                   </div>
                   <div className="task-actions">
-                    <button className="icon-btn" onClick={() => setTaskForm({ task })} aria-label="Edit task">✏️</button>
+                    <button className="icon-btn" onClick={() => setTaskForm({ task })} aria-label="Edit task"><EditIcon /></button>
                     <button className="icon-btn" onClick={() => onDeleteTask(task.id)} aria-label="Delete task">🗑</button>
                   </div>
                 </li>
