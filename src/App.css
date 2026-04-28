@@ -3027,7 +3027,22 @@ body.pomo-focus-active .dash-card {
 .dash-tl-block:hover .dash-tl-delete { opacity: 1; }
 .dash-tl-done { opacity: 0.35; }
 .dash-tl-done .dash-tl-title { text-decoration: line-through; }
-.dash-tl-block .task-check.small { flex-shrink: 0; }
+.dash-tl-block .task-check.small {
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+  border-width: 1.5px;
+  border-color: rgba(255, 255, 255, 0.38);
+  background: rgba(0, 0, 0, 0.18);
+}
+.dash-tl-block .task-check.small:hover {
+  border-color: var(--accent);
+  background: var(--accent-dim);
+}
+.dash-tl-block .task-check.small.done {
+  border-color: var(--success);
+  background: rgba(0, 0, 0, 0.18);
+}
 .dash-tl-time {
   font-family: var(--font-mono);
   font-size: 11px; color: rgba(255, 255, 255, 0.65);
@@ -3745,6 +3760,24 @@ body.pomo-focus-active .dash-card {
   .timeline-blocks { left: 44px; }
 }
 
+/* Stack dashboard widget cards on tablet/mobile widths (matches JS mobile breakpoint of 768px) */
+@media (max-width: 767px) {
+  .dash {
+    grid-template-columns: 1fr !important;
+  }
+  .dash .dash-rest {
+    flex-direction: column !important;
+    flex-wrap: nowrap !important;
+    gap: 16px;
+  }
+  .dash .dash-rest .dash-card {
+    flex-basis: auto !important;
+    width: 100% !important;
+    max-width: 100%;
+  }
+  .dash .dash-rest .dash-card .dash-card-resize-handle { display: none !important; }
+}
+
 /* ══ Mobile: General ══ */
 @media (max-width: 600px) {
   .app-tabs { padding: 0 12px; gap: 0; }
@@ -3845,14 +3878,7 @@ body.pomo-focus-active .dash-card {
     gap: 20px;
     padding-top: 20px;
   }
-  .dash .dash-rest {
-    flex-direction: column !important;
-    gap: 16px;
-  }
-  .dash .dash-rest .dash-card {
-    flex-basis: 100% !important;
-  }
-  .dash .dash-rest .dash-card .dash-card-resize-handle { display: none !important; }
+  /* .dash-rest stacking handled by the @media (max-width: 767px) block above */
   .dash:not(.dash-mobile-week-focus) .dash-week,
   .dash:not(.dash-mobile-week-focus) .dash-calendar { display: none; }
   .dash-mobile-week-focus .dash-today,
@@ -3969,25 +3995,33 @@ body.pomo-focus-active .dash-card {
   .dash-tl-block {
     padding: 7px 14px;
     border-left: 3px solid var(--accent);
-    border-radius: 0 9999px 9999px 0;
+    border-right: none;
+    border-radius: 0;
     flex-wrap: wrap;
     position: relative;
+    -webkit-mask-image: linear-gradient(to right, black 58%, transparent 100%);
+    mask-image: linear-gradient(to right, black 58%, transparent 100%);
   }
   .dash-tl-block .dash-tl-title {
     flex: 1;
     order: 1;
     font-weight: 600;
+    margin-left: 6px;
   }
+  /* Task-count badge appears AFTER the title so block titles align across rows */
+  .dash-tl-block .dash-tl-task-count { order: 2; }
   .dash-tl-block .dash-tl-time {
-    order: 2;
+    order: 3;
     margin-left: auto;
     font-size: 10px;
     opacity: 0.7;
   }
   .dash-tl-block .dash-tl-drag-handle { order: 0; }
   .dash-tl-block .task-check { order: 0; }
-  .dash-tl-block .dash-tl-live { order: 3; }
-  .dash-tl-block .dash-tl-delete { order: 4; }
+  .dash-tl-block .dash-tl-live { order: 4; }
+  .dash-tl-block .dash-tl-delete { order: 5; }
+  .dash-tl-block .dash-tl-edit { order: 6; }
+  .dash-tl-block .dash-tl-caret { order: 7; }
 
   /* Progress bar inside active block */
   .dash-tl-progress {
