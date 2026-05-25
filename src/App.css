@@ -3353,41 +3353,40 @@ body.pomo-focus-active .dash-card {
 .dash-week-chip:hover { transform: scale(1.4); }
 
 /* Weather on day cards */
-.dash-week-wx-info {
-  display: flex; flex-direction: column;
-  align-items: center; gap: 2px;
-  cursor: pointer;
-  padding: 2px 4px;
-  border-radius: 4px;
-  transition: background 0.15s;
-}
-.dash-week-wx-info:hover { background: var(--surface3); }
-.dash-week-wx-icon { font-size: 1.1rem; line-height: 1; }
+.dash-week-wx-icon { font-size: 1.1rem; line-height: 1; margin-top: 2px; }
 .dash-week-wx-temps {
   font-family: var(--font-mono);
   font-size: 10px; color: var(--muted);
   white-space: nowrap;
 }
 
-/* Precipitation bar graph expansion */
+/* Precipitation bar graph expansion (inside weather detail panel) */
 .dash-week-precip {
   display: grid;
   grid-template-rows: 0fr;
-  transition: grid-template-rows 0.3s ease;
+  transition: grid-template-rows 0.35s ease;
   width: 100%;
 }
 .dash-week-precip.open { grid-template-rows: 1fr; }
 .dash-week-precip-inner {
   overflow: hidden;
   display: flex; flex-direction: column;
-  gap: 2px;
+  gap: 4px;
+}
+.dash-week-precip-title {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding-top: 8px;
+  margin: 0;
 }
 .dash-week-precip-bars {
   display: flex;
   align-items: flex-end;
   gap: 1px;
-  height: 48px;
-  padding-top: 4px;
+  height: 56px;
 }
 .dash-week-precip-bar-wrap {
   flex: 1;
@@ -3398,10 +3397,10 @@ body.pomo-focus-active .dash-card {
 }
 .dash-week-precip-bar {
   width: 100%;
-  min-width: 1px;
+  min-width: 2px;
   background: var(--accent);
   border-radius: 1px 1px 0 0;
-  opacity: 0.7;
+  opacity: 0.6;
   transition: opacity 0.15s;
 }
 .dash-week-precip-bar-wrap:hover .dash-week-precip-bar { opacity: 1; }
@@ -3409,12 +3408,9 @@ body.pomo-focus-active .dash-card {
   display: flex;
   justify-content: space-between;
   font-family: var(--font-mono);
-  font-size: 7px;
+  font-size: 9px;
   color: var(--muted);
-  padding: 0 1px;
-}
-.dash-week-precip-open {
-  min-height: auto;
+  padding: 0 2px;
 }
 
 /* Weather detail in selected day panel */

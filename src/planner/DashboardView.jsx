@@ -1244,44 +1244,27 @@ export default function DashboardView({
             const isToday = ds === today
             const isSelected = ds === selectedDay
             const wx = weatherByDate[ds]
-            const isPrecipExpanded = expandedPrecipDay === ds
             return (
               <div
                 key={ds}
-                className={`dash-week-day ${isToday ? 'dash-week-today' : ''} ${isSelected ? 'dash-week-selected' : ''} ${isPrecipExpanded ? 'dash-week-precip-open' : ''}`}
+                className={`dash-week-day ${isToday ? 'dash-week-today' : ''} ${isSelected ? 'dash-week-selected' : ''}`}
                 onClick={() => setSelectedDay(ds)}
               >
                 <span className="dash-week-name">{WEEK_HEADERS[i]}</span>
                 <span className={`dash-week-num ${isToday ? 'accent' : ''}`}>{day.getDate()}</span>
                 {wx && (
-                  <div className="dash-week-wx-info" onClick={e => { e.stopPropagation(); setExpandedPrecipDay(isPrecipExpanded ? null : ds); setSelectedDay(ds) }}>
+                  <>
                     <span className="dash-week-wx-icon">{weatherEmoji(wx.weathercode)}</span>
                     <span className="dash-week-wx-temps">
                       {Math.round(wx.temp_high_f)}° / {Math.round(wx.temp_low_f)}°
                     </span>
-                  </div>
+                  </>
                 )}
                 <div className="dash-week-chips">
                   {dayBlocks.slice(0, 4).map(b => (
                     <div key={b.id} className="dash-week-chip" style={{ background: 'var(--block-bg)' }} title={b.title} />
                   ))}
                 </div>
-                {wx && (
-                  <div className={`dash-week-precip ${isPrecipExpanded ? 'open' : ''}`}>
-                    <div className="dash-week-precip-inner">
-                      <div className="dash-week-precip-bars">
-                        {(wx.hourly_precip_pct || []).map((pct, h) => (
-                          <div key={h} className="dash-week-precip-bar-wrap" title={`${h}:00 — ${pct}%`}>
-                            <div className="dash-week-precip-bar" style={{ height: `${Math.max(pct, 2)}%` }} />
-                          </div>
-                        ))}
-                      </div>
-                      <div className="dash-week-precip-labels">
-                        <span>12a</span><span>6a</span><span>12p</span><span>6p</span>
-                      </div>
-                    </div>
-                  </div>
-                )}
               </div>
             )
           })}
@@ -1306,8 +1289,9 @@ export default function DashboardView({
           {weatherByDate[selectedDay] && (() => {
             const wx = weatherByDate[selectedDay]
             const isCurrentDay = selectedDay === today
+            const isPrecipOpen = expandedPrecipDay === selectedDay
             return (
-              <div className="dash-week-wx-detail">
+              <div className="dash-week-wx-detail" onClick={() => setExpandedPrecipDay(isPrecipOpen ? null : selectedDay)} style={{ cursor: 'pointer' }}>
                 <div className="dash-week-wx-main">
                   <span className="dash-week-wx-emoji">{weatherEmoji(wx.weathercode)}</span>
                   <span className="dash-week-wx-temp-lg">
@@ -1322,6 +1306,21 @@ export default function DashboardView({
                   <span className="dash-week-wx-stat">{Math.round(wx.wind_speed_mph)} mph</span>
                   {wx.humidity != null && <span className="dash-week-wx-stat">{Math.round(wx.humidity)}% hum</span>}
                   <span className="dash-week-wx-stat">UV {Math.round(wx.uv_index)}</span>
+                </div>
+                <div className={`dash-week-precip ${isPrecipOpen ? 'open' : ''}`}>
+                  <div className="dash-week-precip-inner">
+                    <p className="dash-week-precip-title">Precipitation Chance</p>
+                    <div className="dash-week-precip-bars">
+                      {(wx.hourly_precip_pct || []).map((pct, h) => (
+                        <div key={h} className="dash-week-precip-bar-wrap" title={`${h}:00 — ${pct}%`}>
+                          <div className="dash-week-precip-bar" style={{ height: `${Math.max(pct, 2)}%` }} />
+                        </div>
+                      ))}
+                    </div>
+                    <div className="dash-week-precip-labels">
+                      <span>12a</span><span>6a</span><span>12p</span><span>6p</span><span>12a</span>
+                    </div>
+                  </div>
                 </div>
               </div>
             )
