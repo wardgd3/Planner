@@ -1313,6 +1313,7 @@ export default function DashboardView({
                     <div className="dash-week-precip-bars">
                       {(wx.hourly_precip_pct || []).map((pct, h) => (
                         <div key={h} className="dash-week-precip-bar-wrap" title={`${h}:00 — ${pct}%`}>
+                          <span className="dash-week-precip-pct">{pct}%</span>
                           <div className="dash-week-precip-bar" style={{ height: `${Math.max(pct, 2)}%` }} />
                         </div>
                       ))}

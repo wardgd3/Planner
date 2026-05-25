@@ -3392,8 +3392,17 @@ body.pomo-focus-active .dash-card {
   flex: 1;
   height: 100%;
   display: flex;
-  align-items: flex-end;
-  justify-content: center;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+}
+.dash-week-precip-pct {
+  font-family: var(--font-mono);
+  font-size: 7px;
+  color: var(--text-secondary);
+  line-height: 1;
+  white-space: nowrap;
+  margin-bottom: 2px;
 }
 .dash-week-precip-bar {
   width: 100%;
