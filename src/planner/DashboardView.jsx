@@ -251,33 +251,33 @@ function SortableCard({ id, flexBasis, order, pairRightKey, onStartResize, class
   )
 }
 
-const WEEK_HEADERS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+const WEEK_HEADERS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 
 function getWeekDays(offset = 0) {
   const now = new Date()
   const day = now.getDay()
-  const monday = new Date(now)
-  monday.setDate(now.getDate() - ((day + 6) % 7) + offset * 7)
+  const sunday = new Date(now)
+  sunday.setDate(now.getDate() - day + offset * 7)
   return Array.from({ length: 7 }, (_, i) => {
-    const d = new Date(monday)
-    d.setDate(monday.getDate() + i)
+    const d = new Date(sunday)
+    d.setDate(sunday.getDate() + i)
     return d
   })
 }
 
 function weekLabel(days) {
-  const mon = days[0]
-  const sun = days[6]
-  const sameMonth = mon.getMonth() === sun.getMonth()
-  const mStr = MONTHS_FULL[mon.getMonth()]
-  if (sameMonth) return `${mStr} ${mon.getDate()} – ${sun.getDate()}`
-  return `${mStr.slice(0, 3)} ${mon.getDate()} – ${MONTHS_FULL[sun.getMonth()].slice(0, 3)} ${sun.getDate()}`
+  const sun = days[0]
+  const sat = days[6]
+  const sameMonth = sun.getMonth() === sat.getMonth()
+  const mStr = MONTHS_FULL[sun.getMonth()]
+  if (sameMonth) return `${mStr} ${sun.getDate()} – ${sat.getDate()}`
+  return `${mStr.slice(0, 3)} ${sun.getDate()} – ${MONTHS_FULL[sat.getMonth()].slice(0, 3)} ${sat.getDate()}`
 }
 
 function getMonthGrid(year, month) {
   const first = new Date(year, month, 1)
   const lastDay = new Date(year, month + 1, 0).getDate()
-  let startDow = (first.getDay() + 6) % 7
+  let startDow = first.getDay()
   const cells = []
   for (let i = 0; i < startDow; i++) cells.push(null)
   for (let d = 1; d <= lastDay; d++) cells.push(d)
@@ -352,6 +352,7 @@ export default function DashboardView({
   const [weekOffset, setWeekOffset] = useState(0)
   const [selectedDay, setSelectedDay] = useState(today)
   const [showWeatherPopup, setShowWeatherPopup] = useState(false)
+  const [expandedPrecipDay, setExpandedPrecipDay] = useState(null)
   const [weeklyQuickAdd, setWeeklyQuickAdd] = useState('')
 
   // ── Widget visibility ──
@@ -614,9 +615,15 @@ export default function DashboardView({
 
   // Notes state
   const [notes, setNotes] = useState([])
+  const [noteTopics, setNoteTopics] = useState([])
   const [noteInput, setNoteInput] = useState('')
+  const [noteContentInput, setNoteContentInput] = useState('')
+  const [noteTopicId, setNoteTopicId] = useState('')
+  const [showNoteForm, setShowNoteForm] = useState(false)
   const [editingNote, setEditingNote] = useState(null)
+  const [editingTitle, setEditingTitle] = useState('')
   const [editingText, setEditingText] = useState('')
+  const [editingTopicId, setEditingTopicId] = useState('')
   const [notToDos, setNotToDos] = useState([])
   const [notToDoInput, setNotToDoInput] = useState('')
   const [editingNotToDo, setEditingNotToDo] = useState(null)
@@ -640,14 +647,15 @@ export default function DashboardView({
     fetchLogs()
   }, [])
 
-  // Fetch notes
+  // Fetch notes + topics
   useEffect(() => {
     async function fetchNotes() {
-      const { data } = await supabase
-        .from('planner_notes')
-        .select('*')
-        .order('created_at', { ascending: false })
-      if (data) setNotes(data)
+      const [{ data: n }, { data: t }] = await Promise.all([
+        supabase.from('notes').select('*').order('is_pinned', { ascending: false }).order('updated_at', { ascending: false }),
+        supabase.from('note_topics').select('*').order('sort_order').order('created_at'),
+      ])
+      if (n) setNotes(n)
+      if (t) { setNoteTopics(t); if (!noteTopicId && t.length) setNoteTopicId(t[0].id) }
     }
     fetchNotes()
   }, [])
@@ -712,36 +720,41 @@ export default function DashboardView({
   }, [favoriteIds])
 
   // Notes CRUD
+  const noteTopicMap = useMemo(() => Object.fromEntries(noteTopics.map(t => [t.id, t])), [noteTopics])
+
   const addNote = useCallback(async () => {
-    if (!noteInput.trim()) return
+    if (!noteInput.trim() || !noteTopicId) return
     try {
       const { data, error } = await supabase
-        .from('planner_notes')
-        .insert({ content: noteInput.trim() })
+        .from('notes')
+        .insert({ title: noteInput.trim(), content: noteContentInput.trim(), topic_id: noteTopicId })
         .select().single()
       if (error) { toast.error('Failed to add note'); return }
       setNotes(prev => [data, ...prev])
       setNoteInput('')
+      setNoteContentInput('')
+      setShowNoteForm(false)
     } catch { toast.error('Network error') }
-  }, [noteInput, toast])
+  }, [noteInput, noteContentInput, noteTopicId, toast])
 
   const updateNote = useCallback(async (id) => {
-    if (!editingText.trim()) return
+    if (!editingTitle.trim()) return
     try {
       const { data, error } = await supabase
-        .from('planner_notes')
-        .update({ content: editingText.trim(), updated_at: new Date().toISOString() })
+        .from('notes')
+        .update({ title: editingTitle.trim(), content: editingText.trim(), topic_id: editingTopicId, updated_at: new Date().toISOString() })
         .eq('id', id).select().single()
       if (error) { toast.error('Failed to update note'); return }
       setNotes(prev => prev.map(n => n.id === id ? data : n))
       setEditingNote(null)
+      setEditingTitle('')
       setEditingText('')
     } catch { toast.error('Network error') }
-  }, [editingText, toast])
+  }, [editingTitle, editingText, editingTopicId, toast])
 
   const deleteNote = useCallback(async (id) => {
     try {
-      const { error } = await supabase.from('planner_notes').delete().eq('id', id)
+      const { error } = await supabase.from('notes').delete().eq('id', id)
       if (error) { toast.error('Failed to delete note'); return }
       setNotes(prev => prev.filter(n => n.id !== id))
     } catch { toast.error('Network error') }
@@ -1231,27 +1244,44 @@ export default function DashboardView({
             const isToday = ds === today
             const isSelected = ds === selectedDay
             const wx = weatherByDate[ds]
+            const isPrecipExpanded = expandedPrecipDay === ds
             return (
               <div
                 key={ds}
-                className={`dash-week-day ${isToday ? 'dash-week-today' : ''} ${isSelected ? 'dash-week-selected' : ''}`}
+                className={`dash-week-day ${isToday ? 'dash-week-today' : ''} ${isSelected ? 'dash-week-selected' : ''} ${isPrecipExpanded ? 'dash-week-precip-open' : ''}`}
                 onClick={() => setSelectedDay(ds)}
               >
                 <span className="dash-week-name">{WEEK_HEADERS[i]}</span>
                 <span className={`dash-week-num ${isToday ? 'accent' : ''}`}>{day.getDate()}</span>
                 {wx && (
-                  <>
+                  <div className="dash-week-wx-info" onClick={e => { e.stopPropagation(); setExpandedPrecipDay(isPrecipExpanded ? null : ds); setSelectedDay(ds) }}>
                     <span className="dash-week-wx-icon">{weatherEmoji(wx.weathercode)}</span>
                     <span className="dash-week-wx-temps">
                       {Math.round(wx.temp_high_f)}° / {Math.round(wx.temp_low_f)}°
                     </span>
-                  </>
+                  </div>
                 )}
                 <div className="dash-week-chips">
                   {dayBlocks.slice(0, 4).map(b => (
                     <div key={b.id} className="dash-week-chip" style={{ background: 'var(--block-bg)' }} title={b.title} />
                   ))}
                 </div>
+                {wx && (
+                  <div className={`dash-week-precip ${isPrecipExpanded ? 'open' : ''}`}>
+                    <div className="dash-week-precip-inner">
+                      <div className="dash-week-precip-bars">
+                        {(wx.hourly_precip_pct || []).map((pct, h) => (
+                          <div key={h} className="dash-week-precip-bar-wrap" title={`${h}:00 — ${pct}%`}>
+                            <div className="dash-week-precip-bar" style={{ height: `${Math.max(pct, 2)}%` }} />
+                          </div>
+                        ))}
+                      </div>
+                      <div className="dash-week-precip-labels">
+                        <span>12a</span><span>6a</span><span>12p</span><span>6p</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             )
           })}
@@ -1300,6 +1330,7 @@ export default function DashboardView({
           {/* Schedule + Tasks side by side */}
           <div className="dash-week-detail-row">
             <div className="dash-week-detail-schedule">
+              <p className="dash-sublabel">Schedule</p>
               {selectedBlocks.length === 0 ? (
                 <p className="empty-msg">No blocks</p>
               ) : (
@@ -1322,6 +1353,9 @@ export default function DashboardView({
               )}
             </div>
             <div className="dash-week-detail-tasks">
+              <p className="dash-sublabel">
+                Tasks {selectedTasks.length > 0 && <span className="count-badge">{selectedTasks.length}</span>}
+              </p>
               {selectedTasks.length === 0 ? (
                 <p className="empty-msg">No tasks</p>
               ) : (
@@ -1363,7 +1397,7 @@ export default function DashboardView({
             <ul className="dash-weekly-task-list">
               {weeklyTasks.map(task => {
                 const d = new Date(task.due_date + 'T00:00:00')
-                const dowShort = WEEK_HEADERS[(d.getDay() + 6) % 7]
+                const dowShort = WEEK_HEADERS[d.getDay()]
                 return (
                   <li key={task.id} className="dash-weekly-task-item">
                     <button
@@ -1448,46 +1482,84 @@ export default function DashboardView({
       </SortableCard>}
 
       {enabledWidgets.includes('notes') && <SortableCard id="notes" flexBasis={flexBasisFor('notes')} order={widgetOrder.indexOf('notes')} pairRightKey={layout.pairMap.notes} onStartResize={handleStartResize} className="dash-notes">
-        <h2 className="dash-card-title">Notes</h2>
-        <div className="dash-notes-add">
-          <input
-            className="input"
-            placeholder="Add a note…"
-            value={noteInput}
-            onChange={e => setNoteInput(e.target.value)}
-            onKeyDown={e => { if (e.key === 'Enter') addNote() }}
-            maxLength={1000}
-          />
-          <button className="add-btn" onClick={addNote} disabled={!noteInput.trim()}>+</button>
+        <div className="dash-notes-header">
+          <h2 className="dash-card-title">Notes</h2>
+          <button className="add-btn dash-notes-toggle" onClick={() => setShowNoteForm(v => !v)}>{showNoteForm ? '✕' : '+'}</button>
         </div>
+        {showNoteForm && (
+          <div className="dash-notes-form">
+            <input
+              className="input"
+              placeholder="Note title…"
+              value={noteInput}
+              onChange={e => setNoteInput(e.target.value)}
+              maxLength={200}
+              autoFocus
+            />
+            <textarea
+              className="input textarea"
+              placeholder="Write your note…"
+              value={noteContentInput}
+              onChange={e => setNoteContentInput(e.target.value)}
+              rows={3}
+              maxLength={5000}
+            />
+            <div className="dash-notes-form-row">
+              <select className="input dash-notes-topic-select" value={noteTopicId} onChange={e => setNoteTopicId(e.target.value)}>
+                <option value="">Select topic…</option>
+                {noteTopics.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+              </select>
+              <button className="add-btn" onClick={addNote} disabled={!noteInput.trim() || !noteTopicId}>Add</button>
+            </div>
+            {noteTopics.length === 0 && <p className="dash-notes-hint">Create topics in the Notes tab first</p>}
+          </div>
+        )}
         <div className="dash-notes-list">
           {notes.length === 0 && (
             <p className="empty-msg" style={{ padding: '12px 0' }}>No notes yet</p>
           )}
-          {notes.map(note => (
+          {notes.map(note => {
+            const topic = noteTopicMap[note.topic_id]
+            return (
             <div key={note.id} className="dash-note-item">
               {editingNote === note.id ? (
                 <div className="dash-note-edit">
+                  <input
+                    className="input"
+                    value={editingTitle}
+                    onChange={e => setEditingTitle(e.target.value)}
+                    placeholder="Title"
+                    maxLength={200}
+                    autoFocus
+                  />
                   <textarea
                     className="input textarea"
                     value={editingText}
                     onChange={e => setEditingText(e.target.value)}
-                    rows={2}
-                    maxLength={1000}
-                    autoFocus
+                    rows={3}
+                    maxLength={5000}
                   />
+                  <select className="input dash-notes-topic-select" value={editingTopicId} onChange={e => setEditingTopicId(e.target.value)}>
+                    {noteTopics.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+                  </select>
                   <div className="dash-note-edit-actions">
                     <button className="add-btn" onClick={() => updateNote(note.id)}>Save</button>
-                    <button className="add-btn dash-note-cancel" onClick={() => { setEditingNote(null); setEditingText('') }}>Cancel</button>
+                    <button className="add-btn dash-note-cancel" onClick={() => { setEditingNote(null); setEditingTitle(''); setEditingText('') }}>Cancel</button>
                   </div>
                 </div>
               ) : (
                 <>
-                  <p className="dash-note-text">{note.content}</p>
+                  <div className="dash-note-body">
+                    <div className="dash-note-title-row">
+                      <p className="dash-note-title">{note.title || 'Untitled'}</p>
+                      {topic && <span className="dash-note-topic-tag" style={{ background: `${topic.color}22`, color: topic.color, borderColor: `${topic.color}44` }}>{topic.name}</span>}
+                    </div>
+                    {note.content && <p className="dash-note-text">{note.content}</p>}
+                  </div>
                   <div className="dash-note-actions">
                     <button
                       className="icon-btn"
-                      onClick={() => { setEditingNote(note.id); setEditingText(note.content) }}
+                      onClick={() => { setEditingNote(note.id); setEditingTitle(note.title); setEditingText(note.content); setEditingTopicId(note.topic_id) }}
                       aria-label="Edit note"
                     ><EditIcon /></button>
                     <button
@@ -1499,7 +1571,8 @@ export default function DashboardView({
                 </>
               )}
             </div>
-          ))}
+            )
+          })}
         </div>
       </SortableCard>}
 

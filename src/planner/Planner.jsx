@@ -13,12 +13,12 @@ import { createSeries, updateSeriesRule, ensureSeriesScheduled, upsertTemplate }
 import { EditIcon } from '../icons'
 
 const PLANNER_TABS = ['Today', 'Week', 'Month', 'Projects']
-const WEEK_HEADERS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+const WEEK_HEADERS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 
 function getMonthGrid(year, month) {
   const first = new Date(year, month, 1)
   const lastDay = new Date(year, month + 1, 0).getDate()
-  const startDow = (first.getDay() + 6) % 7
+  const startDow = first.getDay()
   const cells = []
   for (let i = 0; i < startDow; i++) cells.push(null)
   for (let d = 1; d <= lastDay; d++) cells.push(d)
@@ -416,40 +416,55 @@ function MobilePlanner({
 
   // ── Notes ──
   const [notes, setNotes] = useState([])
+  const [noteTopics, setNoteTopics] = useState([])
   const [noteInput, setNoteInput] = useState('')
+  const [noteContentInput, setNoteContentInput] = useState('')
+  const [noteTopicId, setNoteTopicId] = useState('')
+  const [showMobileNoteForm, setShowMobileNoteForm] = useState(false)
   const [editingNote, setEditingNote] = useState(null)
+  const [editingTitle, setEditingTitle] = useState('')
   const [editingText, setEditingText] = useState('')
+  const [editingTopicId, setEditingTopicId] = useState('')
 
   useEffect(() => {
-    supabase.from('planner_notes').select('*').order('created_at', { ascending: false })
-      .then(({ data }) => { if (data) setNotes(data) })
+    Promise.all([
+      supabase.from('notes').select('*').order('is_pinned', { ascending: false }).order('updated_at', { ascending: false }),
+      supabase.from('note_topics').select('*').order('sort_order').order('created_at'),
+    ]).then(([{ data: n }, { data: t }]) => {
+      if (n) setNotes(n)
+      if (t) { setNoteTopics(t); if (t.length) setNoteTopicId(t[0].id) }
+    })
   }, [])
 
+  const noteTopicMap = useMemo(() => Object.fromEntries(noteTopics.map(t => [t.id, t])), [noteTopics])
+
   const addNote = useCallback(async () => {
-    if (!noteInput.trim()) return
+    if (!noteInput.trim() || !noteTopicId) return
     try {
-      const { data, error } = await supabase.from('planner_notes').insert({ content: noteInput.trim() }).select().single()
+      const { data, error } = await supabase.from('notes').insert({ title: noteInput.trim(), content: noteContentInput.trim(), topic_id: noteTopicId }).select().single()
       if (error) { toast.error('Failed to add note'); return }
       setNotes(prev => [data, ...prev])
       setNoteInput('')
+      setNoteContentInput('')
+      setShowMobileNoteForm(false)
     } catch { toast.error('Network error') }
-  }, [noteInput, toast])
+  }, [noteInput, noteContentInput, noteTopicId, toast])
 
   const updateNote = useCallback(async (id) => {
-    if (!editingText.trim()) return
+    if (!editingTitle.trim()) return
     try {
-      const { data, error } = await supabase.from('planner_notes')
-        .update({ content: editingText.trim(), updated_at: new Date().toISOString() })
+      const { data, error } = await supabase.from('notes')
+        .update({ title: editingTitle.trim(), content: editingText.trim(), topic_id: editingTopicId, updated_at: new Date().toISOString() })
         .eq('id', id).select().single()
       if (error) { toast.error('Failed to update note'); return }
       setNotes(prev => prev.map(n => n.id === id ? data : n))
-      setEditingNote(null); setEditingText('')
+      setEditingNote(null); setEditingTitle(''); setEditingText('')
     } catch { toast.error('Network error') }
-  }, [editingText, toast])
+  }, [editingTitle, editingText, editingTopicId, toast])
 
   const deleteNote = useCallback(async (id) => {
     try {
-      const { error } = await supabase.from('planner_notes').delete().eq('id', id)
+      const { error } = await supabase.from('notes').delete().eq('id', id)
       if (error) { toast.error('Failed to delete note'); return }
       setNotes(prev => prev.filter(n => n.id !== id))
     } catch { toast.error('Network error') }
@@ -629,46 +644,57 @@ function MobilePlanner({
             </div>
 
             <div className="dash-notes mobile-month-notes" style={{ marginTop: 20 }}>
-              <h2 className="dash-card-title">Notes</h2>
-              <div className="dash-notes-add">
-                <input
-                  className="input"
-                  placeholder="Add a note…"
-                  value={noteInput}
-                  onChange={e => setNoteInput(e.target.value)}
-                  onKeyDown={e => { if (e.key === 'Enter') addNote() }}
-                  maxLength={1000}
-                />
-                <button className="add-btn" onClick={addNote} disabled={!noteInput.trim()}>+</button>
+              <div className="dash-notes-header">
+                <h2 className="dash-card-title">Notes</h2>
+                <button className="add-btn dash-notes-toggle" onClick={() => setShowMobileNoteForm(v => !v)}>{showMobileNoteForm ? '✕' : '+'}</button>
               </div>
+              {showMobileNoteForm && (
+                <div className="dash-notes-form">
+                  <input className="input" placeholder="Note title…" value={noteInput} onChange={e => setNoteInput(e.target.value)} maxLength={200} autoFocus />
+                  <textarea className="input textarea" placeholder="Write your note…" value={noteContentInput} onChange={e => setNoteContentInput(e.target.value)} rows={3} maxLength={5000} />
+                  <div className="dash-notes-form-row">
+                    <select className="input dash-notes-topic-select" value={noteTopicId} onChange={e => setNoteTopicId(e.target.value)}>
+                      <option value="">Select topic…</option>
+                      {noteTopics.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+                    </select>
+                    <button className="add-btn" onClick={addNote} disabled={!noteInput.trim() || !noteTopicId}>Add</button>
+                  </div>
+                  {noteTopics.length === 0 && <p className="dash-notes-hint">Create topics in the Notes tab first</p>}
+                </div>
+              )}
               <div className="dash-notes-list">
                 {notes.length === 0 && (
                   <p className="empty-msg" style={{ padding: '12px 0' }}>No notes yet</p>
                 )}
-                {notes.map(note => (
+                {notes.map(note => {
+                  const topic = noteTopicMap[note.topic_id]
+                  return (
                   <div key={note.id} className="dash-note-item">
                     {editingNote === note.id ? (
                       <div className="dash-note-edit">
-                        <textarea
-                          className="input textarea"
-                          value={editingText}
-                          onChange={e => setEditingText(e.target.value)}
-                          rows={2}
-                          maxLength={1000}
-                          autoFocus
-                        />
+                        <input className="input" value={editingTitle} onChange={e => setEditingTitle(e.target.value)} placeholder="Title" maxLength={200} autoFocus />
+                        <textarea className="input textarea" value={editingText} onChange={e => setEditingText(e.target.value)} rows={3} maxLength={5000} />
+                        <select className="input dash-notes-topic-select" value={editingTopicId} onChange={e => setEditingTopicId(e.target.value)}>
+                          {noteTopics.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+                        </select>
                         <div className="dash-note-edit-actions">
                           <button className="add-btn" onClick={() => updateNote(note.id)}>Save</button>
-                          <button className="add-btn dash-note-cancel" onClick={() => { setEditingNote(null); setEditingText('') }}>Cancel</button>
+                          <button className="add-btn dash-note-cancel" onClick={() => { setEditingNote(null); setEditingTitle(''); setEditingText('') }}>Cancel</button>
                         </div>
                       </div>
                     ) : (
                       <>
-                        <p className="dash-note-text">{note.content}</p>
+                        <div className="dash-note-body">
+                          <div className="dash-note-title-row">
+                            <p className="dash-note-title">{note.title || 'Untitled'}</p>
+                            {topic && <span className="dash-note-topic-tag" style={{ background: `${topic.color}22`, color: topic.color, borderColor: `${topic.color}44` }}>{topic.name}</span>}
+                          </div>
+                          {note.content && <p className="dash-note-text">{note.content}</p>}
+                        </div>
                         <div className="dash-note-actions">
                           <button
                             className="icon-btn"
-                            onClick={() => { setEditingNote(note.id); setEditingText(note.content) }}
+                            onClick={() => { setEditingNote(note.id); setEditingTitle(note.title); setEditingText(note.content); setEditingTopicId(note.topic_id) }}
                             aria-label="Edit note"
                           ><EditIcon /></button>
                           <button
@@ -680,7 +706,8 @@ function MobilePlanner({
                       </>
                     )}
                   </div>
-                ))}
+                  )
+                })}
               </div>
             </div>
           </div>

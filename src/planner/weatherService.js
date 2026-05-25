@@ -91,6 +91,7 @@ export async function fetchWeather() {
     "windspeed_10m_max",
     "relative_humidity_2m_max",
   ].join(","));
+  url.searchParams.set("hourly", "precipitation_probability");
   url.searchParams.set("current_weather", "true");
   url.searchParams.set("temperature_unit", "fahrenheit");
   url.searchParams.set("wind_speed_unit", "mph");
@@ -103,7 +104,18 @@ export async function fetchWeather() {
   const data = await res.json();
 
   const daily = data.daily;
+  const hourly = data.hourly;
   const current = data.current_weather;
+
+  // Group hourly precipitation probability by date (24 values per day)
+  const hourlyPrecipByDate = {};
+  if (hourly?.time && hourly?.precipitation_probability) {
+    hourly.time.forEach((t, i) => {
+      const d = t.slice(0, 10);
+      if (!hourlyPrecipByDate[d]) hourlyPrecipByDate[d] = [];
+      hourlyPrecipByDate[d].push(hourly.precipitation_probability[i] ?? 0);
+    });
+  }
 
   const days = daily.time.map((date, i) => ({
     date,
@@ -114,6 +126,7 @@ export async function fetchWeather() {
     weathercode: daily.weathercode[i],
     wind_speed_mph: daily.windspeed_10m_max?.[i] ?? current.windspeed,
     humidity: daily.relative_humidity_2m_max?.[i] ?? null,
+    hourly_precip_pct: hourlyPrecipByDate[date] || [],
   }));
 
   return {
