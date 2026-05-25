@@ -1319,7 +1319,7 @@ export default function DashboardView({
                       ))}
                     </div>
                     <div className="dash-week-precip-labels">
-                      <span>12a</span><span>6a</span><span>12p</span><span>6p</span><span>12a</span>
+                      <span>12a</span><span>3a</span><span>6a</span><span>9a</span><span>12p</span><span>3p</span><span>6p</span><span>9p</span><span>12a</span>
                     </div>
                   </div>
                 </div>

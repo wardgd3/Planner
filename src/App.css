@@ -3398,7 +3398,7 @@ body.pomo-focus-active .dash-card {
 }
 .dash-week-precip-pct {
   font-family: var(--font-mono);
-  font-size: 7px;
+  font-size: 9px;
   color: var(--text-secondary);
   line-height: 1;
   white-space: nowrap;
@@ -3417,7 +3417,7 @@ body.pomo-focus-active .dash-card {
   display: flex;
   justify-content: space-between;
   font-family: var(--font-mono);
-  font-size: 9px;
+  font-size: 10px;
   color: var(--muted);
   padding: 0 2px;
 }
