@@ -23,7 +23,16 @@
       "mcp__ba8af099-3825-48c0-8b1c-1752d68b11ee__list_projects",
       "mcp__ba8af099-3825-48c0-8b1c-1752d68b11ee__list_tables",
       "mcp__ba8af099-3825-48c0-8b1c-1752d68b11ee__execute_sql",
-      "mcp__ba8af099-3825-48c0-8b1c-1752d68b11ee__apply_migration"
+      "mcp__ba8af099-3825-48c0-8b1c-1752d68b11ee__apply_migration",
+      "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\Grant\\\\OneDrive\\\\Desktop\\\\Projects\\\\planner_github\" -Recurse -Directory)",
+      "Bash(Select-Object -First 30 FullName)",
+      "PowerShell(Get-Process -Name \"node\" -ErrorAction SilentlyContinue)",
+      "PowerShell(cd \"C:\\\\Users\\\\Grant\\\\OneDrive\\\\Desktop\\\\Projects\\\\planner_github\"; $env:NODE_OPTIONS=\"--use-system-ca\"; npm install @tiptap/react @tiptap/starter-kit @tiptap/extension-underline @tiptap/extension-text-align @tiptap/extension-placeholder @tiptap/pm 2>&1)",
+      "PowerShell(Get-ChildItem \"C:\\\\Users\\\\Grant\\\\OneDrive\\\\Desktop\\\\Projects\\\\planner_github\\\\node_modules\\\\@tiptap\" -Recurse -Filter \"index.js\" | ForEach-Object { $_.FullName + \" \\(\" + $_.Length + \" bytes\\)\" } | Select-Object -First 30)",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)",
+      "Bash(git push *)",
+      "Bash(git commit -m '@ *)"
     ]
   }
 }
