@@ -390,12 +390,12 @@
 
 /* ── Parchment Amber (light) ── */
 [data-theme="parchment-amber"] {
-  --bg: #fdfaf5;
-  --surface: #f5ede0;
-  --surface2: #edebca;
-  --surface3: #f4f5ec;
+  --bg: #e9e6e1;
+  --surface: #e1dace;
+  --surface2: #dad8ba;
+  --surface3: #e0e1d9;
   --border: #d6c9a0;
-  --border-subtle: #e2d8c0;
+  --border-subtle: #d0c7b1;
   --text: #1a1340;
   --text-secondary: #7a5530;
   --muted: #a0b060;
@@ -412,12 +412,12 @@
 
 /* ── Chalk Violet (light) ── */
 [data-theme="chalk-violet"] {
-  --bg: #ecedf1;
-  --surface: #eceef8;
-  --surface2: #dbd8f0;
-  --surface3: #f4f5f9;
+  --bg: #d9dade;
+  --surface: #d9dbe4;
+  --surface2: #c9c7dd;
+  --surface3: #e0e1e5;
   --border: #c8c4e8;
-  --border-subtle: #d8d5f0;
+  --border-subtle: #c7c4dd;
   --text: #1a1340;
   --text-secondary: #6c64a0;
   --muted: #9088c0;
@@ -432,12 +432,12 @@
 
 /* ── Linen Jade (light) ── */
 [data-theme="linen-jade"] {
-  --bg: #e9efec;
-  --surface: #e2f2e0;
-  --surface2: #c8dfd0;
-  --surface3: #f4f9f6;
+  --bg: #d6dcd9;
+  --surface: #d0dfce;
+  --surface2: #b8cdbf;
+  --surface3: #e0e5e2;
   --border: #b0d0c8;
-  --border-subtle: #c4e0d8;
+  --border-subtle: #b4cec7;
   --text: #0a2a18;
   --text-secondary: #2c6648;
   --muted: #7aaa90;
@@ -452,12 +452,12 @@
 
 /* ── Studio White (light) ── */
 [data-theme="studio-white"] {
-  --bg: #edeef0;
-  --surface: #eef0f4;
-  --surface2: #dde1e8;
-  --surface3: #f5f6f8;
+  --bg: #dadbdd;
+  --surface: #dbdde0;
+  --surface2: #cbcfd5;
+  --surface3: #e1e2e4;
   --border: #c8cdd6;
-  --border-subtle: #d8dce4;
+  --border-subtle: #c7cad2;
   --text: #1a1e28;
   --text-secondary: #4a5568;
   --muted: #8892a4;
@@ -474,12 +474,12 @@
 
 /* ── Sand Coral (light) ── */
 [data-theme="sand-coral"] {
-  --bg: #f2f3e5;
-  --surface: #f5e8d8;
-  --surface2: #e8ceb0;
-  --surface3: #f5f0ec;
+  --bg: #dfe0d3;
+  --surface: #e1d5c7;
+  --surface2: #d5bea2;
+  --surface3: #e1ddd9;
   --border: #e0c0a8;
-  --border-subtle: #ead5c0;
+  --border-subtle: #d7c4b1;
   --text: #2a0e0a;
   --text-secondary: #804030;
   --muted: #c08070;
@@ -494,12 +494,12 @@
 
 /* ── Pastel Ice ── */
 [data-theme="neon-ice-light"] {
-  --bg: #e9eef1;
-  --surface: #e4f0f8;
-  --surface2: #c8e0f0;
-  --surface3: #f2f7fa;
+  --bg: #d6dbde;
+  --surface: #d2dde4;
+  --surface2: #b8cedd;
+  --surface3: #dfe3e6;
   --border: #a8d0e8;
-  --border-subtle: #c0ddf0;
+  --border-subtle: #b1cbdd;
   --text: #0a1820;
   --text-secondary: #285878;
   --muted: #70a0b8;
@@ -516,12 +516,12 @@
 
 /* ── Pastel Cyan ── */
 [data-theme="neon-cyan-light"] {
-  --bg: #e7efef;
-  --surface: #e0f2f2;
-  --surface2: #c0e4e4;
-  --surface3: #f0f5f5;
+  --bg: #d5dcdc;
+  --surface: #cedfdf;
+  --surface2: #b1d2d2;
+  --surface3: #dde1e1;
   --border: #a0d4d4;
-  --border-subtle: #b8e0e0;
+  --border-subtle: #a9cece;
   --text: #0a2020;
   --text-secondary: #206060;
   --muted: #60a0a0;
@@ -538,12 +538,12 @@
 
 /* ── Pastel Lime ── */
 [data-theme="neon-lime-light"] {
-  --bg: #ebeee7;
-  --surface: #e8f0d8;
-  --surface2: #d0e4b8;
-  --surface3: #f1f4ed;
+  --bg: #d8dbd5;
+  --surface: #d5ddc7;
+  --surface2: #bfd2a9;
+  --surface3: #dee0da;
   --border: #b8d4a0;
-  --border-subtle: #c8dfb0;
+  --border-subtle: #b8cda2;
   --text: #141c0a;
   --text-secondary: #3a5820;
   --muted: #78a058;
@@ -560,12 +560,12 @@
 
 /* ── Pastel Rose ── */
 [data-theme="neon-rose-light"] {
-  --bg: #f1e9eb;
-  --surface: #f8e4ea;
-  --surface2: #f0c8d4;
-  --surface3: #f7eff1;
+  --bg: #ded6d8;
+  --surface: #e4d2d7;
+  --surface2: #ddb8c3;
+  --surface3: #e3dcde;
   --border: #e4a8b8;
-  --border-subtle: #ecc0cc;
+  --border-subtle: #d9b1bc;
   --text: #280a14;
   --text-secondary: #802040;
   --muted: #b86880;
@@ -582,12 +582,12 @@
 
 /* ── Pastel Magenta ── */
 [data-theme="neon-magenta-light"] {
-  --bg: #efe9ef;
-  --surface: #f4e4f4;
-  --surface2: #e8c8e8;
-  --surface3: #f6f0f6;
+  --bg: #dcd6dc;
+  --surface: #e0d2e0;
+  --surface2: #d5b8d5;
+  --surface3: #e2dde2;
   --border: #d8a8d8;
-  --border-subtle: #e4bce4;
+  --border-subtle: #d2add2;
   --text: #201020;
   --text-secondary: #6a306a;
   --muted: #a070a0;
@@ -604,12 +604,12 @@
 
 /* ── Blueprint ── */
 [data-theme="blueprint"] {
-  --bg: #eaedf1;
-  --surface: #e4edf6;
-  --surface2: #b8cce2;
-  --surface3: #f2f5f9;
+  --bg: #d7dade;
+  --surface: #d2dae2;
+  --surface2: #a9bcd0;
+  --surface3: #dfe1e5;
   --border: #8faac6;
-  --border-subtle: #b8cce2;
+  --border-subtle: #a9bcd0;
   --text: #0a1a2e;
   --text-secondary: #1e3a5c;
   --muted: #6a88a8;
@@ -626,12 +626,12 @@
 
 /* ── Field Tan ── */
 [data-theme="field-tan"] {
-  --bg: #e9e2d5;
-  --surface: #e8ddc4;
-  --surface2: #c8b488;
-  --surface3: #f0eadd;
+  --bg: #d6d0c4;
+  --surface: #d5cbb4;
+  --surface2: #b8a67d;
+  --surface3: #ddd7cb;
   --border: #b49c70;
-  --border-subtle: #ccb88c;
+  --border-subtle: #bca981;
   --text: #2a1e0a;
   --text-secondary: #5c4820;
   --muted: #9e8a60;
@@ -648,12 +648,12 @@
 
 /* ── Carbon & Slate ── */
 [data-theme="carbon"] {
-  --bg: #eaebed;
-  --surface: #e4e6ea;
-  --surface2: #b0b6be;
-  --surface3: #f2f3f5;
+  --bg: #d7d8da;
+  --surface: #d2d4d7;
+  --surface2: #a2a7af;
+  --surface3: #dfe0e1;
   --border: #98a0aa;
-  --border-subtle: #c4c8d0;
+  --border-subtle: #b4b8bf;
   --text: #0f1318;
   --text-secondary: #3a424c;
   --muted: #70788a;
@@ -730,12 +730,12 @@
 
 /* ── Forest Light — snowline + fern, gold accent ── */
 [data-theme="forest-light"] {
-  --bg: #EAEFEB;
-  --surface: #EDF2EE;
-  --surface2: #C8D4CF;
-  --surface3: #F2F7F3;
+  --bg: #d7dcd8;
+  --surface: #dadfdb;
+  --surface2: #b8c3be;
+  --surface3: #dfe3e0;
   --border: #8AA095;
-  --border-subtle: #C8D4CF;
+  --border-subtle: #b8c3be;
   --text: #0D1F17;
   --text-secondary: #2E4A3E;
   --muted: #5C7A6E;
@@ -751,12 +751,12 @@
 }
 
 [data-theme="alpine"] {
-  --bg: #e9ede9;
-  --surface: #e2ece2;
-  --surface2: #a8c0a8;
-  --surface3: #f1f5f1;
+  --bg: #d6dad6;
+  --surface: #d0d9d0;
+  --surface2: #9bb19b;
+  --surface3: #dee1de;
   --border: #90a890;
-  --border-subtle: #c0d0c0;
+  --border-subtle: #b1bfb1;
   --text: #0c1a14;
   --text-secondary: #2a483a;
   --muted: #708878;
@@ -773,12 +773,12 @@
 
 /* ── Wes Anderson — diorama pastel, hotel lobby red ── */
 [data-theme="wes-anderson"] {
-  --bg: #FBEEDD;
-  --surface: #F5DDC8;
-  --surface2: #EFC4B0;
-  --surface3: #FDF5E8;
+  --bg: #e7dbcb;
+  --surface: #e1cbb8;
+  --surface2: #dcb4a2;
+  --surface3: #e9e1d5;
   --border: #E0A998;
-  --border-subtle: #ECC4B4;
+  --border-subtle: #d9b4a6;
   --text: #3A1818;
   --text-secondary: #7A3838;
   --muted: #B07868;
@@ -835,12 +835,12 @@
 
 /* ── Settlers of Catan — wheat & brick, hex tile warmth ── */
 [data-theme="catan"] {
-  --bg: #F8E8B8;
-  --surface: #EFD89C;
-  --surface2: #E0BC68;
-  --surface3: #FBF0CC;
+  --bg: #e4d5a9;
+  --surface: #dcc790;
+  --surface2: #cead60;
+  --surface3: #e7ddbc;
   --border: #B89058;
-  --border-subtle: #D4B070;
+  --border-subtle: #c3a267;
   --text: #2A1A08;
   --text-secondary: #5A3818;
   --muted: #8A6838;
@@ -877,12 +877,12 @@
 
 /* ── Chess — alternating walnut & ivory, bronze trim ── */
 [data-theme="chess"] {
-  --bg: #F4E4C2;
-  --surface: #E8CC95;
-  --surface2: #C8985A;
-  --surface3: #FAEFD2;
+  --bg: #e0d2b2;
+  --surface: #d5bc89;
+  --surface2: #b88c53;
+  --surface3: #e6dcc1;
   --border: #8C5A30;
-  --border-subtle: #B88B58;
+  --border-subtle: #a98051;
   --text: #1A0E04;
   --text-secondary: #4A2810;
   --muted: #7A5028;
@@ -960,12 +960,12 @@
 
 /* ── National Parks — vintage poster, ranger green & terracotta ── */
 [data-theme="nat-parks"] {
-  --bg: #F4EAD0;
-  --surface: #E8D4A8;
-  --surface2: #C8B078;
-  --surface3: #FAF3E0;
+  --bg: #e0d7bf;
+  --surface: #d5c39b;
+  --surface2: #b8a26e;
+  --surface3: #e6e0ce;
   --border: #8A6E38;
-  --border-subtle: #B89858;
+  --border-subtle: #a98c51;
   --text: #1F2818;
   --text-secondary: #3A4A28;
   --muted: #6A6A48;
@@ -982,12 +982,12 @@
 
 /* ── Commodore 64 — putty case, phosphor blue cursor ── */
 [data-theme="c64"] {
-  --bg: #DCD2BE;
-  --surface: #C8BEA8;
-  --surface2: #B0A88E;
-  --surface3: #E4DCC8;
+  --bg: #cac1af;
+  --surface: #b8af9b;
+  --surface2: #a29b83;
+  --surface3: #d2cab8;
   --border: #948A70;
-  --border-subtle: #B0A88E;
+  --border-subtle: #a29b83;
   --text: #1A1828;
   --text-secondary: #2A2858;
   --muted: #5A5878;
@@ -1004,12 +1004,12 @@
 
 /* ── Risograph — fluoro coral on cream paper, ink black ── */
 [data-theme="risograph"] {
-  --bg: #FBF8E4;
-  --surface: #F5EFC8;
-  --surface2: #EFE4B0;
-  --surface3: #FDFAEA;
+  --bg: #e7e4d2;
+  --surface: #e1dcb8;
+  --surface2: #dcd2a2;
+  --surface3: #e9e6d7;
   --border: #C8B070;
-  --border-subtle: #DCC890;
+  --border-subtle: #cab884;
   --text: #181810;
   --text-secondary: #383830;
   --muted: #707068;
@@ -1026,12 +1026,12 @@
 
 /* ── Deep Aquarium — bioluminescent calm, clownfish coral pop ── */
 [data-theme="aquarium"] {
-  --bg: #DFF2EE;
-  --surface: #C0E4DC;
-  --surface2: #88C8BE;
-  --surface3: #ECF7F3;
+  --bg: #cddfdb;
+  --surface: #b1d2ca;
+  --surface2: #7db8af;
+  --surface3: #d9e3e0;
   --border: #4A9486;
-  --border-subtle: #80B8AE;
+  --border-subtle: #76a9a0;
   --text: #061E24;
   --text-secondary: #1A4248;
   --muted: #487472;
@@ -1048,12 +1048,12 @@
 
 /* ── 70s Warm Retro ── */
 [data-theme="seventies-warm-retro"] {
-  --bg: #EAE5DD;
-  --surface: #EDE5D8;
-  --surface2: #E0D0B8;
-  --surface3: #F5F0E8;
+  --bg: #d7d3cb;
+  --surface: #dad3c7;
+  --surface2: #cebfa9;
+  --surface3: #e1ddd5;
   --border: #D4C0A0;
-  --border-subtle: #E0D0B8;
+  --border-subtle: #cebfa9;
   --text: #2E1A0E;
   --text-secondary: #7B3F2D;
   --muted: #A88060;
@@ -1090,12 +1090,12 @@
 
 /* ── William Morris Garden ── */
 [data-theme="william-morris"] {
-  --bg: #EFEFEC;
-  --surface: #F0EDE4;
-  --surface2: #E0DAC8;
-  --surface3: #F5F5F2;
+  --bg: #dcdcd9;
+  --surface: #dddad2;
+  --surface2: #cec9b8;
+  --surface3: #e1e1df;
   --border: #C8C0A8;
-  --border-subtle: #D8D2C0;
+  --border-subtle: #c7c1b1;
   --text: #344E41;
   --text-secondary: #588157;
   --muted: #8AA078;
@@ -1132,12 +1132,12 @@
 
 /* ── Golden Hour Study ── */
 [data-theme="golden-hour"] {
-  --bg: #FDF6EC;
-  --surface: #F8ECD8;
-  --surface2: #F0D8B8;
-  --surface3: #FFFFFF;
+  --bg: #e9e2d9;
+  --surface: #e4d9c7;
+  --surface2: #ddc7a9;
+  --surface3: #ebebeb;
   --border: #E0C0A0;
-  --border-subtle: #E8D0B0;
+  --border-subtle: #d5bfa2;
   --text: #6B3A2A;
   --text-secondary: #8B5A3A;
   --muted: #B89070;
@@ -1174,12 +1174,12 @@
 
 /* ── Mucha Violet ── */
 [data-theme="mucha-violet"] {
-  --bg: #F0EBF4;
-  --surface: #E8E0F0;
-  --surface2: #D9C6E8;
-  --surface3: #FFFFFF;
+  --bg: #ddd8e0;
+  --surface: #d5cedd;
+  --surface2: #c8b6d5;
+  --surface3: #ebebeb;
   --border: #C8B0D8;
-  --border-subtle: #D4BCE4;
+  --border-subtle: #c3add2;
   --text: #3D1F5C;
   --text-secondary: #6A408A;
   --muted: #9878B0;
@@ -2202,7 +2202,7 @@ h1 {
 .dash-card:hover { border-color: var(--surface3); }
 .mobile-month-notes { background: transparent; border: none; padding: 0; }
 .mobile-month-notes .dash-card-title { margin-bottom: 12px; }
-.sortable-card { position: relative; }
+.sortable-card { position: relative; min-width: 0; }
 .sortable-card.dragging { cursor: grabbing; }
 .dash-card-resize-handle {
   position: absolute;
