@@ -151,6 +151,7 @@ export default function ProjectsView({ projects, tasks, habits, taskTemplates = 
           projects={projects}
           habits={habits}
           templates={taskTemplates}
+          centered
           onSave={async (data) => {
             const payload = { ...data, project_id: data.project_id || taskForm.projectId || null }
             taskForm.task ? await onEditTask(taskForm.task.id, payload) : await onAddTask(payload)

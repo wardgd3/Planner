@@ -11,7 +11,7 @@ const WEEKDAY_LABELS = [
   { d: 6, short: 'S', name: 'Sat' },
 ]
 
-export default function TaskForm({ task, series, projects, habits, templates = [], onSave, onCancel, centered = false }) {
+export default function TaskForm({ task, series, projects, habits, templates = [], onSave, onCancel, centered = true }) {
   const isEdit = !!task
   const backingSeries = series || null
 

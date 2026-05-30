@@ -380,6 +380,7 @@ export default function ProjectsDashboard({ habits }) {
           projects={projects}
           habits={habits}
           templates={taskTemplates}
+          centered
           onSave={async (data) => {
             const payload = {
               ...data,
