@@ -6,6 +6,7 @@ import ProjectForm from './ProjectForm'
 import TaskForm from './TaskForm'
 import { createSeries, updateSeriesRule, ensureSeriesScheduled, upsertTemplate } from './taskRecurrence'
 import { EditIcon } from '../icons'
+import ProjectNotes from './ProjectNotes'
 
 const STATUS_COLUMNS = [
   { key: 'todo', label: 'To Do' },
@@ -354,7 +355,9 @@ export default function ProjectsDashboard({ habits }) {
               onDeleteTask={deleteTask}
               onSetTaskStatus={setTaskStatus}
               onScheduleBlock={(task, date) => scheduleTaskAsBlock(task, selectedProject, date)}
-            />
+            >
+              <ProjectNotes projectId={selectedProject.id} />
+            </ProjectBoard>
           )}
         </main>
       </div>
@@ -398,8 +401,10 @@ function ProjectBoard({
   project, tasksByStatus, progress, habitMap,
   onEditProject, onDeleteProject, onNewTask,
   onEditTask, onDeleteTask, onSetTaskStatus, onScheduleBlock,
+  children,
 }) {
   const today = todayStr()
+  const [activeTab, setActiveTab] = useState('tasks')
   const dueLabel = project.due_date
     ? (() => {
         const d = daysBetween(today, project.due_date)
@@ -438,37 +443,47 @@ function ProjectBoard({
         </div>
       </div>
 
-      {/* Kanban */}
-      <div className="pd-kanban">
-        {STATUS_COLUMNS.map(col => {
-          const colTasks = tasksByStatus[col.key] || []
-          return (
-            <div key={col.key} className={`pd-col pd-col-${col.key}`}>
-              <div className="pd-col-head">
-                <span className="pd-col-label">{col.label}</span>
-                <span className="pd-col-count">{colTasks.length}</span>
-                <button className="pd-col-add" onClick={() => onNewTask(col.key)} aria-label={`Add task to ${col.label}`}>+</button>
-              </div>
-              <div className="pd-col-body">
-                {colTasks.length === 0 && (
-                  <div className="pd-col-empty" onClick={() => onNewTask(col.key)}>+ Add task</div>
-                )}
-                {colTasks.map(task => (
-                  <TaskCard
-                    key={task.id}
-                    task={task}
-                    habit={task.habit_id ? habitMap[task.habit_id] : null}
-                    onEdit={() => onEditTask(task)}
-                    onDelete={() => onDeleteTask(task.id)}
-                    onSetStatus={(s) => onSetTaskStatus(task, s)}
-                    onScheduleBlock={col.key !== 'done' ? (date) => onScheduleBlock(task, date) : null}
-                  />
-                ))}
-              </div>
-            </div>
-          )
-        })}
+      {/* Tab Nav */}
+      <div className="pd-tab-nav">
+        <button className={`pd-tab ${activeTab === 'tasks' ? 'active' : ''}`} onClick={() => setActiveTab('tasks')}>Tasks</button>
+        <button className={`pd-tab ${activeTab === 'notes' ? 'active' : ''}`} onClick={() => setActiveTab('notes')}>Notes</button>
       </div>
+
+      {/* Tab Content */}
+      {activeTab === 'tasks' && (
+        <div className="pd-kanban">
+          {STATUS_COLUMNS.map(col => {
+            const colTasks = tasksByStatus[col.key] || []
+            return (
+              <div key={col.key} className={`pd-col pd-col-${col.key}`}>
+                <div className="pd-col-head">
+                  <span className="pd-col-label">{col.label}</span>
+                  <span className="pd-col-count">{colTasks.length}</span>
+                  <button className="pd-col-add" onClick={() => onNewTask(col.key)} aria-label={`Add task to ${col.label}`}>+</button>
+                </div>
+                <div className="pd-col-body">
+                  {colTasks.length === 0 && (
+                    <div className="pd-col-empty" onClick={() => onNewTask(col.key)}>+ Add task</div>
+                  )}
+                  {colTasks.map(task => (
+                    <TaskCard
+                      key={task.id}
+                      task={task}
+                      habit={task.habit_id ? habitMap[task.habit_id] : null}
+                      onEdit={() => onEditTask(task)}
+                      onDelete={() => onDeleteTask(task.id)}
+                      onSetStatus={(s) => onSetTaskStatus(task, s)}
+                      onScheduleBlock={col.key !== 'done' ? (date) => onScheduleBlock(task, date) : null}
+                    />
+                  ))}
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      )}
+
+      {activeTab === 'notes' && children}
     </div>
   )
 }

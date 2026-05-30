@@ -4643,6 +4643,38 @@ body.pomo-focus-active .dash-card {
 .pd-board-due.overdue { background: rgba(191,68,40,0.12); color: var(--danger); }
 .pd-board-actions { display: flex; gap: 6px; }
 
+/* Tab Nav */
+.pd-tab-nav {
+  display: flex;
+  gap: 4px;
+  margin: 16px 0 0 26px;
+  border-bottom: 1px solid var(--border-subtle);
+  padding-bottom: 0;
+}
+.pd-tab {
+  font-family: var(--font-ui);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--muted);
+  background: none;
+  border: none;
+  padding: 8px 16px;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  transition: color 0.15s, border-color 0.15s;
+}
+.pd-tab:hover { color: var(--text-secondary); }
+.pd-tab.active {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+}
+
+/* Project Notes Wrapper */
+.pn-wrap {
+  margin-top: 18px;
+}
+
 /* Kanban */
 .pd-kanban {
   display: grid;
