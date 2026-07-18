@@ -34,7 +34,13 @@
       "Bash(git push *)",
       "Bash(git commit -m '@ *)",
       "Bash(node -e ' *)",
-      "Bash(git commit -m 'center TaskForm modal on desktop by defaulting centered prop to true *)"
+      "Bash(git commit -m 'center TaskForm modal on desktop by defaulting centered prop to true *)",
+      "Bash(where npm *)",
+      "Bash(where node *)",
+      "PowerShell(Get-Command npm -ErrorAction SilentlyContinue)",
+      "PowerShell(Get-Command node -ErrorAction SilentlyContinue)",
+      "Bash(python3 -c ' *)",
+      "Bash(find \"/c/Users/wardg/AppData/Local/claude-cli-nodejs\" -maxdepth 3 -iname \"node.exe\" 2>/dev/null)"
     ]
   }
 }

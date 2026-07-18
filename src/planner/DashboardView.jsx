@@ -301,6 +301,26 @@ function Sparkline({ data, color }) {
 }
 
 
+// Splits a task list into project-grouped containers (sorted by project name)
+// plus a flat bucket of tasks with no project assigned.
+function groupTasksByProject(taskList, projects) {
+  const noProject = []
+  const byProject = new Map()
+  for (const t of taskList) {
+    if (t.project_id) {
+      if (!byProject.has(t.project_id)) byProject.set(t.project_id, [])
+      byProject.get(t.project_id).push(t)
+    } else {
+      noProject.push(t)
+    }
+  }
+  const groups = Array.from(byProject.entries())
+    .map(([projectId, projTasks]) => ({ project: projects.find(p => p.id === projectId), tasks: projTasks }))
+    .filter(g => g.project)
+  groups.sort((a, b) => a.project.name.localeCompare(b.project.name))
+  return { groups, noProject }
+}
+
 export default function DashboardView({
   tasks, blocks, projects, habits,
   blockTaskLinks = [],
@@ -842,6 +862,7 @@ export default function DashboardView({
     () => tasks.filter(t => t.due_date === today && t.status === 'done' && !linkedTaskIdSet.has(t.id)),
     [tasks, today, linkedTaskIdSet]
   )
+  const todayTaskGroups = useMemo(() => groupTasksByProject(todayTasks, projects), [todayTasks, projects])
 
   // ── Week data ──
   const weekDays = useMemo(() => getWeekDays(weekOffset), [weekOffset])
@@ -864,6 +885,7 @@ export default function DashboardView({
       .sort((a, b) => { const o = { high: 0, medium: 1, low: 2 }; return o[a.priority] - o[b.priority] }),
     [tasks, selectedDay, linkedTaskIdSet]
   )
+  const selectedTaskGroups = useMemo(() => groupTasksByProject(selectedTasks, projects), [selectedTasks, projects])
 
   // ── Weekly tasks (tasks due anywhere in the displayed week) ──
   const weekRangeStart = toDateStr(weekDays[0])
@@ -874,6 +896,7 @@ export default function DashboardView({
       .sort((a, b) => (a.due_date || '').localeCompare(b.due_date || '')),
     [tasks, weekRangeStart, weekRangeEnd]
   )
+  const weeklyTaskGroups = useMemo(() => groupTasksByProject(weeklyTasks, projects), [weeklyTasks, projects])
   const weeklyDoneCount = useMemo(
     () => tasks.filter(t => t.due_date && t.due_date >= weekRangeStart && t.due_date <= weekRangeEnd && t.status === 'done').length,
     [tasks, weekRangeStart, weekRangeEnd]
@@ -976,6 +999,87 @@ export default function DashboardView({
     }
   }
 
+  // ── Row renderers (shared between flat and project-grouped task lists) ──
+  function renderTodayTaskRow(task) {
+    const isTaskExpanded = expandedTaskId === task.id
+    const hasNotes = !!(task.notes && task.notes.trim())
+    return (
+      <li key={task.id} className={`task-row compact ${isTaskExpanded ? 'expanded' : ''}`}>
+        <button className="task-check small" onClick={() => onCompleteTask(task)} aria-label="Complete task" />
+        <div className="task-info" onClick={() => setExpandedTaskId(isTaskExpanded ? null : task.id)} style={{ cursor: 'pointer' }}>
+          <p className="task-title">
+            {task.title}
+            {hasNotes && <span className="task-notes-indicator" aria-label="Has notes">📝</span>}
+          </p>
+          {isTaskExpanded && hasNotes && (
+            <p className="task-notes-expanded">{task.notes}</p>
+          )}
+        </div>
+        {task.due_time && <span className="task-time">{task.due_time.slice(0, 5)}</span>}
+        <span className="priority-dot" style={{ background: priorityColor(task.priority) }} />
+        <div className="task-actions">
+          <button className="icon-btn" onClick={e => { e.stopPropagation(); setTaskForm({ task }) }} aria-label="Edit task"><EditIcon /></button>
+          <button className="icon-btn" onClick={e => { e.stopPropagation(); onDeleteTask(task.id) }} aria-label="Delete task">🗑</button>
+        </div>
+      </li>
+    )
+  }
+
+  function renderSelectedTaskRow(task) {
+    return (
+      <div key={task.id} className="dash-week-detail-task">
+        <span className="priority-dot" style={{ background: priorityColor(task.priority) }} />
+        <span className="dash-tl-title">{task.title}</span>
+      </div>
+    )
+  }
+
+  function renderWeeklyTaskRow(task) {
+    const d = new Date(task.due_date + 'T00:00:00')
+    const dowShort = WEEK_HEADERS[d.getDay()]
+    return (
+      <li key={task.id} className="dash-weekly-task-item">
+        <button
+          className="task-check small"
+          onClick={() => onCompleteTask(task)}
+          aria-label="Complete task"
+        />
+        <span className="priority-dot" style={{ background: priorityColor(task.priority) }} />
+        <span
+          className="dash-weekly-task-title"
+          onClick={() => setTaskForm({ task })}
+        >
+          {task.title}
+        </span>
+        <span className="dash-weekly-task-due">{dowShort} {d.getDate()}</span>
+        <button
+          className="dash-tl-delete"
+          onClick={() => onDeleteTask(task.id)}
+          aria-label="Delete task"
+        >✕</button>
+      </li>
+    )
+  }
+
+  function renderProjectTaskGroup(group, renderRow, listTag, listClassName, prefillDate) {
+    const ListTag = listTag
+    return (
+      <div key={group.project.id} className="project-task-group">
+        <div className="project-task-group-header">
+          <span className="project-color-dot" style={{ background: group.project.color }} />
+          <span className="project-task-group-title">{group.project.name}</span>
+        </div>
+        <ListTag className={listClassName}>
+          {group.tasks.map(renderRow)}
+        </ListTag>
+        <button
+          className="add-btn project-task-group-add"
+          onClick={() => setTaskForm({ prefillDate, prefillProjectId: group.project.id })}
+        >+ Add task</button>
+      </div>
+    )
+  }
+
   function prevMonth() {
     if (calMonth === 0) { setCalMonth(11); setCalYear(y => y - 1) }
     else setCalMonth(m => m - 1)
@@ -1055,31 +1159,9 @@ export default function DashboardView({
             {todayTasks.length === 0 && doneTasks.length === 0 && (
               <p className="empty-msg" style={{ padding: '12px 0' }}>No tasks due today</p>
             )}
+            {todayTaskGroups.groups.map(group => renderProjectTaskGroup(group, renderTodayTaskRow, 'ul', 'task-list', today))}
             <ul className="task-list">
-              {todayTasks.map(task => {
-                const isTaskExpanded = expandedTaskId === task.id
-                const hasNotes = !!(task.notes && task.notes.trim())
-                return (
-                  <li key={task.id} className={`task-row compact ${isTaskExpanded ? 'expanded' : ''}`}>
-                    <button className="task-check small" onClick={() => onCompleteTask(task)} aria-label="Complete task" />
-                    <div className="task-info" onClick={() => setExpandedTaskId(isTaskExpanded ? null : task.id)} style={{ cursor: 'pointer' }}>
-                      <p className="task-title">
-                        {task.title}
-                        {hasNotes && <span className="task-notes-indicator" aria-label="Has notes">📝</span>}
-                      </p>
-                      {isTaskExpanded && hasNotes && (
-                        <p className="task-notes-expanded">{task.notes}</p>
-                      )}
-                    </div>
-                    {task.due_time && <span className="task-time">{task.due_time.slice(0, 5)}</span>}
-                    <span className="priority-dot" style={{ background: priorityColor(task.priority) }} />
-                    <div className="task-actions">
-                      <button className="icon-btn" onClick={e => { e.stopPropagation(); setTaskForm({ task }) }} aria-label="Edit task"><EditIcon /></button>
-                      <button className="icon-btn" onClick={e => { e.stopPropagation(); onDeleteTask(task.id) }} aria-label="Delete task">🗑</button>
-                    </div>
-                  </li>
-                )
-              })}
+              {todayTaskGroups.noProject.map(renderTodayTaskRow)}
               {doneTasks.map(task => (
                 <li key={task.id} className="task-row compact done">
                   <span className="task-check small done">✓</span>
@@ -1359,14 +1441,14 @@ export default function DashboardView({
               {selectedTasks.length === 0 ? (
                 <p className="empty-msg">No tasks</p>
               ) : (
-                <div className="dash-week-detail-list">
-                  {selectedTasks.map(task => (
-                    <div key={task.id} className="dash-week-detail-task">
-                      <span className="priority-dot" style={{ background: priorityColor(task.priority) }} />
-                      <span className="dash-tl-title">{task.title}</span>
+                <>
+                  {selectedTaskGroups.groups.map(group => renderProjectTaskGroup(group, renderSelectedTaskRow, 'div', 'dash-week-detail-list', selectedDay))}
+                  {selectedTaskGroups.noProject.length > 0 && (
+                    <div className="dash-week-detail-list">
+                      {selectedTaskGroups.noProject.map(renderSelectedTaskRow)}
                     </div>
-                  ))}
-                </div>
+                  )}
+                </>
               )}
             </div>
           </div>
@@ -1394,34 +1476,14 @@ export default function DashboardView({
           {weeklyTasks.length === 0 ? (
             <p className="empty-msg">No tasks for this week yet</p>
           ) : (
-            <ul className="dash-weekly-task-list">
-              {weeklyTasks.map(task => {
-                const d = new Date(task.due_date + 'T00:00:00')
-                const dowShort = WEEK_HEADERS[d.getDay()]
-                return (
-                  <li key={task.id} className="dash-weekly-task-item">
-                    <button
-                      className="task-check small"
-                      onClick={() => onCompleteTask(task)}
-                      aria-label="Complete task"
-                    />
-                    <span className="priority-dot" style={{ background: priorityColor(task.priority) }} />
-                    <span
-                      className="dash-weekly-task-title"
-                      onClick={() => setTaskForm({ task })}
-                    >
-                      {task.title}
-                    </span>
-                    <span className="dash-weekly-task-due">{dowShort} {d.getDate()}</span>
-                    <button
-                      className="dash-tl-delete"
-                      onClick={() => onDeleteTask(task.id)}
-                      aria-label="Delete task"
-                    >✕</button>
-                  </li>
-                )
-              })}
-            </ul>
+            <>
+              {weeklyTaskGroups.groups.map(group => renderProjectTaskGroup(group, renderWeeklyTaskRow, 'ul', 'dash-weekly-task-list', weekRangeEnd))}
+              {weeklyTaskGroups.noProject.length > 0 && (
+                <ul className="dash-weekly-task-list">
+                  {weeklyTaskGroups.noProject.map(renderWeeklyTaskRow)}
+                </ul>
+              )}
+            </>
           )}
         </div>
       </SortableCard>}
@@ -1847,6 +1909,7 @@ export default function DashboardView({
           projects={projects}
           habits={habits}
           templates={taskTemplates}
+          prefillProjectId={taskForm.prefillProjectId}
           onSave={async (data) => {
             const saveData = { ...data, due_date: data.due_date || taskForm.prefillDate || today }
             taskForm.task ? await onEditTask(taskForm.task.id, saveData) : await onAddTask(saveData)

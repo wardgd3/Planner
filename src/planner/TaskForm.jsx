@@ -11,13 +11,13 @@ const WEEKDAY_LABELS = [
   { d: 6, short: 'S', name: 'Sat' },
 ]
 
-export default function TaskForm({ task, series, projects, habits, templates = [], onSave, onCancel, centered = true }) {
+export default function TaskForm({ task, series, projects, habits, templates = [], onSave, onCancel, centered = true, prefillProjectId = '' }) {
   const isEdit = !!task
   const backingSeries = series || null
 
   const [title, setTitle] = useState(task?.title || '')
   const [notes, setNotes] = useState(task?.notes || '')
-  const [projectId, setProjectId] = useState(task?.project_id || '')
+  const [projectId, setProjectId] = useState(task?.project_id || prefillProjectId || '')
   const [habitId, setHabitId] = useState(task?.habit_id || '')
   const [priority, setPriority] = useState(task?.priority || 'medium')
   const [dueDate, setDueDate] = useState(task?.due_date || '')
