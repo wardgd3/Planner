@@ -364,15 +364,14 @@ function AppInner({ user, onLogout }) {
         <button className={`app-tab ${activeTab === 'tracker' ? 'active' : ''}`} onClick={() => setActiveTab('tracker')}>Habits</button>
         <button className={`app-tab desktop-only ${activeTab === 'projects' ? 'active' : ''}`} onClick={() => setActiveTab('projects')}>Projects</button>
         <button className={`app-tab ${activeTab === 'notes' ? 'active' : ''}`} onClick={() => setActiveTab('notes')}>Notes</button>
-        <button className={`app-tab ${activeTab === 'stocking' ? 'active' : ''}`} onClick={() => setActiveTab('stocking')}>Stocking</button>
+        <button className={`app-tab ${activeTab === 'stocking' ? 'active' : ''}`} onClick={() => setActiveTab('stocking')}>Stock</button>
         <div className="settings-wrap">
-          <button className="settings-btn settings-btn-text account-btn" onClick={() => setShowAccount(s => !s)} title="Account">
+          <button className="settings-btn settings-btn-text account-btn" onClick={() => setShowAccount(s => !s)} title="Account" aria-label="Account">
             {user?.user_metadata?.avatar_url ? (
               <img src={user.user_metadata.avatar_url} alt="" className="account-btn-avatar" />
             ) : (
               <span className="account-btn-initial">{(user?.email?.[0] || 'A').toUpperCase()}</span>
             )}
-            <span className="account-btn-label">Account</span>
           </button>
           {showAccount && (
             <div className="settings-popup account-popup">
