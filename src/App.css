@@ -5419,3 +5419,174 @@ body.pomo-focus-active .dash-card {
   .notes-forum-header-actions { opacity: 1; }
   .notes-card-actions { opacity: 1; }
 }
+
+/* ══════════════════════════════════════════════════════════
+   Stocking
+   ══════════════════════════════════════════════════════════ */
+.stk-view {
+  width: 100%; max-width: 1100px; margin: 0 auto;
+  padding: 24px 32px 80px;
+  --stk-tabs-h: 50px;
+}
+.stk-loading { color: var(--muted); text-align: center; padding: 60px 0; font-family: var(--font-ui); }
+.stk-idle { text-align: center; padding: 48px 0; }
+.stk-history-btn.active { border-color: var(--accent); color: var(--accent); }
+
+/* ── New inventory form ── */
+.stk-new-form {
+  display: flex; gap: 8px; align-items: center;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 12px; margin-bottom: 16px;
+}
+.stk-new-form .input { flex: 1; }
+.stk-new-form .confirm-btn { flex: 0 0 auto; padding: 11px 24px; }
+
+/* ── History ── */
+.stk-history { display: flex; flex-direction: column; gap: 6px; margin-bottom: 20px; }
+.stk-history-row {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); padding: 12px 14px;
+  transition: border-color 0.2s;
+}
+.stk-history-row.current { border-color: var(--accent); background: var(--accent-glow); }
+.stk-history-main { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.stk-history-top { display: flex; align-items: center; gap: 8px; }
+.stk-history-store { font-family: var(--font-ui); font-size: 14px; font-weight: 600; color: var(--text); }
+.stk-history-meta { font-size: 12px; color: var(--muted); font-family: var(--font-ui); }
+.stk-badge {
+  font-size: 10px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase;
+  padding: 2px 7px; border-radius: 20px;
+}
+.stk-badge.current { background: var(--accent); color: var(--bg); }
+.stk-badge.open { background: var(--surface3); color: var(--text-secondary); }
+.stk-history-actions { display: flex; align-items: center; gap: 4px; flex: 0 0 auto; }
+.stk-history-actions .icon-btn {
+  font-family: var(--font-ui); font-size: 12px; font-weight: 500;
+  padding: 6px 10px; border-radius: var(--radius-sm); opacity: 0.6;
+}
+.stk-history-actions .icon-btn:hover { background: var(--surface2); opacity: 1; }
+.stk-del:hover { color: var(--danger) !important; }
+
+/* ── Active inventory header ── */
+.stk-active-head {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  border-bottom: 1px solid var(--border); padding-bottom: 12px; margin-bottom: 12px;
+}
+.stk-active-id { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.stk-active-store { font-family: var(--font-display); font-size: 22px; font-weight: 600; color: var(--text); }
+.stk-active-date { font-size: 12px; color: var(--muted); font-family: var(--font-ui); }
+.stk-active-right { display: flex; align-items: center; gap: 10px; flex: 0 0 auto; }
+.stk-close-btn { padding: 9px 20px; }
+.stk-save { font-size: 11px; font-family: var(--font-ui); color: var(--muted); min-width: 60px; text-align: right; }
+.stk-save-saved { color: var(--success); }
+.stk-save-error { color: var(--accent); }
+
+/* ── Progress ── */
+.stk-progress { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; }
+.stk-bar { flex: 1; height: 5px; border-radius: 20px; background: var(--surface2); overflow: hidden; }
+.stk-bar-fill { height: 100%; background: var(--accent); transition: width 0.25s ease; }
+.stk-progress-count { font-family: var(--font-mono); font-size: 11px; color: var(--muted); }
+
+/* ── Checklist tools ── */
+.stk-tools {
+  position: sticky; top: var(--stk-tabs-h); z-index: 6;
+  background: var(--bg); padding: 8px 0 10px;
+}
+.stk-search { margin-bottom: 8px; }
+.stk-chips { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; padding-bottom: 2px; }
+.stk-chips::-webkit-scrollbar { display: none; }
+.stk-chip {
+  display: inline-flex; align-items: center; gap: 6px; flex: 0 0 auto;
+  background: var(--surface); border: 1px solid var(--border); color: var(--text-secondary);
+  font-family: var(--font-ui); font-size: 12px; font-weight: 500;
+  padding: 7px 13px; border-radius: 20px; cursor: pointer;
+  white-space: nowrap; transition: all 0.2s;
+}
+.stk-chip:hover { border-color: var(--surface3); }
+.stk-chip.done { border-color: var(--success); color: var(--success); }
+.stk-chip-count { font-family: var(--font-mono); font-size: 11px; color: var(--muted); }
+.stk-chip.done .stk-chip-count { color: inherit; }
+
+/* ── Sections ── */
+.stk-section { margin-top: 22px; scroll-margin-top: calc(var(--stk-tabs-h) + 92px); }
+.stk-section-head {
+  display: flex; align-items: baseline; justify-content: space-between;
+  margin: 0 0 6px; padding: 4px 2px;
+  font-family: var(--font-display); font-size: 19px; font-weight: 600; color: var(--text);
+}
+.stk-section-count { font-family: var(--font-mono); font-size: 11px; font-weight: 400; color: var(--muted); }
+.stk-group-head {
+  margin: 14px 2px 6px;
+  font-family: var(--font-ui); font-size: 10px; font-weight: 700;
+  letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted);
+}
+.stk-rows { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+
+/* ── Row ── */
+.stk-row {
+  display: flex; align-items: center; gap: 10px;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); padding: 4px 6px 4px 12px; min-height: 48px;
+  transition: opacity 0.2s, background 0.2s, border-color 0.2s;
+}
+/* Counted rows recede but stay put and stay editable. */
+.stk-row.counted { background: transparent; border-color: var(--border-subtle); }
+.stk-row.counted .stk-row-name { opacity: 0.45; }
+.stk-row-tick {
+  flex: 0 0 auto; width: 7px; height: 7px; border-radius: 20px;
+  background: var(--surface3); transition: background 0.2s;
+}
+.stk-row.counted .stk-row-tick { background: var(--success); }
+.stk-row-name {
+  flex: 1 1 auto; min-width: 0;
+  font-family: var(--font-ui); font-size: 14px; color: var(--text);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.stk-stepper { display: flex; align-items: center; gap: 2px; flex: 0 0 auto; }
+.stk-step {
+  width: 36px; height: 40px; border: none; background: none; cursor: pointer;
+  color: var(--muted); font-size: 18px; line-height: 1; border-radius: var(--radius-sm);
+  transition: all 0.15s;
+}
+.stk-step:hover { background: var(--surface2); color: var(--text); }
+.stk-clear {
+  width: 26px; height: 40px; border: none; background: none; cursor: pointer;
+  color: var(--muted); font-size: 15px; border-radius: var(--radius-sm);
+}
+.stk-clear:hover { color: var(--danger); }
+.stk-qty {
+  width: 54px; height: 40px; padding: 0; text-align: center;
+  background: var(--surface2); border: 1px solid var(--border); color: var(--text);
+  border-radius: var(--radius-sm); outline: none;
+  font-family: var(--font-mono); font-size: 15px; font-weight: 600;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.stk-qty:focus { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-dim); }
+.stk-qty::placeholder { color: var(--muted); }
+.stk-row.counted .stk-qty { border-color: var(--success); color: var(--success); }
+.stk-empty { text-align: center; }
+
+/* ── Export prompt ── */
+.stk-export-choices { display: flex; gap: 8px; margin: 4px 0 14px; }
+.stk-export-btn {
+  flex: 1; display: flex; flex-direction: column; align-items: center; gap: 2px;
+  padding: 14px 10px;
+}
+.stk-export-kind { font-size: 15px; font-weight: 700; letter-spacing: 0.04em; }
+.stk-export-desc { font-size: 11px; font-weight: 400; opacity: 0.75; }
+
+/* ── Mobile ── */
+@media (max-width: 768px) {
+  .stk-view { padding: 16px 14px 80px; }
+  .stk-new-form { flex-wrap: wrap; }
+  .stk-new-form .confirm-btn { width: 100%; }
+  .stk-active-store { font-size: 19px; }
+  .stk-history-row { flex-wrap: wrap; }
+  .stk-history-actions { width: 100%; justify-content: flex-end; }
+  /* 16px keeps iOS from zooming the page when the field takes focus. */
+  .stk-qty { font-size: 16px; width: 56px; }
+  .stk-search { font-size: 16px; }
+  .stk-step { width: 40px; height: 44px; }
+  .stk-row { min-height: 52px; }
+}

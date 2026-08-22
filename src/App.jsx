@@ -7,6 +7,7 @@ import { CSS } from '@dnd-kit/utilities'
 import Planner from './planner/Planner.jsx'
 import ProjectsDashboard from './planner/ProjectsDashboard.jsx'
 import NotesView from './planner/NotesView.jsx'
+import StockingView from './planner/stocking/StockingView.jsx'
 import HabitStats from './HabitStats.jsx'
 import { ToastProvider, useToast } from './Toast.jsx'
 import { PRESET_COLORS, PERIODS } from './constants'
@@ -357,12 +358,13 @@ function AppInner({ user, onLogout }) {
   const selectedCatLabel = categories.find(c => c.id === selectedCategoryId)?.name || 'Habits'
 
   return (
-    <div className={`app ${activeTab === "planner" || activeTab === "projects" || activeTab === "notes" ? "app-wide" : ""}`}>
+    <div className={`app ${activeTab === "planner" || activeTab === "projects" || activeTab === "notes" || activeTab === "stocking" ? "app-wide" : ""}`}>
       <div className="app-tabs">
         <button className={`app-tab ${activeTab === 'planner' ? 'active' : ''}`} onClick={() => setActiveTab('planner')}>Planner</button>
         <button className={`app-tab ${activeTab === 'tracker' ? 'active' : ''}`} onClick={() => setActiveTab('tracker')}>Habits</button>
         <button className={`app-tab desktop-only ${activeTab === 'projects' ? 'active' : ''}`} onClick={() => setActiveTab('projects')}>Projects</button>
         <button className={`app-tab ${activeTab === 'notes' ? 'active' : ''}`} onClick={() => setActiveTab('notes')}>Notes</button>
+        <button className={`app-tab ${activeTab === 'stocking' ? 'active' : ''}`} onClick={() => setActiveTab('stocking')}>Stocking</button>
         <div className="settings-wrap">
           <button className="settings-btn settings-btn-text account-btn" onClick={() => setShowAccount(s => !s)} title="Account">
             {user?.user_metadata?.avatar_url ? (
@@ -475,6 +477,8 @@ function AppInner({ user, onLogout }) {
       {activeTab === 'projects' && <ProjectsDashboard habits={habits} />}
 
       {activeTab === 'notes' && <NotesView />}
+
+      {activeTab === 'stocking' && <StockingView user={user} />}
 
       {activeTab === 'tracker' && (
         <div className="tracker-wrap">
