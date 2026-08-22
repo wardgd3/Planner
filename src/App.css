@@ -5590,3 +5590,21 @@ body.pomo-focus-active .dash-card {
   .stk-step { width: 40px; height: 44px; }
   .stk-row { min-height: 52px; }
 }
+
+/* ── Location switcher inside an open inventory ── */
+.stk-location-bar {
+  display: flex; align-items: center; gap: 10px;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 10px 12px; margin-bottom: 14px;
+}
+.stk-location-label {
+  font-family: var(--font-ui); font-size: 10px; font-weight: 700;
+  letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted);
+  flex: 0 0 auto;
+}
+.stk-location-select {
+  flex: 1; font-weight: 600; cursor: pointer;
+}
+@media (max-width: 768px) {
+  .stk-location-select { font-size: 16px; }
+}

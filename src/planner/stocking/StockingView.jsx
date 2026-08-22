@@ -6,7 +6,7 @@ import StockingChecklist from './StockingChecklist'
 import { useStockingCounts, clearLocalCounts } from './useStockingCounts'
 import { exportCsv, exportPdf } from './stockingExport'
 
-const SESSION_LIMIT = 50
+const INVENTORY_LIMIT = 50
 
 const SAVE_LABEL = {
   idle: '',
@@ -15,6 +15,9 @@ const SAVE_LABEL = {
   pending: 'Unsaved',
   error: 'Offline — kept on phone',
 }
+
+const INVENTORY_SELECT =
+  'id, inventory_date, closed_at, created_at, stocking_sessions(id, store_id, stocking_entries(item_id, quantity))'
 
 function formatDate(iso) {
   const [y, m, d] = iso.split('-').map(Number)
@@ -28,35 +31,44 @@ function formatDate(iso) {
   })
 }
 
+function countsFromEntries(entries) {
+  const map = {}
+  for (const row of entries || []) map[row.item_id] = row.quantity
+  return map
+}
+
 export default function StockingView({ user }) {
   const toast = useToast()
 
   const [stores, setStores] = useState([])
   const [categories, setCategories] = useState([])
   const [items, setItems] = useState([])
-  const [sessions, setSessions] = useState([])
+  const [inventories, setInventories] = useState([])
   const [loading, setLoading] = useState(true)
 
-  const [activeId, setActiveId] = useState(null)
+  const [activeInvId, setActiveInvId] = useState(null)
+  const [activeStoreId, setActiveStoreId] = useState('')
+  const [sessionId, setSessionId] = useState(null)
+  const [switching, setSwitching] = useState(false)
+
   const [showHistory, setShowHistory] = useState(false)
   const [newForm, setNewForm] = useState(false)
-  const [newStoreId, setNewStoreId] = useState('')
   const [newDate, setNewDate] = useState(todayStr())
   const [deleteConfirm, setDeleteConfirm] = useState(null)
   const [exportTarget, setExportTarget] = useState(null)
   const [busy, setBusy] = useState(false)
 
-  const { counts, setCount, saveState, flush } = useStockingCounts(activeId)
+  const { counts, setCount, saveState, flush } = useStockingCounts(sessionId)
 
-  const fetchSessions = useCallback(async () => {
+  const fetchInventories = useCallback(async () => {
     const { data, error } = await supabase
-      .from('stocking_sessions')
-      .select('id, store_id, session_date, closed_at, created_at, stocking_entries(item_id, quantity)')
-      .order('session_date', { ascending: false })
+      .from('stocking_inventories')
+      .select(INVENTORY_SELECT)
+      .order('inventory_date', { ascending: false })
       .order('created_at', { ascending: false })
-      .limit(SESSION_LIMIT)
+      .limit(INVENTORY_LIMIT)
     if (error) { toast.error('Failed to load inventories'); return }
-    setSessions(data || [])
+    setInventories(data || [])
   }, [toast])
 
   async function fetchAll() {
@@ -71,10 +83,10 @@ export default function StockingView({ user }) {
       supabase.from('stocking_items').select('*').eq('is_active', true).order('sort_order'),
     ])
     if (e1 || e2 || e3) toast.error('Failed to load the item list')
-    if (st) { setStores(st); setNewStoreId((prev) => prev || st[0]?.id || '') }
+    if (st) setStores(st)
     if (cat) setCategories(cat)
     if (it) setItems(it)
-    await fetchSessions()
+    await fetchInventories()
     setLoading(false)
   }
 
@@ -86,71 +98,139 @@ export default function StockingView({ user }) {
     [stores],
   )
 
-  /** The open inventory's live counts beat the snapshot fetched with the list. */
-  const countsFor = useCallback(
-    (session) => {
-      if (session.id === activeId) return counts
-      const map = {}
-      for (const row of session.stocking_entries || []) map[row.item_id] = row.quantity
-      return map
-    },
-    [activeId, counts],
+  const activeInv = useMemo(
+    () => inventories.find((i) => i.id === activeInvId) || null,
+    [inventories, activeInvId],
   )
 
-  const activeSession = useMemo(
-    () => sessions.find((s) => s.id === activeId) || null,
-    [sessions, activeId],
+  /**
+   * Counts per store for one inventory. The leg being edited right now reads
+   * from live state so History totals and exports stay current as you type.
+   */
+  const legsFor = useCallback(
+    (inv) =>
+      (inv.stocking_sessions || []).map((leg) => ({
+        storeId: leg.store_id,
+        storeName: storeName(leg.store_id),
+        counts: leg.id === sessionId ? counts : countsFromEntries(leg.stocking_entries),
+      })),
+    [storeName, sessionId, counts],
   )
+
+  const invTotals = useCallback(
+    (inv) => {
+      const legs = legsFor(inv)
+      let itemsCounted = 0
+      let units = 0
+      let locations = 0
+      for (const leg of legs) {
+        const n = Object.keys(leg.counts).length
+        if (n > 0) locations++
+        itemsCounted += n
+        units += Object.values(leg.counts).reduce((a, b) => a + b, 0)
+      }
+      return { locations, itemsCounted, units }
+    },
+    [legsFor],
+  )
+
+  /** Re-read one inventory with all its legs and entries. */
+  const refreshInventory = useCallback(async (invId) => {
+    const { data, error } = await supabase
+      .from('stocking_inventories')
+      .select(INVENTORY_SELECT)
+      .eq('id', invId)
+      .maybeSingle()
+    if (error || !data) return null
+    setInventories((prev) => prev.map((i) => (i.id === invId ? data : i)))
+    return data
+  }, [])
+
+  // Opening a location inside the active inventory creates its leg on demand.
+  useEffect(() => {
+    if (!activeInvId || !activeStoreId) { setSessionId(null); return }
+
+    let cancelled = false
+    setSwitching(true)
+    ;(async () => {
+      // Land counts from the location we are leaving, then re-read the
+      // inventory so that leg's saved entries replace its stale snapshot.
+      // Without this, History totals and exports would miss everything
+      // counted at a location before switching away from it.
+      await flush()
+
+      const { data, error } = await supabase
+        .from('stocking_sessions')
+        .upsert(
+          { user_id: user?.id, inventory_id: activeInvId, store_id: activeStoreId },
+          { onConflict: 'inventory_id,store_id' },
+        )
+        .select('id')
+        .single()
+      if (cancelled) return
+      if (error || !data) {
+        setSwitching(false)
+        toast.error('Could not open that location')
+        return
+      }
+
+      await refreshInventory(activeInvId)
+      if (cancelled) return
+      setSessionId(data.id)
+      setSwitching(false)
+    })()
+
+    return () => { cancelled = true }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeInvId, activeStoreId])
 
   const countedTotal = items.filter((i) => counts[i.id] !== undefined).length
   const percent = items.length === 0 ? 0 : Math.round((countedTotal / items.length) * 100)
 
   async function startInventory() {
-    if (!newStoreId) { toast.error('Pick a store first'); return }
     setBusy(true)
-    // Re-opens an existing inventory for the same store and date rather than
-    // creating a duplicate; the unique index makes that the natural behaviour.
     const { data, error } = await supabase
-      .from('stocking_sessions')
-      .upsert(
-        { user_id: user?.id, store_id: newStoreId, session_date: newDate, closed_at: null },
-        { onConflict: 'user_id,store_id,session_date' },
-      )
-      .select('id, store_id, session_date, closed_at, created_at, stocking_entries(item_id, quantity)')
+      .from('stocking_inventories')
+      .insert({ user_id: user?.id, inventory_date: newDate })
+      .select(INVENTORY_SELECT)
       .single()
     setBusy(false)
-
     if (error || !data) { toast.error('Could not start the inventory'); return }
 
-    setSessions((prev) => [data, ...prev.filter((s) => s.id !== data.id)])
-    setActiveId(data.id)
+    setInventories((prev) => [data, ...prev])
+    setActiveInvId(data.id)
+    setActiveStoreId(stores[0]?.id || '')
     setNewForm(false)
     setShowHistory(false)
-    toast.success(`Inventory started — ${storeName(newStoreId)}`)
+    toast.success('Inventory started')
   }
 
   async function closeInventory() {
-    if (!activeId) return
+    if (!activeInvId) return
     setBusy(true)
     await flush() // land any pending keystrokes before closing
     const { error } = await supabase
-      .from('stocking_sessions')
+      .from('stocking_inventories')
       .update({ closed_at: new Date().toISOString() })
-      .eq('id', activeId)
+      .eq('id', activeInvId)
     setBusy(false)
     if (error) { toast.error('Could not close the inventory'); return }
-    setActiveId(null)
-    await fetchSessions()
+    setActiveInvId(null)
+    setActiveStoreId('')
+    setSessionId(null)
+    await fetchInventories()
     toast.success('Inventory closed')
   }
 
-  async function reopenSession(session) {
+  async function openInventory(inv) {
     const { error } = await supabase
-      .from('stocking_sessions')
+      .from('stocking_inventories')
       .update({ closed_at: null })
-      .eq('id', session.id)
+      .eq('id', inv.id)
     if (error) { toast.error('Could not open that inventory'); return }
-    setActiveId(session.id)
+    setInventories((prev) => prev.map((i) => (i.id === inv.id ? { ...i, closed_at: null } : i)))
+    setActiveInvId(inv.id)
+    setActiveStoreId(inv.stocking_sessions?.[0]?.store_id || stores[0]?.id || '')
     setShowHistory(false)
   }
 
@@ -158,33 +238,41 @@ export default function StockingView({ user }) {
     const target = deleteConfirm
     if (!target) return
     setBusy(true)
-    // stocking_entries cascade on the session foreign key.
-    const { error } = await supabase.from('stocking_sessions').delete().eq('id', target.id)
+    // Legs and entries cascade from the inventory.
+    const { error } = await supabase.from('stocking_inventories').delete().eq('id', target.id)
     setBusy(false)
     if (error) { toast.error('Could not delete the inventory'); return }
-    clearLocalCounts(target.id)
-    if (activeId === target.id) setActiveId(null)
-    setSessions((prev) => prev.filter((s) => s.id !== target.id))
+
+    for (const leg of target.stocking_sessions || []) clearLocalCounts(leg.id)
+    if (activeInvId === target.id) {
+      setActiveInvId(null)
+      setActiveStoreId('')
+      setSessionId(null)
+    }
+    setInventories((prev) => prev.filter((i) => i.id !== target.id))
     setDeleteConfirm(null)
     toast.success('Inventory deleted')
   }
 
-  function runExport(kind) {
-    const session = exportTarget
-    if (!session) return
-    const payload = {
-      storeName: storeName(session.store_id),
-      session_date: session.session_date,
-    }
+  async function runExport(kind) {
+    const inv = exportTarget
+    if (!inv) return
+    setExportTarget(null)
+
+    // Export from server truth: flush anything still pending, then re-read the
+    // inventory so every location is represented, not just the one on screen.
+    if (inv.id === activeInvId) await flush()
+    const fresh = (await refreshInventory(inv.id)) || inv
+
+    const payload = { date: fresh.inventory_date, legs: legsFor(fresh) }
     try {
       const n = kind === 'pdf'
-        ? exportPdf(payload, categories, items, countsFor(session))
-        : exportCsv(payload, categories, items, countsFor(session))
+        ? exportPdf(payload, categories, items)
+        : exportCsv(payload, categories, items)
       toast.success(`Exported ${n} ${n === 1 ? 'item' : 'items'} as ${kind.toUpperCase()}`)
     } catch {
       toast.error(`Could not build the ${kind.toUpperCase()}`)
     }
-    setExportTarget(null)
   }
 
   if (loading) return <div className="stk-view"><p className="stk-loading">Loading stocking…</p></div>
@@ -197,8 +285,9 @@ export default function StockingView({ user }) {
           <div className="notes-confirm-dialog" onClick={(e) => e.stopPropagation()}>
             <p className="notes-confirm-title">Delete inventory?</p>
             <p className="notes-confirm-msg">
-              {storeName(deleteConfirm.store_id)} on {formatDate(deleteConfirm.session_date)} — {(deleteConfirm.stocking_entries || []).length} items counted.
-              This permanently deletes the counts and cannot be undone.
+              {formatDate(deleteConfirm.inventory_date)} — {invTotals(deleteConfirm).itemsCounted} items
+              across {invTotals(deleteConfirm).locations} {invTotals(deleteConfirm).locations === 1 ? 'location' : 'locations'}.
+              This permanently deletes every count in it and cannot be undone.
             </p>
             <div className="notes-confirm-actions">
               <button className="cancel-btn" onClick={() => setDeleteConfirm(null)}>Cancel</button>
@@ -216,14 +305,14 @@ export default function StockingView({ user }) {
           <div className="notes-confirm-dialog" onClick={(e) => e.stopPropagation()}>
             <p className="notes-confirm-title">Export inventory</p>
             <p className="notes-confirm-msg">
-              {storeName(exportTarget.store_id)} — {formatDate(exportTarget.session_date)}
+              {formatDate(exportTarget.inventory_date)} — all locations
             </p>
             <div className="stk-export-choices">
-              <button className="confirm-btn stk-export-btn" onClick={() => runExport('pdf')}>
+              <button className="confirm-btn stk-export-btn" onClick={() => { runExport("pdf") }}>
                 <span className="stk-export-kind">PDF</span>
-                <span className="stk-export-desc">Organized by category</span>
+                <span className="stk-export-desc">Grouped by location</span>
               </button>
-              <button className="confirm-btn stk-export-btn" onClick={() => runExport('csv')}>
+              <button className="confirm-btn stk-export-btn" onClick={() => { runExport("csv") }}>
                 <span className="stk-export-kind">CSV</span>
                 <span className="stk-export-desc">One row per item</span>
               </button>
@@ -240,7 +329,7 @@ export default function StockingView({ user }) {
         <div className="notes-main-head-left">
           <h2 className="notes-main-title">Stocking</h2>
           <span className="notes-main-count">
-            {sessions.length} {sessions.length === 1 ? 'inventory' : 'inventories'}
+            {inventories.length} {inventories.length === 1 ? 'inventory' : 'inventories'}
           </span>
         </div>
         <div className="notes-main-head-right">
@@ -259,20 +348,12 @@ export default function StockingView({ user }) {
       {/* ── New inventory form ── */}
       {newForm && (
         <div className="stk-new-form">
-          <select
-            className="input"
-            value={newStoreId}
-            onChange={(e) => setNewStoreId(e.target.value)}
-            aria-label="Store"
-          >
-            {stores.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
-          </select>
           <input
             className="input"
             type="date"
             value={newDate}
             onChange={(e) => setNewDate(e.target.value || todayStr())}
-            aria-label="Date"
+            aria-label="Inventory date"
           />
           <button className="confirm-btn" onClick={startInventory} disabled={busy}>
             {busy ? '…' : 'Start'}
@@ -283,35 +364,33 @@ export default function StockingView({ user }) {
       {/* ── History ── */}
       {showHistory && (
         <div className="stk-history">
-          {sessions.length === 0 && <p className="empty-msg">No inventories yet</p>}
-          {sessions.map((session) => {
-            const sessionCounts = countsFor(session)
-            const counted = Object.keys(sessionCounts).length
-            const units = Object.values(sessionCounts).reduce((a, b) => a + b, 0)
-            const isOpen = !session.closed_at
+          {inventories.length === 0 && <p className="empty-msg">No inventories yet</p>}
+          {inventories.map((inv) => {
+            const { locations, itemsCounted, units } = invTotals(inv)
+            const isOpen = !inv.closed_at
             return (
-              <div key={session.id} className={`stk-history-row ${session.id === activeId ? 'current' : ''}`}>
+              <div key={inv.id} className={`stk-history-row ${inv.id === activeInvId ? 'current' : ''}`}>
                 <div className="stk-history-main">
                   <div className="stk-history-top">
-                    <span className="stk-history-store">{storeName(session.store_id)}</span>
-                    {session.id === activeId
+                    <span className="stk-history-store">{formatDate(inv.inventory_date)}</span>
+                    {inv.id === activeInvId
                       ? <span className="stk-badge current">Current</span>
                       : isOpen && <span className="stk-badge open">Open</span>}
                   </div>
                   <span className="stk-history-meta">
-                    {formatDate(session.session_date)} · {counted} items · {units} units
+                    {locations} {locations === 1 ? 'location' : 'locations'} · {itemsCounted} items · {units} units
                   </span>
                 </div>
                 <div className="stk-history-actions">
-                  {session.id !== activeId && (
-                    <button className="icon-btn" onClick={() => reopenSession(session)} title="Open inventory">
+                  {inv.id !== activeInvId && (
+                    <button className="icon-btn" onClick={() => openInventory(inv)} title="Open inventory">
                       Open
                     </button>
                   )}
-                  <button className="icon-btn" onClick={() => setExportTarget(session)} title="Export">
+                  <button className="icon-btn" onClick={() => setExportTarget(inv)} title="Export">
                     Export
                   </button>
-                  <button className="icon-btn stk-del" onClick={() => setDeleteConfirm(session)} title="Delete">
+                  <button className="icon-btn stk-del" onClick={() => setDeleteConfirm(inv)} title="Delete">
                     🗑
                   </button>
                 </div>
@@ -322,12 +401,12 @@ export default function StockingView({ user }) {
       )}
 
       {/* ── Active inventory ── */}
-      {activeSession ? (
+      {activeInv ? (
         <>
           <div className="stk-active-head">
             <div className="stk-active-id">
-              <span className="stk-active-store">{storeName(activeSession.store_id)}</span>
-              <span className="stk-active-date">{formatDate(activeSession.session_date)}</span>
+              <span className="stk-active-store">Inventory</span>
+              <span className="stk-active-date">{formatDate(activeInv.inventory_date)}</span>
             </div>
             <div className="stk-active-right">
               <span className={`stk-save stk-save-${saveState}`}>{SAVE_LABEL[saveState]}</span>
@@ -337,17 +416,43 @@ export default function StockingView({ user }) {
             </div>
           </div>
 
+          <div className="stk-location-bar">
+            <label className="stk-location-label" htmlFor="stk-location">Location</label>
+            <select
+              id="stk-location"
+              className="input stk-location-select"
+              value={activeStoreId}
+              onChange={(e) => setActiveStoreId(e.target.value)}
+            >
+              {stores.map((s) => {
+                const leg = activeInv.stocking_sessions?.find((l) => l.store_id === s.id)
+                const n = leg
+                  ? Object.keys(leg.id === sessionId ? counts : countsFromEntries(leg.stocking_entries)).length
+                  : 0
+                return (
+                  <option key={s.id} value={s.id}>
+                    {s.name}{n > 0 ? ` — ${n} counted` : ''}
+                  </option>
+                )
+              })}
+            </select>
+          </div>
+
           <div className="stk-progress">
             <div className="stk-bar"><div className="stk-bar-fill" style={{ width: `${percent}%` }} /></div>
             <span className="stk-progress-count">{countedTotal}/{items.length}</span>
           </div>
 
-          <StockingChecklist
-            categories={categories}
-            items={items}
-            counts={counts}
-            onChange={setCount}
-          />
+          {switching
+            ? <p className="stk-loading">Opening location…</p>
+            : (
+              <StockingChecklist
+                categories={categories}
+                items={items}
+                counts={counts}
+                onChange={setCount}
+              />
+            )}
         </>
       ) : (
         !showHistory && !newForm && (
