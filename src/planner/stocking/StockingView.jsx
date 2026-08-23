@@ -494,6 +494,7 @@ export default function StockingView({ user }) {
             : (
               <StockingChecklist
                 categories={categories}
+                companies={companies}
                 items={items}
                 counts={counts}
                 onChange={setCount}

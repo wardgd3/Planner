@@ -5711,3 +5711,34 @@ body.pomo-focus-active .dash-card {
   font-size: 10px; font-weight: 600; letter-spacing: 0.04em;
   vertical-align: middle; text-decoration: none; white-space: nowrap;
 }
+
+/* ── Checklist company filter ── */
+.stk-tools-row { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; }
+.stk-tools-row .stk-search { margin-bottom: 0; }
+
+.stk-filter-btn {
+  flex: 0 0 auto;
+  background: var(--surface); border: 1px solid var(--border); color: var(--text-secondary);
+  font-family: var(--font-ui); font-size: 12px; font-weight: 600;
+  padding: 0 14px; height: 44px; border-radius: var(--radius-sm);
+  cursor: pointer; white-space: nowrap; max-width: 45%;
+  overflow: hidden; text-overflow: ellipsis;
+  transition: all 0.2s;
+}
+.stk-filter-btn:hover { border-color: var(--surface3); color: var(--text); }
+.stk-filter-btn.active {
+  border-color: var(--accent); color: var(--accent); background: var(--accent-glow);
+}
+
+.stk-filter-row {
+  display: flex; gap: 6px; margin-bottom: 8px;
+  overflow-x: auto; scrollbar-width: none; padding-bottom: 2px;
+}
+.stk-filter-row::-webkit-scrollbar { display: none; }
+.stk-chip.on {
+  border-color: var(--accent); color: var(--accent); background: var(--accent-glow);
+}
+
+@media (max-width: 768px) {
+  .stk-filter-btn { font-size: 13px; padding: 0 12px; }
+}
