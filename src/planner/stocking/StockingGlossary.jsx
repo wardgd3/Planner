@@ -38,8 +38,22 @@ export default function StockingGlossary({
 
   // Derived rather than synced into state: the categories arrive a tick after
   // first render, and seeding state from an effect just causes a second pass.
-  const activeCategoryId = categoryId || categories[0]?.id || ''
   const activeCompanyId = companyId || companies[0]?.id || ''
+
+  /**
+   * Types belonging to the chosen company. Picking a company narrows what the
+   * Type dropdown offers, so an item can only land under a type that company
+   * actually makes.
+   */
+  const typeOptions = useMemo(
+    () => categories.filter((c) => c.company_id === activeCompanyId),
+    [categories, activeCompanyId],
+  )
+
+  // Derived, so switching company re-points the type without an effect pass.
+  const activeCategoryId = typeOptions.some((c) => c.id === categoryId)
+    ? categoryId
+    : (typeOptions[0]?.id || '')
 
   const companyName = (id) => companies.find((co) => co.id === id)?.name || null
 
@@ -54,11 +68,6 @@ export default function StockingGlossary({
     return seen
   }, [items, activeCategoryId])
 
-  /**
-   * Categories, each split into its subgroups. Unlike the checklist -- which
-   * keeps catalog order so the rows match the shelf -- this is a reference
-   * list, so both the subgroups and the items inside them are alphabetical.
-   */
   /**
    * The usual company for each category. Most categories are single-brand, so
    * printing "Pepperidge Farm" on all 37 Goldfish rows would be noise; the tag
@@ -83,6 +92,11 @@ export default function StockingGlossary({
     return byCategory
   }, [categories, items])
 
+  /**
+   * Categories, each split into its subgroups. Unlike the checklist -- which
+   * keeps catalog order so the rows match the shelf -- this is a reference
+   * list, so both the subgroups and the items inside them are alphabetical.
+   */
   const grouped = useMemo(
     () =>
       categories
@@ -124,10 +138,14 @@ export default function StockingGlossary({
   }
 
   function startEdit(item) {
+    // Take the company from the item's type rather than the item itself, so
+    // the Type dropdown is guaranteed to contain the type being edited and
+    // opening the form can never silently reassign it.
+    const type = categories.find((c) => c.id === item.category_id)
     setEditingId(item.id)
     setName(item.name)
     setCategoryId(item.category_id)
-    setCompanyId(item.company_id || '')
+    setCompanyId(type?.company_id || item.company_id || '')
     setSubgroup(item.subgroup || '')
     onFormOpenChange(true)
   }
@@ -137,10 +155,13 @@ export default function StockingGlossary({
     if (!label || !activeCategoryId || saving) return
     setSaving(true)
 
+    const type = categories.find((c) => c.id === activeCategoryId)
     const patch = {
       name: label,
       category_id: activeCategoryId,
-      company_id: activeCompanyId || null,
+      // Follows the type, so an item's company can never disagree with the
+      // company that owns its type.
+      company_id: type?.company_id || null,
       subgroup: subgroup.trim() || null,
     }
 
@@ -295,9 +316,12 @@ export default function StockingGlossary({
             className="input stk-term-cat"
             value={activeCategoryId}
             onChange={(e) => setCategoryId(e.target.value)}
-            aria-label="Category"
+            aria-label="Type"
+            disabled={typeOptions.length === 0}
           >
-            {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+            {typeOptions.length === 0
+              ? <option value="">No types for this company</option>
+              : typeOptions.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
           </select>
           <input
             className="input"
@@ -312,7 +336,7 @@ export default function StockingGlossary({
             {subgroupOptions.map((s) => <option key={s} value={s} />)}
           </datalist>
           <div className="stk-term-form-actions">
-            <button className="confirm-btn" onClick={save} disabled={!name.trim() || saving}>
+            <button className="confirm-btn" onClick={save} disabled={!name.trim() || !activeCategoryId || saving}>
               {saving ? '…' : editingId ? 'Save' : 'Add'}
             </button>
             <button className="cancel-btn" onClick={resetForm}>Cancel</button>
