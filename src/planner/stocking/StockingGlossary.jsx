@@ -15,12 +15,20 @@ function slugify(text) {
  * delete would quietly rewrite past inventories. Retiring keeps the history
  * and just drops the item off future checklists.
  */
-export default function StockingGlossary({ categories, items, formOpen, onFormOpenChange, onCatalogChange }) {
+export default function StockingGlossary({
+  categories,
+  companies,
+  items,
+  formOpen,
+  onFormOpenChange,
+  onCatalogChange,
+}) {
   const toast = useToast()
 
   const [editingId, setEditingId] = useState(null)
   const [name, setName] = useState('')
   const [categoryId, setCategoryId] = useState('')
+  const [companyId, setCompanyId] = useState('')
   const [subgroup, setSubgroup] = useState('')
   const [saving, setSaving] = useState(false)
 
@@ -31,6 +39,9 @@ export default function StockingGlossary({ categories, items, formOpen, onFormOp
   // Derived rather than synced into state: the categories arrive a tick after
   // first render, and seeding state from an effect just causes a second pass.
   const activeCategoryId = categoryId || categories[0]?.id || ''
+  const activeCompanyId = companyId || companies[0]?.id || ''
+
+  const companyName = (id) => companies.find((co) => co.id === id)?.name || null
 
   // Existing subgroups for the chosen category, offered as suggestions.
   const subgroupOptions = useMemo(() => {
@@ -48,6 +59,30 @@ export default function StockingGlossary({ categories, items, formOpen, onFormOp
    * keeps catalog order so the rows match the shelf -- this is a reference
    * list, so both the subgroups and the items inside them are alphabetical.
    */
+  /**
+   * The usual company for each category. Most categories are single-brand, so
+   * printing "Pepperidge Farm" on all 37 Goldfish rows would be noise; the tag
+   * only appears on items that break their category's pattern, which is
+   * exactly when it is worth seeing.
+   */
+  const usualCompany = useMemo(() => {
+    const byCategory = new Map()
+    for (const c of categories) {
+      const tally = new Map()
+      for (const i of items) {
+        if (i.category_id !== c.id || !i.company_id) continue
+        tally.set(i.company_id, (tally.get(i.company_id) || 0) + 1)
+      }
+      let best = null
+      let bestCount = 0
+      for (const [id, n] of tally) {
+        if (n > bestCount) { best = id; bestCount = n }
+      }
+      byCategory.set(c.id, best)
+    }
+    return byCategory
+  }, [categories, items])
+
   const grouped = useMemo(
     () =>
       categories
@@ -84,6 +119,7 @@ export default function StockingGlossary({ categories, items, formOpen, onFormOp
     setName('')
     setSubgroup('')
     setCategoryId(categories[0]?.id || '')
+    setCompanyId(companies[0]?.id || '')
     onFormOpenChange(false)
   }
 
@@ -91,6 +127,7 @@ export default function StockingGlossary({ categories, items, formOpen, onFormOp
     setEditingId(item.id)
     setName(item.name)
     setCategoryId(item.category_id)
+    setCompanyId(item.company_id || '')
     setSubgroup(item.subgroup || '')
     onFormOpenChange(true)
   }
@@ -103,6 +140,7 @@ export default function StockingGlossary({ categories, items, formOpen, onFormOp
     const patch = {
       name: label,
       category_id: activeCategoryId,
+      company_id: activeCompanyId || null,
       subgroup: subgroup.trim() || null,
     }
 
@@ -247,6 +285,14 @@ export default function StockingGlossary({ categories, items, formOpen, onFormOp
           />
           <select
             className="input stk-term-cat"
+            value={activeCompanyId}
+            onChange={(e) => setCompanyId(e.target.value)}
+            aria-label="Company"
+          >
+            {companies.map((co) => <option key={co.id} value={co.id}>{co.name}</option>)}
+          </select>
+          <select
+            className="input stk-term-cat"
             value={activeCategoryId}
             onChange={(e) => setCategoryId(e.target.value)}
             aria-label="Category"
@@ -296,6 +342,9 @@ export default function StockingGlossary({ categories, items, formOpen, onFormOp
                   >
                     <span className="stk-term-name">
                       {item.name}
+                      {item.company_id && item.company_id !== usualCompany.get(item.category_id) && (
+                        <span className="stk-term-company">{companyName(item.company_id)}</span>
+                      )}
                       {!item.is_active && <span className="stk-badge open stk-retired-tag">Retired</span>}
                     </span>
                     <div className="stk-term-actions">

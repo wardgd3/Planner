@@ -43,6 +43,7 @@ export default function StockingView({ user }) {
 
   const [stores, setStores] = useState([])
   const [categories, setCategories] = useState([])
+  const [companies, setCompanies] = useState([])
   const [allItems, setAllItems] = useState([])
   const [inventories, setInventories] = useState([])
   const [loading, setLoading] = useState(true)
@@ -79,15 +80,18 @@ export default function StockingView({ user }) {
       { data: st, error: e1 },
       { data: cat, error: e2 },
       { data: it, error: e3 },
+      { data: co, error: e4 },
     ] = await Promise.all([
       supabase.from('stocking_stores').select('*').eq('has_shane', true).order('sort_order'),
       supabase.from('stocking_categories').select('*').eq('route', 'shane').order('sort_order'),
       supabase.from('stocking_items').select('*').order('sort_order'),
+      supabase.from('stocking_companies').select('*').order('sort_order'),
     ])
-    if (e1 || e2 || e3) toast.error('Failed to load the item list')
+    if (e1 || e2 || e3 || e4) toast.error('Failed to load the item list')
     if (st) setStores(st)
     if (cat) setCategories(cat)
     if (it) setAllItems(it)
+    if (co) setCompanies(co)
     await fetchInventories()
     setLoading(false)
   }
@@ -379,6 +383,7 @@ export default function StockingView({ user }) {
       {section === 'glossary' && (
         <StockingGlossary
           categories={categories}
+          companies={companies}
           items={allItems}
           formOpen={termFormOpen}
           onFormOpenChange={setTermFormOpen}
