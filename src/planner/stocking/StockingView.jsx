@@ -1,13 +1,18 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { supabase } from '../../supabase'
 import { useToast } from '../../Toast'
 import { todayStr } from '../../utils'
 import StockingChecklist from './StockingChecklist'
+import { buildSections } from './stockingSections'
 import StockingGlossary from './StockingGlossary'
 import { useStockingCounts, clearLocalCounts } from './useStockingCounts'
 import { exportCsv, exportPdf } from './stockingExport'
 
 const INVENTORY_LIMIT = 50
+
+// Height of the app tab bar, which the toolbar sticks beneath. Mirrors
+// --stk-tabs-h in App.css.
+const TAB_BAR_H = 50
 
 const SAVE_LABEL = {
   idle: '',
@@ -55,6 +60,10 @@ export default function StockingView({ user }) {
 
   const [section, setSection] = useState('inventories')
   const [termFormOpen, setTermFormOpen] = useState(false)
+  const [query, setQuery] = useState('')
+  const [companyFilter, setCompanyFilter] = useState(null)
+  const [filterOpen, setFilterOpen] = useState(false)
+  const sectionRefs = useRef({})
   const [newForm, setNewForm] = useState(false)
   const [newDate, setNewDate] = useState(todayStr())
   const [deleteConfirm, setDeleteConfirm] = useState(null)
@@ -152,31 +161,25 @@ export default function StockingView({ user }) {
   )
 
   /**
-   * Publish the sticky location bar's height so the checklist toolbar can park
-   * directly beneath it rather than sharing an offset and overlapping.
+   * Collapse the toolbar once it pins. Driven off a sentinel sitting where the
+   * toolbar starts in flow, compared against the same offset the toolbar
+   * sticks at, so the collapse lands on the frame it actually pins.
    */
-  const locationRef = useRef(null)
-  useLayoutEffect(() => {
-    const el = locationRef.current
-    const root = document.documentElement
-    if (!el) {
-      root.style.setProperty('--stk-loc-h', '0px')
-      return
-    }
-    const publish = () => {
-      root.style.setProperty('--stk-loc-h', `${Math.ceil(el.getBoundingClientRect().height)}px`)
-    }
-    publish()
-    // Re-measure after layout settles: the first pass can land before webfonts
-    // swap in, which leaves the toolbar parked a few pixels too high.
-    const frame = requestAnimationFrame(publish)
-    const observer = new ResizeObserver(publish)
-    observer.observe(el)
-    if (document.fonts?.ready) document.fonts.ready.then(publish).catch(() => {})
+  const sentinelRef = useRef(null)
+  const [pinned, setPinned] = useState(false)
+  useEffect(() => {
+    const el = sentinelRef.current
+    if (!el) { setPinned(false); return }
+    // Read straight from the scroll handler rather than deferring to rAF: it
+    // is a read with no interleaved writes, so it hits cached layout, and
+    // setting the same boolean again is a no-op React bails out of.
+    const check = () => setPinned(el.getBoundingClientRect().top < TAB_BAR_H)
+    check()
+    window.addEventListener('scroll', check, { passive: true })
+    window.addEventListener('resize', check)
     return () => {
-      cancelAnimationFrame(frame)
-      observer.disconnect()
-      root.style.setProperty('--stk-loc-h', '0px')
+      window.removeEventListener('scroll', check)
+      window.removeEventListener('resize', check)
     }
   }, [activeInvId, section])
 
@@ -232,6 +235,18 @@ export default function StockingView({ user }) {
 
   const countedTotal = items.filter((i) => counts[i.id] !== undefined).length
   const percent = items.length === 0 ? 0 : Math.round((countedTotal / items.length) * 100)
+
+  // Built here so the toolbar chips and the list below share one set of counts.
+  const sections = useMemo(
+    () => buildSections({ categories, items, counts, query, companyId: companyFilter }),
+    [categories, items, counts, query, companyFilter],
+  )
+  const activeCompany = companies.find((co) => co.id === companyFilter) || null
+
+  function jumpTo(categoryId) {
+    const el = sectionRefs.current[categoryId]
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }
 
   async function startInventory() {
     setBusy(true)
@@ -480,33 +495,6 @@ export default function StockingView({ user }) {
       {/* ── Active inventory ── */}
       {section === 'inventories' && activeInv && (
         <>
-          {/* Which store you are counting matters on every row, so it leads
-              and stays put. The wrapper carries the background so nothing
-              scrolls through the gap beneath it while stuck. */}
-          <div className="stk-location-wrap" ref={locationRef}>
-            <div className="stk-location-bar">
-              <label className="stk-location-label" htmlFor="stk-location">Location</label>
-              <select
-                id="stk-location"
-                className="input stk-location-select"
-                value={activeStoreId}
-                onChange={(e) => setActiveStoreId(e.target.value)}
-              >
-                {stores.map((s) => {
-                  const leg = activeInv.stocking_sessions?.find((l) => l.store_id === s.id)
-                  const n = leg
-                    ? Object.keys(leg.id === sessionId ? counts : countsFromEntries(leg.stocking_entries)).length
-                    : 0
-                  return (
-                    <option key={s.id} value={s.id}>
-                      {s.name}{n > 0 ? ` — ${n} counted` : ''}
-                    </option>
-                  )
-                })}
-              </select>
-            </div>
-          </div>
-
           <div className="stk-active-head">
             <div className="stk-active-id">
               <span className="stk-active-store">Inventory</span>
@@ -525,15 +513,98 @@ export default function StockingView({ user }) {
             <span className="stk-progress-count">{countedTotal}/{items.length}</span>
           </div>
 
+          {/* Marks where the toolbar sits in flow; once it scrolls past the tab
+              bar the toolbar is pinned and collapses to a single row. */}
+          <div ref={sentinelRef} className="stk-toolbar-sentinel" aria-hidden="true" />
+
+          <div className={`stk-toolbar ${pinned ? 'pinned' : ''}`}>
+            <div className="stk-toolbar-controls">
+              <select
+                className="input stk-location-select"
+                value={activeStoreId}
+                onChange={(e) => setActiveStoreId(e.target.value)}
+                aria-label="Location"
+              >
+                {stores.map((s) => {
+                  const leg = activeInv.stocking_sessions?.find((l) => l.store_id === s.id)
+                  const n = leg
+                    ? Object.keys(leg.id === sessionId ? counts : countsFromEntries(leg.stocking_entries)).length
+                    : 0
+                  return (
+                    <option key={s.id} value={s.id}>
+                      {s.name}{n > 0 ? ` — ${n} counted` : ''}
+                    </option>
+                  )
+                })}
+              </select>
+              <input
+                className="input stk-search"
+                type="search"
+                placeholder="Find an item…"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                aria-label="Find an item"
+              />
+              <button
+                type="button"
+                className={`stk-filter-btn ${companyFilter ? 'active' : ''}`}
+                onClick={() => setFilterOpen((v) => !v)}
+                aria-expanded={filterOpen}
+              >
+                {activeCompany ? activeCompany.name : 'Filter'}
+              </button>
+            </div>
+
+            {filterOpen && (
+              <div className="stk-filter-row" role="group" aria-label="Filter by company">
+                <button
+                  type="button"
+                  className={`stk-chip ${companyFilter === null ? 'on' : ''}`}
+                  onClick={() => setCompanyFilter(null)}
+                >
+                  All
+                </button>
+                {companies.map((co) => (
+                  <button
+                    key={co.id}
+                    type="button"
+                    className={`stk-chip ${companyFilter === co.id ? 'on' : ''}`}
+                    onClick={() => setCompanyFilter(co.id)}
+                  >
+                    {co.name}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            <nav className="stk-chips" aria-label="Jump to category">
+              {sections.map(({ category, counted, total }) => (
+                <button
+                  key={category.id}
+                  type="button"
+                  className={`stk-chip ${counted === total ? 'done' : ''}`}
+                  onClick={() => jumpTo(category.id)}
+                >
+                  {category.name}
+                  <span className="stk-chip-count">{counted}/{total}</span>
+                </button>
+              ))}
+            </nav>
+          </div>
+
           {switching
             ? <p className="stk-loading">Opening location…</p>
             : (
               <StockingChecklist
-                categories={categories}
-                companies={companies}
-                items={items}
+                sections={sections}
                 counts={counts}
                 onChange={setCount}
+                sectionRefs={sectionRefs}
+                emptyMessage={
+                  activeCompany && !query.trim()
+                    ? `No ${activeCompany.name} items.`
+                    : `No items match “${query}”${activeCompany ? ` in ${activeCompany.name}` : ''}.`
+                }
               />
             )}
         </>

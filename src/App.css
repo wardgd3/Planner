@@ -5490,12 +5490,6 @@ body.pomo-focus-active .dash-card {
 .stk-bar-fill { height: 100%; background: var(--accent); transition: width 0.25s ease; }
 .stk-progress-count { font-family: var(--font-mono); font-size: 11px; color: var(--muted); }
 
-/* ── Checklist tools ── */
-.stk-tools {
-  position: sticky; top: var(--stk-tabs-h); z-index: 6;
-  background: var(--bg); padding: 8px 0 10px;
-}
-.stk-search { margin-bottom: 8px; }
 .stk-chips { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; padding-bottom: 2px; }
 .stk-chips::-webkit-scrollbar { display: none; }
 .stk-chip {
@@ -5593,23 +5587,6 @@ body.pomo-focus-active .dash-card {
   .stk-row { min-height: 52px; }
 }
 
-/* ── Location switcher inside an open inventory ── */
-.stk-location-bar {
-  display: flex; align-items: center; gap: 10px;
-  background: var(--surface); border: 1px solid var(--border);
-  border-radius: var(--radius); padding: 10px 12px; margin-bottom: 14px;
-}
-.stk-location-label {
-  font-family: var(--font-ui); font-size: 10px; font-weight: 700;
-  letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted);
-  flex: 0 0 auto;
-}
-.stk-location-select {
-  flex: 1; font-weight: 600; cursor: pointer;
-}
-@media (max-width: 768px) {
-  .stk-location-select { font-size: 16px; }
-}
 
 /* ── Narrow phones: keep the tab bar inside the viewport ── */
 @media (max-width: 400px) {
@@ -5713,9 +5690,6 @@ body.pomo-focus-active .dash-card {
 }
 
 /* ── Checklist company filter ── */
-.stk-tools-row { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; }
-.stk-tools-row .stk-search { margin-bottom: 0; }
-
 .stk-filter-btn {
   flex: 0 0 auto;
   background: var(--surface); border: 1px solid var(--border); color: var(--text-secondary);
@@ -5743,22 +5717,60 @@ body.pomo-focus-active .dash-card {
   .stk-filter-btn { font-size: 13px; padding: 0 12px; }
 }
 
-/* ── Sticky location bar ──
-   Two sticky bands now: the location leads, and the checklist toolbar parks
-   directly beneath it using the height published as --stk-loc-h. The wrapper
-   owns the background and spacing so nothing scrolls through the gap under
-   the bar while it is stuck. */
-.stk-location-wrap {
-  position: sticky; top: var(--stk-tabs-h); z-index: 12;
-  background: var(--bg); padding: 6px 0 10px;
-}
-.stk-location-wrap .stk-location-bar { margin-bottom: 0; }
 
-/* Nudged up 2px and padded back out, so any small measurement error lands as
-   a hairline overlap the location bar paints over, never as a gap that
-   scrolling content shows through. */
-.stk-tools {
-  top: calc(var(--stk-tabs-h) + var(--stk-loc-h, 0px) - 2px);
-  padding-top: 10px;
+
+/* ══ Checklist toolbar ══
+   One sticky band holding location, search, filter and the category chips.
+   At rest the location gets its own full-width row; once pinned it shares a
+   line with search and filter and everything tightens, so scrolling a long
+   checklist is not done through a letterbox. */
+.stk-toolbar-sentinel { height: 1px; margin: 0; }
+
+.stk-toolbar {
+  position: sticky; top: var(--stk-tabs-h); z-index: 12;
+  background: var(--bg);
+  padding: 8px 0 10px;
+  transition: padding 0.18s ease;
 }
-.stk-section { scroll-margin-top: calc(var(--stk-tabs-h) + var(--stk-loc-h, 0px) + 92px); }
+
+.stk-toolbar-controls {
+  display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
+  margin-bottom: 8px;
+  transition: gap 0.18s ease, margin 0.18s ease;
+}
+.stk-toolbar .stk-location-select {
+  /* .input sets width:100%, which as a flex base would push every control
+     onto its own row. Explicit basis + auto width keeps the intended wrap. */
+  flex: 1 1 100%; width: auto;   /* own row at rest */
+  min-width: 0; font-weight: 600; cursor: pointer;
+  transition: flex-basis 0.18s ease, height 0.18s ease, font-size 0.18s ease;
+}
+.stk-toolbar .stk-search { flex: 1 1 120px; width: auto; min-width: 0; margin-bottom: 0; }
+.stk-toolbar .stk-filter-btn { flex: 0 0 auto; }
+
+.stk-toolbar .stk-chips { margin: 0; }
+
+/* ── Pinned: collapse to a single control row ── */
+.stk-toolbar.pinned { padding: 5px 0 6px; }
+.stk-toolbar.pinned .stk-toolbar-controls { gap: 6px; margin-bottom: 6px; flex-wrap: nowrap; }
+.stk-toolbar.pinned .stk-location-select {
+  flex: 1 1 38%; width: auto;   /* shares the row with search + filter */
+  height: 34px; padding: 0 24px 0 10px; font-size: 12px;
+  background-position: right 8px center;
+}
+.stk-toolbar.pinned .stk-search { height: 34px; padding: 0 10px; font-size: 12px; }
+.stk-toolbar.pinned .stk-filter-btn { height: 34px; padding: 0 10px; font-size: 11px; max-width: 34%; }
+.stk-toolbar.pinned .stk-chip { height: 28px; padding: 0 10px; font-size: 11px; }
+.stk-toolbar.pinned .stk-filter-row { margin-bottom: 6px; }
+
+.stk-section { scroll-margin-top: calc(var(--stk-tabs-h) + 96px); }
+
+@media (max-width: 768px) {
+  /* 16px on the resting inputs still, to keep iOS from zooming on focus.
+     The pinned ones are never focused straight from a tap without the
+     toolbar expanding first, since tapping either one scrolls it into view. */
+  .stk-toolbar .stk-search, .stk-toolbar .stk-location-select { font-size: 16px; }
+  .stk-toolbar.pinned .stk-search,
+  .stk-toolbar.pinned .stk-location-select { font-size: 16px; }
+  .stk-toolbar.pinned .stk-filter-btn { font-size: 12px; }
+}
