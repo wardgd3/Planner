@@ -5692,3 +5692,13 @@ body.pomo-focus-active .dash-card {
 @media (max-width: 768px) {
   .stk-term-cat { flex: 1 1 auto !important; }
 }
+
+/* ── Glossary: breathing room between subgroups ── */
+.stk-cat-group + .stk-cat-group { margin-top: 20px; }
+.stk-cat-group .stk-group-head { margin: 0 2px 8px; }
+
+/* The subgroup is a header now, so rows are a single line. */
+.stk-term-row .stk-term-name {
+  flex: 1 1 auto; min-width: 0;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}

@@ -43,10 +43,38 @@ export default function StockingGlossary({ categories, items, formOpen, onFormOp
     return seen
   }, [items, activeCategoryId])
 
+  /**
+   * Categories, each split into its subgroups. Unlike the checklist -- which
+   * keeps catalog order so the rows match the shelf -- this is a reference
+   * list, so both the subgroups and the items inside them are alphabetical.
+   */
   const grouped = useMemo(
     () =>
       categories
-        .map((c) => ({ category: c, rows: items.filter((i) => i.category_id === c.id) }))
+        .map((c) => {
+          const rows = items.filter((i) => i.category_id === c.id)
+
+          const buckets = new Map()
+          for (const item of rows) {
+            const key = item.subgroup || ''
+            if (!buckets.has(key)) buckets.set(key, [])
+            buckets.get(key).push(item)
+          }
+
+          const groups = [...buckets.entries()]
+            .map(([label, list]) => ({
+              label: label || null,
+              items: list.sort((a, b) => a.name.localeCompare(b.name)),
+            }))
+            .sort((a, b) => {
+              // Ungrouped items have no header, so they lead.
+              if (a.label === null) return -1
+              if (b.label === null) return 1
+              return a.label.localeCompare(b.label)
+            })
+
+          return { category: c, rows, groups }
+        })
         .filter((g) => g.rows.length > 0),
     [categories, items],
   )
@@ -250,50 +278,51 @@ export default function StockingGlossary({ categories, items, formOpen, onFormOp
         <p className="empty-msg stk-idle">No items yet. Add the first one to start counting.</p>
       )}
 
-      {grouped.map(({ category, rows }) => (
+      {grouped.map(({ category, rows, groups }) => (
         <section key={category.id} className="stk-cat-block">
           <h3 className="stk-section-head">
             <span>{category.name}</span>
             <span className="stk-section-count">{rows.filter((r) => r.is_active).length}/{rows.length}</span>
           </h3>
-          <ul className="stk-term-list">
-            {rows.map((item) => (
-              <li
-                key={item.id}
-                className={`stk-term-row ${editingId === item.id ? 'editing' : ''} ${item.is_active ? '' : 'retired'}`}
-              >
-                <div className="stk-term-main">
-                  <span className="stk-term-name">
-                    {item.name}
-                    {!item.is_active && <span className="stk-badge open stk-retired-tag">Retired</span>}
-                  </span>
-                  <span className="stk-term-def">
-                    {item.subgroup || <em>No group</em>}
-                  </span>
-                </div>
-                <div className="stk-term-actions">
-                  <button
-                    className="icon-btn"
-                    onClick={() => toggleActive(item)}
-                    title={item.is_active ? 'Retire (hide from checklists)' : 'Restore to checklists'}
-                    aria-label={item.is_active ? `Retire ${item.name}` : `Restore ${item.name}`}
+
+          {groups.map((group, i) => (
+            <div key={group.label || `ungrouped-${i}`} className="stk-cat-group">
+              {group.label && <h4 className="stk-group-head">{group.label}</h4>}
+              <ul className="stk-term-list">
+                {group.items.map((item) => (
+                  <li
+                    key={item.id}
+                    className={`stk-term-row ${editingId === item.id ? 'editing' : ''} ${item.is_active ? '' : 'retired'}`}
                   >
-                    {item.is_active ? '👁' : '＋'}
-                  </button>
-                  <button className="icon-btn" onClick={() => startEdit(item)} aria-label={`Edit ${item.name}`}>
-                    <EditIcon />
-                  </button>
-                  <button
-                    className="icon-btn stk-del"
-                    onClick={() => openDelete(item)}
-                    aria-label={`Delete ${item.name}`}
-                  >
-                    🗑
-                  </button>
-                </div>
-              </li>
-            ))}
-          </ul>
+                    <span className="stk-term-name">
+                      {item.name}
+                      {!item.is_active && <span className="stk-badge open stk-retired-tag">Retired</span>}
+                    </span>
+                    <div className="stk-term-actions">
+                      <button
+                        className="icon-btn"
+                        onClick={() => toggleActive(item)}
+                        title={item.is_active ? 'Retire (hide from checklists)' : 'Restore to checklists'}
+                        aria-label={item.is_active ? `Retire ${item.name}` : `Restore ${item.name}`}
+                      >
+                        {item.is_active ? '👁' : '＋'}
+                      </button>
+                      <button className="icon-btn" onClick={() => startEdit(item)} aria-label={`Edit ${item.name}`}>
+                        <EditIcon />
+                      </button>
+                      <button
+                        className="icon-btn stk-del"
+                        onClick={() => openDelete(item)}
+                        aria-label={`Delete ${item.name}`}
+                      >
+                        🗑
+                      </button>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
         </section>
       ))}
     </div>
