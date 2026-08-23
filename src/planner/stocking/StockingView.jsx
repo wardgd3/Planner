@@ -3,6 +3,7 @@ import { supabase } from '../../supabase'
 import { useToast } from '../../Toast'
 import { todayStr } from '../../utils'
 import StockingChecklist from './StockingChecklist'
+import StockingGlossary from './StockingGlossary'
 import { useStockingCounts, clearLocalCounts } from './useStockingCounts'
 import { exportCsv, exportPdf } from './stockingExport'
 
@@ -51,7 +52,8 @@ export default function StockingView({ user }) {
   const [sessionId, setSessionId] = useState(null)
   const [switching, setSwitching] = useState(false)
 
-  const [showHistory, setShowHistory] = useState(false)
+  const [section, setSection] = useState('inventories')
+  const [termFormOpen, setTermFormOpen] = useState(false)
   const [newForm, setNewForm] = useState(false)
   const [newDate, setNewDate] = useState(todayStr())
   const [deleteConfirm, setDeleteConfirm] = useState(null)
@@ -201,7 +203,7 @@ export default function StockingView({ user }) {
     setActiveInvId(data.id)
     setActiveStoreId(stores[0]?.id || '')
     setNewForm(false)
-    setShowHistory(false)
+    setSection('inventories')
     toast.success('Inventory started')
   }
 
@@ -231,7 +233,7 @@ export default function StockingView({ user }) {
     setInventories((prev) => prev.map((i) => (i.id === inv.id ? { ...i, closed_at: null } : i)))
     setActiveInvId(inv.id)
     setActiveStoreId(inv.stocking_sessions?.[0]?.store_id || stores[0]?.id || '')
-    setShowHistory(false)
+    setSection('inventories')
   }
 
   async function confirmDelete() {
@@ -325,7 +327,7 @@ export default function StockingView({ user }) {
       )}
 
       {/* ── Header ── */}
-      <div className="notes-main-head">
+      <div className="notes-main-head stk-head">
         <div className="notes-main-head-left">
           <h2 className="notes-main-title">Stocking</h2>
           <span className="notes-main-count">
@@ -333,20 +335,46 @@ export default function StockingView({ user }) {
           </span>
         </div>
         <div className="notes-main-head-right">
-          <button
-            className={`add-btn stk-history-btn ${showHistory ? 'active' : ''}`}
-            onClick={() => setShowHistory((v) => !v)}
-          >
-            History
-          </button>
-          <button className="confirm-btn" onClick={() => setNewForm((v) => !v)}>
-            {newForm ? 'Cancel' : '+ New Inventory'}
-          </button>
+          {section === 'inventories' ? (
+            <button className="confirm-btn" onClick={() => setNewForm((v) => !v)}>
+              {newForm ? 'Cancel' : '+ New Inventory'}
+            </button>
+          ) : (
+            <button className="confirm-btn" onClick={() => setTermFormOpen((v) => !v)}>
+              {termFormOpen ? 'Cancel' : '+ Add Term'}
+            </button>
+          )}
         </div>
       </div>
 
+      {/* ── Section nav ── */}
+      <nav className="stk-nav" aria-label="Stocking sections">
+        <button
+          type="button"
+          className={`stk-nav-btn ${section === 'inventories' ? 'active' : ''}`}
+          onClick={() => setSection('inventories')}
+        >
+          Inventories
+        </button>
+        <button
+          type="button"
+          className={`stk-nav-btn ${section === 'glossary' ? 'active' : ''}`}
+          onClick={() => setSection('glossary')}
+        >
+          Glossary
+        </button>
+      </nav>
+
+      {section === 'glossary' && (
+        <StockingGlossary
+          user={user}
+          formOpen={termFormOpen}
+          onFormOpenChange={setTermFormOpen}
+        />
+      )}
+
       {/* ── New inventory form ── */}
-      {newForm && (
+      {section === 'inventories' && newForm && (
         <div className="stk-new-form">
           <input
             className="input"
@@ -361,8 +389,8 @@ export default function StockingView({ user }) {
         </div>
       )}
 
-      {/* ── History ── */}
-      {showHistory && (
+      {/* ── Inventories ── */}
+      {section === 'inventories' && (
         <div className="stk-history">
           {inventories.length === 0 && <p className="empty-msg">No inventories yet</p>}
           {inventories.map((inv) => {
@@ -401,7 +429,7 @@ export default function StockingView({ user }) {
       )}
 
       {/* ── Active inventory ── */}
-      {activeInv ? (
+      {section === 'inventories' && activeInv && (
         <>
           <div className="stk-active-head">
             <div className="stk-active-id">
@@ -454,12 +482,6 @@ export default function StockingView({ user }) {
               />
             )}
         </>
-      ) : (
-        !showHistory && !newForm && (
-          <p className="empty-msg stk-idle">
-            Start a new inventory to begin counting, or open a past one from History.
-          </p>
-        )
       )}
     </div>
   )
