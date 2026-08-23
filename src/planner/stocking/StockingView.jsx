@@ -43,7 +43,7 @@ export default function StockingView({ user }) {
 
   const [stores, setStores] = useState([])
   const [categories, setCategories] = useState([])
-  const [items, setItems] = useState([])
+  const [allItems, setAllItems] = useState([])
   const [inventories, setInventories] = useState([])
   const [loading, setLoading] = useState(true)
 
@@ -82,15 +82,26 @@ export default function StockingView({ user }) {
     ] = await Promise.all([
       supabase.from('stocking_stores').select('*').eq('has_shane', true).order('sort_order'),
       supabase.from('stocking_categories').select('*').eq('route', 'shane').order('sort_order'),
-      supabase.from('stocking_items').select('*').eq('is_active', true).order('sort_order'),
+      supabase.from('stocking_items').select('*').order('sort_order'),
     ])
     if (e1 || e2 || e3) toast.error('Failed to load the item list')
     if (st) setStores(st)
     if (cat) setCategories(cat)
-    if (it) setItems(it)
+    if (it) setAllItems(it)
     await fetchInventories()
     setLoading(false)
   }
+
+  /** Re-read the catalog after the Glossary edits it. */
+  const refetchItems = useCallback(async () => {
+    const { data, error } = await supabase.from('stocking_items').select('*').order('sort_order')
+    if (error) { toast.error('Could not reload the item list'); return }
+    setAllItems(data || [])
+  }, [toast])
+
+  // Retired items stay out of checklists but remain in exports, so past
+  // inventories still show everything that was counted at the time.
+  const items = useMemo(() => allItems.filter((i) => i.is_active), [allItems])
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { fetchAll() }, [])
@@ -269,8 +280,8 @@ export default function StockingView({ user }) {
     const payload = { date: fresh.inventory_date, legs: legsFor(fresh) }
     try {
       const n = kind === 'pdf'
-        ? exportPdf(payload, categories, items)
-        : exportCsv(payload, categories, items)
+        ? exportPdf(payload, categories, allItems)
+        : exportCsv(payload, categories, allItems)
       toast.success(`Exported ${n} ${n === 1 ? 'item' : 'items'} as ${kind.toUpperCase()}`)
     } catch {
       toast.error(`Could not build the ${kind.toUpperCase()}`)
@@ -341,7 +352,7 @@ export default function StockingView({ user }) {
             </button>
           ) : (
             <button className="confirm-btn" onClick={() => setTermFormOpen((v) => !v)}>
-              {termFormOpen ? 'Cancel' : '+ Add Term'}
+              {termFormOpen ? "Cancel" : "+ Add Item"}
             </button>
           )}
         </div>
@@ -367,9 +378,11 @@ export default function StockingView({ user }) {
 
       {section === 'glossary' && (
         <StockingGlossary
-          user={user}
+          categories={categories}
+          items={allItems}
           formOpen={termFormOpen}
           onFormOpenChange={setTermFormOpen}
+          onCatalogChange={refetchItems}
         />
       )}
 

@@ -5675,3 +5675,20 @@ body.pomo-focus-active .dash-card {
   .stk-term-form .input { font-size: 16px; }
   .stk-term-form-actions .confirm-btn { flex: 1; }
 }
+
+/* ── Glossary: catalog items ── */
+.stk-cat-block { margin-bottom: 24px; }
+.stk-cat-block .stk-section-head { position: static; margin-bottom: 8px; }
+.stk-term-cat { flex: 0 1 200px !important; cursor: pointer; }
+
+/* Retired items stay listed, just clearly out of rotation. */
+.stk-term-row.retired { background: transparent; border-style: dashed; }
+.stk-term-row.retired .stk-term-name { color: var(--muted); text-decoration: line-through; }
+.stk-retired-tag { margin-left: 8px; vertical-align: middle; text-decoration: none; }
+
+.stk-delete-actions { flex-wrap: wrap; }
+.stk-delete-actions .confirm-btn { flex: 1 1 auto; }
+
+@media (max-width: 768px) {
+  .stk-term-cat { flex: 1 1 auto !important; }
+}
