@@ -5742,3 +5742,23 @@ body.pomo-focus-active .dash-card {
 @media (max-width: 768px) {
   .stk-filter-btn { font-size: 13px; padding: 0 12px; }
 }
+
+/* ── Sticky location bar ──
+   Two sticky bands now: the location leads, and the checklist toolbar parks
+   directly beneath it using the height published as --stk-loc-h. The wrapper
+   owns the background and spacing so nothing scrolls through the gap under
+   the bar while it is stuck. */
+.stk-location-wrap {
+  position: sticky; top: var(--stk-tabs-h); z-index: 12;
+  background: var(--bg); padding: 6px 0 10px;
+}
+.stk-location-wrap .stk-location-bar { margin-bottom: 0; }
+
+/* Nudged up 2px and padded back out, so any small measurement error lands as
+   a hairline overlap the location bar paints over, never as a gap that
+   scrolling content shows through. */
+.stk-tools {
+  top: calc(var(--stk-tabs-h) + var(--stk-loc-h, 0px) - 2px);
+  padding-top: 10px;
+}
+.stk-section { scroll-margin-top: calc(var(--stk-tabs-h) + var(--stk-loc-h, 0px) + 92px); }

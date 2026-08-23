@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { supabase } from '../../supabase'
 import { useToast } from '../../Toast'
 import { todayStr } from '../../utils'
@@ -150,6 +150,35 @@ export default function StockingView({ user }) {
     },
     [legsFor],
   )
+
+  /**
+   * Publish the sticky location bar's height so the checklist toolbar can park
+   * directly beneath it rather than sharing an offset and overlapping.
+   */
+  const locationRef = useRef(null)
+  useLayoutEffect(() => {
+    const el = locationRef.current
+    const root = document.documentElement
+    if (!el) {
+      root.style.setProperty('--stk-loc-h', '0px')
+      return
+    }
+    const publish = () => {
+      root.style.setProperty('--stk-loc-h', `${Math.ceil(el.getBoundingClientRect().height)}px`)
+    }
+    publish()
+    // Re-measure after layout settles: the first pass can land before webfonts
+    // swap in, which leaves the toolbar parked a few pixels too high.
+    const frame = requestAnimationFrame(publish)
+    const observer = new ResizeObserver(publish)
+    observer.observe(el)
+    if (document.fonts?.ready) document.fonts.ready.then(publish).catch(() => {})
+    return () => {
+      cancelAnimationFrame(frame)
+      observer.disconnect()
+      root.style.setProperty('--stk-loc-h', '0px')
+    }
+  }, [activeInvId, section])
 
   /** Re-read one inventory with all its legs and entries. */
   const refreshInventory = useCallback(async (invId) => {
@@ -408,7 +437,9 @@ export default function StockingView({ user }) {
       )}
 
       {/* ── Inventories ── */}
-      {section === 'inventories' && (
+      {/* Hidden while one is open: the checklist is the whole screen then, and
+          the list underneath it was just something to scroll past. */}
+      {section === 'inventories' && !activeInv && (
         <div className="stk-history">
           {inventories.length === 0 && <p className="empty-msg">No inventories yet</p>}
           {inventories.map((inv) => {
@@ -449,6 +480,33 @@ export default function StockingView({ user }) {
       {/* ── Active inventory ── */}
       {section === 'inventories' && activeInv && (
         <>
+          {/* Which store you are counting matters on every row, so it leads
+              and stays put. The wrapper carries the background so nothing
+              scrolls through the gap beneath it while stuck. */}
+          <div className="stk-location-wrap" ref={locationRef}>
+            <div className="stk-location-bar">
+              <label className="stk-location-label" htmlFor="stk-location">Location</label>
+              <select
+                id="stk-location"
+                className="input stk-location-select"
+                value={activeStoreId}
+                onChange={(e) => setActiveStoreId(e.target.value)}
+              >
+                {stores.map((s) => {
+                  const leg = activeInv.stocking_sessions?.find((l) => l.store_id === s.id)
+                  const n = leg
+                    ? Object.keys(leg.id === sessionId ? counts : countsFromEntries(leg.stocking_entries)).length
+                    : 0
+                  return (
+                    <option key={s.id} value={s.id}>
+                      {s.name}{n > 0 ? ` — ${n} counted` : ''}
+                    </option>
+                  )
+                })}
+              </select>
+            </div>
+          </div>
+
           <div className="stk-active-head">
             <div className="stk-active-id">
               <span className="stk-active-store">Inventory</span>
@@ -460,28 +518,6 @@ export default function StockingView({ user }) {
                 Close
               </button>
             </div>
-          </div>
-
-          <div className="stk-location-bar">
-            <label className="stk-location-label" htmlFor="stk-location">Location</label>
-            <select
-              id="stk-location"
-              className="input stk-location-select"
-              value={activeStoreId}
-              onChange={(e) => setActiveStoreId(e.target.value)}
-            >
-              {stores.map((s) => {
-                const leg = activeInv.stocking_sessions?.find((l) => l.store_id === s.id)
-                const n = leg
-                  ? Object.keys(leg.id === sessionId ? counts : countsFromEntries(leg.stocking_entries)).length
-                  : 0
-                return (
-                  <option key={s.id} value={s.id}>
-                    {s.name}{n > 0 ? ` — ${n} counted` : ''}
-                  </option>
-                )
-              })}
-            </select>
           </div>
 
           <div className="stk-progress">
