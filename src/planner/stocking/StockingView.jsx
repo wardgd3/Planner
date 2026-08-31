@@ -6,6 +6,7 @@ import StockingChecklist from './StockingChecklist'
 import { buildSections } from './stockingSections'
 import StockingGlossary from './StockingGlossary'
 import StockingVoice from './StockingVoice'
+import { useIsMobile } from './useIsMobile'
 import { useStockingCounts, clearLocalCounts } from './useStockingCounts'
 import { exportCsv, exportPdf } from './stockingExport'
 
@@ -64,7 +65,9 @@ export default function StockingView({ user }) {
   const [query, setQuery] = useState('')
   const [companyFilter, setCompanyFilter] = useState(null)
   const [filterOpen, setFilterOpen] = useState(false)
+  const [typeFilter, setTypeFilter] = useState('')
   const sectionRefs = useRef({})
+  const isMobile = useIsMobile()
   const [newForm, setNewForm] = useState(false)
   const [newDate, setNewDate] = useState(todayStr())
   const [deleteConfirm, setDeleteConfirm] = useState(null)
@@ -238,11 +241,25 @@ export default function StockingView({ user }) {
   const percent = items.length === 0 ? 0 : Math.round((countedTotal / items.length) * 100)
 
   // Built here so the toolbar chips and the list below share one set of counts.
+  // On mobile the search box and company filter are gone, so their state is
+  // ignored rather than left to silently hide rows.
   const sections = useMemo(
-    () => buildSections({ categories, items, counts, query, companyId: companyFilter }),
-    [categories, items, counts, query, companyFilter],
+    () => buildSections({
+      categories,
+      items,
+      counts,
+      query: isMobile ? '' : query,
+      companyId: isMobile ? null : companyFilter,
+    }),
+    [categories, items, counts, query, companyFilter, isMobile],
   )
   const activeCompany = companies.find((co) => co.id === companyFilter) || null
+
+  // Mobile shows one type at a time, starting with the first category.
+  const activeTypeId = typeFilter || categories[0]?.id || ''
+  const visibleSections = isMobile
+    ? sections.filter((s) => s.category.id === activeTypeId)
+    : sections
 
   function jumpTo(categoryId) {
     const el = sectionRefs.current[categoryId]
@@ -547,25 +564,45 @@ export default function StockingView({ user }) {
                   )
                 })}
               </select>
-              <input
-                className="input stk-search"
-                type="search"
-                placeholder="Find an item…"
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                aria-label="Find an item"
-              />
-              <button
-                type="button"
-                className={`stk-filter-btn ${companyFilter ? 'active' : ''}`}
-                onClick={() => setFilterOpen((v) => !v)}
-                aria-expanded={filterOpen}
-              >
-                {activeCompany ? activeCompany.name : 'Filter'}
-              </button>
+              {isMobile ? (
+                <select
+                  className="input stk-type-select"
+                  value={activeTypeId}
+                  onChange={(e) => setTypeFilter(e.target.value)}
+                  aria-label="Type"
+                >
+                  {categories.map((c) => {
+                    const s = sections.find((x) => x.category.id === c.id)
+                    return (
+                      <option key={c.id} value={c.id}>
+                        {c.name}{s ? ` — ${s.counted}/${s.total}` : ''}
+                      </option>
+                    )
+                  })}
+                </select>
+              ) : (
+                <>
+                  <input
+                    className="input stk-search"
+                    type="search"
+                    placeholder="Find an item…"
+                    value={query}
+                    onChange={(e) => setQuery(e.target.value)}
+                    aria-label="Find an item"
+                  />
+                  <button
+                    type="button"
+                    className={`stk-filter-btn ${companyFilter ? 'active' : ''}`}
+                    onClick={() => setFilterOpen((v) => !v)}
+                    aria-expanded={filterOpen}
+                  >
+                    {activeCompany ? activeCompany.name : 'Filter'}
+                  </button>
+                </>
+              )}
             </div>
 
-            {filterOpen && (
+            {!isMobile && filterOpen && (
               <div className="stk-filter-row" role="group" aria-label="Filter by company">
                 <button
                   type="button"
@@ -587,19 +624,23 @@ export default function StockingView({ user }) {
               </div>
             )}
 
-            <nav className="stk-chips" aria-label="Jump to category">
-              {sections.map(({ category, counted, total }) => (
-                <button
-                  key={category.id}
-                  type="button"
-                  className={`stk-chip ${counted === total ? 'done' : ''}`}
-                  onClick={() => jumpTo(category.id)}
-                >
-                  {category.name}
-                  <span className="stk-chip-count">{counted}/{total}</span>
-                </button>
-              ))}
-            </nav>
+            {/* Chips jump between categories, which only makes sense when more
+                than one is on screen. The mobile dropdown shows exactly one. */}
+            {!isMobile && (
+              <nav className="stk-chips" aria-label="Jump to category">
+                {sections.map(({ category, counted, total }) => (
+                  <button
+                    key={category.id}
+                    type="button"
+                    className={`stk-chip ${counted === total ? 'done' : ''}`}
+                    onClick={() => jumpTo(category.id)}
+                  >
+                    {category.name}
+                    <span className="stk-chip-count">{counted}/{total}</span>
+                  </button>
+                ))}
+              </nav>
+            )}
           </div>
 
           <StockingVoice items={items} onApply={setCount} onLocate={locateItem} />
@@ -608,14 +649,16 @@ export default function StockingView({ user }) {
             ? <p className="stk-loading">Opening location…</p>
             : (
               <StockingChecklist
-                sections={sections}
+                sections={visibleSections}
                 counts={counts}
                 onChange={setCount}
                 sectionRefs={sectionRefs}
                 emptyMessage={
-                  activeCompany && !query.trim()
-                    ? `No ${activeCompany.name} items.`
-                    : `No items match “${query}”${activeCompany ? ` in ${activeCompany.name}` : ''}.`
+                  isMobile
+                    ? 'Nothing in this type yet.'
+                    : activeCompany && !query.trim()
+                      ? `No ${activeCompany.name} items.`
+                      : `No items match “${query}”${activeCompany ? ` in ${activeCompany.name}` : ''}.`
                 }
               />
             )}
