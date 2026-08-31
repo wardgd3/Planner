@@ -19,7 +19,7 @@ const StockingRow = memo(function StockingRow({ item, value, onChange }) {
   }
 
   return (
-    <li className={`stk-row ${counted ? 'counted' : ''}`}>
+    <li className={`stk-row ${counted ? 'counted' : ''}`} data-item-id={item.id}>
       <span className="stk-row-tick" aria-hidden="true" />
       <span className="stk-row-name">{item.name}</span>
       <div className="stk-stepper">

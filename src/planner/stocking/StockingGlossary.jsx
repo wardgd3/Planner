@@ -35,6 +35,7 @@ export default function StockingGlossary({
   const [deleteTarget, setDeleteTarget] = useState(null)
   const [usage, setUsage] = useState(null) // recorded counts referencing the item
   const [busy, setBusy] = useState(false)
+  const [viewCategoryId, setViewCategoryId] = useState('')
 
   // Derived rather than synced into state: the categories arrive a tick after
   // first render, and seeding state from an effect just causes a second pass.
@@ -124,8 +125,9 @@ export default function StockingGlossary({
 
           return { category: c, rows, groups }
         })
-        .filter((g) => g.rows.length > 0),
-    [categories, items],
+        .filter((g) => g.rows.length > 0)
+        .filter((g) => !viewCategoryId || g.category.id === viewCategoryId),
+    [categories, items, viewCategoryId],
   )
 
   function resetForm() {
@@ -343,6 +345,22 @@ export default function StockingGlossary({
           </div>
         </div>
       )}
+
+      <div className="stk-gloss-filter">
+        <select
+          className="input stk-gloss-select"
+          value={viewCategoryId}
+          onChange={(e) => setViewCategoryId(e.target.value)}
+          aria-label="Show category"
+        >
+          <option value="">All types ({items.length})</option>
+          {categories.map((c) => (
+            <option key={c.id} value={c.id}>
+              {c.name} ({items.filter((i) => i.category_id === c.id).length})
+            </option>
+          ))}
+        </select>
+      </div>
 
       {items.length === 0 && !formOpen && (
         <p className="empty-msg stk-idle">No items yet. Add the first one to start counting.</p>

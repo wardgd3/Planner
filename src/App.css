@@ -5774,3 +5774,85 @@ body.pomo-focus-active .dash-card {
   .stk-toolbar.pinned .stk-location-select { font-size: 16px; }
   .stk-toolbar.pinned .stk-filter-btn { font-size: 12px; }
 }
+
+/* ── Glossary type filter ── */
+.stk-gloss-filter { margin-bottom: 16px; }
+.stk-gloss-select { font-weight: 600; cursor: pointer; }
+@media (max-width: 768px) {
+  .stk-gloss-select { font-size: 16px; }
+}
+
+/* ══ Voice input ══
+   Bottom right on desktop, bottom left on mobile so it sits under the thumb
+   that is not holding the scanner. */
+.stk-voice {
+  position: fixed; z-index: 60;
+  right: 24px; bottom: 24px;
+  display: flex; flex-direction: column; align-items: flex-end; gap: 8px;
+  pointer-events: none;             /* only the button and panel take taps */
+}
+.stk-voice > * { pointer-events: auto; }
+
+.stk-mic {
+  width: 56px; height: 56px; border-radius: 50%;
+  border: 1px solid var(--border); background: var(--surface2); color: var(--text-secondary);
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; box-shadow: 0 8px 24px rgba(0,0,0,0.45);
+  transition: background 0.2s, color 0.2s, border-color 0.2s, transform 0.15s;
+}
+.stk-mic:hover { color: var(--text); border-color: var(--surface3); }
+.stk-mic:active { transform: scale(0.94); }
+.stk-mic.on {
+  background: var(--accent); border-color: var(--accent); color: var(--bg);
+  animation: stk-mic-pulse 1.8s ease-in-out infinite;
+}
+@keyframes stk-mic-pulse {
+  0%, 100% { box-shadow: 0 8px 24px rgba(0,0,0,0.45), 0 0 0 0 var(--accent-dim); }
+  50%      { box-shadow: 0 8px 24px rgba(0,0,0,0.45), 0 0 0 12px transparent; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .stk-mic.on { animation: none; }
+}
+
+.stk-voice-panel {
+  max-width: min(340px, calc(100vw - 48px));
+  display: flex; flex-direction: column; gap: 4px;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 10px 12px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.45);
+  font-family: var(--font-ui); font-size: 12px;
+}
+.stk-voice-interim {
+  color: var(--muted); font-style: italic;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.stk-voice-line { display: flex; flex-direction: column; gap: 1px; }
+.stk-voice-label { font-weight: 600; }
+.stk-voice-line.ok .stk-voice-label { color: var(--success); }
+.stk-voice-line.err .stk-voice-label { color: var(--accent); }
+.stk-voice-heard {
+  color: var(--muted); font-size: 11px;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+
+/* The row a voice command just set, so the hit is visible when it lands
+   somewhere off screen. */
+.stk-row.flash {
+  animation: stk-row-flash 1.2s ease-out;
+}
+@keyframes stk-row-flash {
+  0%   { background: var(--accent-dim); border-color: var(--accent); }
+  100% { background: var(--surface); border-color: var(--border); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .stk-row.flash { animation: none; }
+}
+
+@media (max-width: 768px) {
+  .stk-voice {
+    left: 16px; right: auto; bottom: 16px;
+    align-items: flex-start;
+  }
+  .stk-voice-panel { max-width: calc(100vw - 32px); }
+  .stk-mic { width: 52px; height: 52px; }
+}

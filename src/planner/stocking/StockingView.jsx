@@ -5,6 +5,7 @@ import { todayStr } from '../../utils'
 import StockingChecklist from './StockingChecklist'
 import { buildSections } from './stockingSections'
 import StockingGlossary from './StockingGlossary'
+import StockingVoice from './StockingVoice'
 import { useStockingCounts, clearLocalCounts } from './useStockingCounts'
 import { exportCsv, exportPdf } from './stockingExport'
 
@@ -247,6 +248,15 @@ export default function StockingView({ user }) {
     const el = sectionRefs.current[categoryId]
     if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' })
   }
+
+  /** Bring a voice-matched row into view and flash it, so you can see the hit. */
+  const locateItem = useCallback((itemId) => {
+    const row = document.querySelector(`[data-item-id="${itemId}"]`)
+    if (!row) return
+    row.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    row.classList.add('flash')
+    setTimeout(() => row.classList.remove('flash'), 1200)
+  }, [])
 
   async function startInventory() {
     setBusy(true)
@@ -591,6 +601,8 @@ export default function StockingView({ user }) {
               ))}
             </nav>
           </div>
+
+          <StockingVoice items={items} onApply={setCount} onLocate={locateItem} />
 
           {switching
             ? <p className="stk-loading">Opening location…</p>
