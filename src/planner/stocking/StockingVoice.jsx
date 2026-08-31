@@ -25,7 +25,7 @@ const REASON_TEXT = {
 export default function StockingVoice({ items, onApply, onLocate }) {
   const [listening, setListening] = useState(false)
   const [interim, setInterim] = useState('')
-  const [log, setLog] = useState([]) // newest first, capped
+  const [log, setLog] = useState([]) // just the last result
 
   const recognitionRef = useRef(null)
   const listeningRef = useRef(false)
@@ -35,8 +35,10 @@ export default function StockingVoice({ items, onApply, onLocate }) {
   // Keep the catalog current without tearing down the recognition session.
   useEffect(() => { itemsRef.current = items }, [items])
 
+  // Only the latest result is kept: the panel sits over the rows, so a stack of
+  // past commands covers the very list you are counting.
   const push = useCallback((entry) => {
-    setLog((prev) => [{ ...entry, at: Date.now() }, ...prev].slice(0, 4))
+    setLog([{ ...entry, at: Date.now() }])
   }, [])
 
   const handlePhrase = useCallback((text) => {

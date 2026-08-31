@@ -5854,7 +5854,9 @@ body.pomo-focus-active .dash-card {
     align-items: flex-start;
   }
   .stk-voice-panel { max-width: calc(100vw - 32px); }
-  .stk-mic { width: 52px; height: 52px; }
+  /* Sits over the rows on a phone, so it stays readable through. */
+  .stk-mic { width: 52px; height: 52px; opacity: 0.6; }
+  .stk-mic:active { opacity: 1; }
 }
 
 /* ── Mobile type dropdown (replaces search + company filter) ── */
